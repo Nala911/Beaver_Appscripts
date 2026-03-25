@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <title>Drive Sync Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* ── Design Tokens (from Docs merge) ── */
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --primary-bg: #eef2ff;
+            --surface: #ffffff;
+            --background: #f5f3ff;
+            --border: #e2e0f5;
+            --border-light: #f0eef9;
+            --text: #1e1b4b;
+            --text-secondary: #6b7280;
+            --success: #10b981;
+            --success-dark: #059669;
+            --success-bg: #ecfdf5;
+            --warning: #f59e0b;
+            --warning-bg: #fffbeb;
+            --danger: #ef4444;
+            --danger-bg: #fef2f2;
+            --hover-bg: #f5f3ff;
+            --gradient-pull: linear-gradient(135deg, #6366f1, #8b5cf6);
+            --gradient-push: linear-gradient(135deg, #10b981, #14b8a6);
+            --gradient-header: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);
+            --shadow-sm: 0 1px 3px rgba(99, 102, 241, 0.08);
+            --shadow-md: 0 4px 12px rgba(99, 102, 241, 0.10);
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--background);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            font-size: 13px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── Header ── */
+        .header {
+            background: var(--surface);
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gradient-header);
+            border-radius: 0 0 2px 2px;
+        }
+
+        .header-title {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: -0.01em;
+        }
+
+        .header-title i {
+            background: var(--gradient-pull);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .status-badge {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: var(--success-bg);
+            color: var(--success);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.3s ease;
+            letter-spacing: 0.01em;
+        }
+
+        .status-badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .status-badge.working {
+            background: var(--warning-bg);
+            color: var(--warning);
+            animation: pulse-badge 1.5s ease-in-out infinite;
+        }
+
+        .status-badge.working::before {
+            background: var(--warning);
+            animation: pulse-dot 1s ease-in-out infinite;
+        }
+
+        .status-badge.error {
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+
+        .status-badge.error::before {
+            background: var(--danger);
+        }
+
+        @keyframes pulse-badge {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        @keyframes pulse-dot {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.4);
+                opacity: 0.6;
+            }
+        }
+
+        /* ── Main Scroll Area ── */
+        .main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-height: 0;
+        }
+
+        .main::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .main::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.2);
+            border-radius: 10px;
+        }
+
+        /* ── Section Labels ── */
+        .section-label {
+            font-weight: 700;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .section-label i {
+            color: var(--primary-light);
+        }
+
+        /* ── Card Wrapper ── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            padding: 14px;
+            transition: box-shadow 0.25s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        /* ── Buttons ── */
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .btn {
+            border: none;
+            height: 40px;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 0.01em;
+            padding: 0 16px;
+        }
+
+        .btn-full {
+            grid-column: 1 / -1;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            background: rgba(255, 255, 255, 0.15);
+            transition: opacity 0.2s ease;
+        }
+
+        .btn:hover::before {
+            opacity: 1;
+        }
+
+        .btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .btn-outline {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-outline:hover:not(:disabled) {
+            background: var(--hover-bg);
+            border-color: var(--primary-light);
+        }
+
+        .btn-pull {
+            background: var(--gradient-pull);
+            color: white;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-push {
+            background: var(--gradient-push);
+            color: white;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+
+        /* ── Loader ── */
+        .loader {
+            border: 2.5px solid var(--border-light);
+            border-top: 2.5px solid var(--primary);
+            border-right: 2.5px solid var(--primary-light);
+            border-radius: 50%;
+            width: 14px;
+            height: 14px;
+            animation: spin 0.8s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ── Navigator Specifics ── */
+        .nav-bar {
+            padding: 10px 14px;
+            background: rgba(99, 102, 241, 0.03);
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .path-display {
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 180px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+        }
+
+        .path-display i {
+            color: var(--primary-light);
+        }
+
+        .btn-icon {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .btn-icon:hover:not(:disabled) {
+            background: var(--hover-bg);
+            color: var(--primary);
+        }
+
+        .btn-icon:disabled {
+            opacity: 0.3;
+            cursor: default;
+        }
+
+        .folder-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 4px 0;
+            min-height: 150px;
+            /* give it some height */
+        }
+
+        .folder-list::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .folder-list::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.2);
+            border-radius: 10px;
+        }
+
+        .folder-item {
+            padding: 10px 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.15s;
+            color: var(--text);
+            font-weight: 500;
+            font-size: 12px;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .folder-item:last-child {
+            border-bottom: none;
+        }
+
+        .folder-item:hover {
+            background: var(--hover-bg);
+            color: var(--primary);
+        }
+
+        .folder-item i {
+            width: 16px;
+            height: 16px;
+            color: var(--primary-light);
+        }
+
+        /* ── Modals ── */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(30, 27, 75, 0.4);
+            /* match theme */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            backdrop-filter: blur(2px);
+        }
+
+        .modal-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal {
+            background: var(--surface);
+            border-radius: var(--radius);
+            width: 280px;
+            padding: 20px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-light);
+        }
+
+        .modal h3 {
+            margin-bottom: 10px;
+            color: var(--danger);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 15px;
+        }
+
+        .modal p {
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            line-height: 1.5;
+            font-size: 13px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .modal-actions .btn {
+            height: 36px;
+            padding: 0 14px;
+            width: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-title">
+            <i data-lucide="cloud" style="width:18px;"></i>
+            Drive Sync
+        </div>
+        <div id="statusBadge" class="status-badge" title="System Ready">
+            Ready
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main">
+
+        <!-- Navigator Section -->
+        <div style="display: flex; flex-direction: column; flex: 1; min-height: 250px;">
+            <div class="section-label">
+                <i data-lucide="folder-tree" style="width:13px;"></i> Navigator
+            </div>
+            <div class="card"
+                style="padding: 0; flex: 1; display: flex; flex-direction: column; overflow: hidden; gap: 0;">
+                <div class="nav-bar">
+                    <div class="path-display" id="pathDisplay">
+                        <i data-lucide="hard-drive" style="width:14px;"></i> Root
+                    </div>
+                    <button class="btn-icon" id="btnBack" onclick="goUp()" disabled title="Go Up">
+                        <i data-lucide="arrow-up" style="width:16px;"></i>
+                    </button>
+                </div>
+                <div id="folderList" class="folder-list">
+                    <div style="display:flex; justify-content:center; padding:20px;">
+                        <div class="loader"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions Section -->
+        <div>
+            <div class="section-label">
+                <i data-lucide="zap" style="width:13px;"></i> Actions
+            </div>
+            <div class="card">
+                <div class="btn-group">
+                    <button id="btnPull" class="btn btn-pull btn-full" onclick="pullData()">
+                        <i data-lucide="download" style="width:15px;"></i> Pull
+                    </button>
+                    <button id="btnPush" class="btn btn-push btn-full" onclick="checkAndPush()">
+                        <i data-lucide="upload-cloud" style="width:15px;"></i> Push
+                    </button>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; padding: 0 4px;">
+                    <input type="checkbox" id="chkShallow"
+                        style="cursor: pointer; accent-color: var(--primary); width: 14px; height: 14px;">
+                    <label for="chkShallow"
+                        style="color:var(--text-secondary); cursor:pointer; font-size: 12px; font-weight: 500;"
+                        title="If checked, only immediate files and folders are pulled. Subfolders are not searched.">Shallow
+                        Pull (Faster)</label>
+                </div>
+
+                <div style="margin-top: 8px;">
+                    <button id="btnFillPath" class="btn btn-outline" style="width: 100%;" onclick="fillPath()">
+                        <i data-lucide="folder-input" style="width:14px;"></i> Fill Path
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modals -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal">
+            <h3><i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i> Confirm Delete</h3>
+            <p>You are about to move <b><span id="delCount">0</span> items</b> to the trash.</p>
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+                <button class="btn" style="background:var(--danger); color:white; border:none;"
+                    onclick="confirmPush()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <?!= _App_include('SidebarShared'); ?>
+    <script>
+        let currentFolderId = null;
+        let currentFolderName = 'Root';
+        let folderStack = [];
+        let folderTopology = null;
+
+        // Global Error Catcher
+        window.onerror = function (msg, url, line, col, error) {
+            const detail = `Error: ${msg}\nURL: ${url}\nLine: ${line}, Col: ${col}${error ? '\nStack: ' + error.stack : ''}`;
+            google.script.run._App_logClientError(detail, 'Global Error');
+            return false; // let default handler run too
+        };
+
+        window.onload = function () {
+            try {
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            } catch (e) {
+                console.warn('Lucide icons failed to load:', e);
+            }
+
+            setStatus('working', 'Scanning...');
+            document.getElementById('folderList').innerHTML = '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px;"><div class="loader" style="width:24px; height:24px; border-width: 3px;"></div><div style="margin-top:12px; color:var(--text); font-weight:600;">Building File System...</div><div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">This may take a minute</div></div>';
+
+            log("Scanning Google Drive folder hierarchy...");
+
+            google.script.run
+                .withSuccessHandler(function (response) {
+                    if (response.success) {
+                        folderTopology = response.topology;
+                        log("File system scan complete.", "success");
+                        setStatus('ready');
+                        loadFolder(null, 'Root');
+                    } else {
+                        handleError(response.error);
+                    }
+                })
+                .withFailureHandler(handleError)
+                .Drive_getFolderHierarchy();
+        };
+
+        function log(msg, type = '') {
+            console.log(`[DriveSync ${type}] ${msg}`);
+            if (type === 'error' || (typeof msg === 'string' && msg.startsWith('Error:'))) {
+                alert(msg);
+            }
+        }
+
+        function setStatus(state, msg) {
+            const badge = document.getElementById('statusBadge');
+            const buttons = document.querySelectorAll('button:not(#btnBack)');
+
+            badge.className = 'status-badge ' + state;
+
+            if (state === 'working') {
+                badge.innerText = msg || 'Working...';
+                buttons.forEach(btn => btn.disabled = true);
+            } else if (state === 'error') {
+                badge.innerText = 'Error';
+                buttons.forEach(btn => btn.disabled = false);
+                updateNavButtons();
+            } else {
+                badge.innerText = 'Ready';
+                buttons.forEach(btn => btn.disabled = false);
+                updateNavButtons();
+            }
+        }
+
+        function updateNavButtons() {
+            document.getElementById('btnBack').disabled = (folderStack.length === 0);
+        }
+
+        // --- Navigation ---
+        function loadFolder(id, name) {
+            if (!folderTopology) return;
+
+            currentFolderId = id;
+            currentFolderName = name;
+
+            document.getElementById('pathDisplay').innerHTML = `<i data-lucide="${id === null ? 'hard-drive' : 'folder-open'}" style="width:14px;"></i> ${name}`;
+            try { if (typeof lucide !== 'undefined') lucide.createIcons(); } catch (e) { }
+
+            if (id === null) {
+                const rootData = { success: true, drives: folderTopology.rootDrives };
+                renderDrives(rootData);
+            } else {
+                let lookupId = id;
+                if (id === 'root' && folderTopology.myDriveId) {
+                    lookupId = folderTopology.myDriveId;
+                }
+                const children = folderTopology.dict[lookupId] || [];
+                const folderData = { success: true, children: children };
+                renderFolders(folderData);
+            }
+        }
+
+        function renderDrives(data) {
+            const list = document.getElementById('folderList');
+            list.innerHTML = '';
+
+            if (!data.success) {
+                list.innerHTML = `<div style="padding:15px; color:var(--danger); font-size: 12px; font-weight: 500;">${data.error}</div>`;
+                return;
+            }
+
+            const myDrive = document.createElement('div');
+            myDrive.className = 'folder-item';
+            myDrive.onclick = () => {
+                folderStack.push({ id: null, name: 'Root' });
+                updateNavButtons();
+                loadFolder('root', 'My Drive');
+            };
+            myDrive.innerHTML = `<i data-lucide="hard-drive"></i><span>My Drive</span>`;
+            list.appendChild(myDrive);
+
+            if (data.drives && data.drives.length > 0) {
+                const divider = document.createElement('div');
+                divider.style.padding = '10px 14px 6px 14px';
+                divider.style.fontSize = '10px';
+                divider.style.fontWeight = '700';
+                divider.style.color = 'var(--text-secondary)';
+                divider.style.textTransform = 'uppercase';
+                divider.style.letterSpacing = '0.08em';
+                divider.innerText = 'Shared Drives';
+                list.appendChild(divider);
+
+                data.drives.forEach(drive => {
+                    const div = document.createElement('div');
+                    div.className = 'folder-item';
+                    div.onclick = () => {
+                        folderStack.push({ id: null, name: 'Root' });
+                        updateNavButtons();
+                        loadFolder(drive.id, drive.name);
+                    };
+                    div.innerHTML = `<i data-lucide="server"></i><span>${drive.name}</span>`;
+                    list.appendChild(div);
+                });
+            }
+
+            try { if (typeof lucide !== 'undefined') lucide.createIcons(); } catch (e) { }
+        }
+
+        function renderFolders(data) {
+            const list = document.getElementById('folderList');
+            list.innerHTML = '';
+
+            if (!data.success) {
+                list.innerHTML = `<div style="padding:15px; color:var(--danger); font-size: 12px; font-weight: 500;">${data.error}</div>`;
+                return;
+            }
+            if (!data.children || data.children.length === 0) {
+                list.innerHTML = '<div style="padding:20px; color:var(--text-secondary); text-align:center; font-size: 12px; font-weight: 500;">Empty Folder</div>';
+                return;
+            }
+
+            // sort by name
+            data.children.sort((a, b) => a.name.localeCompare(b.name));
+
+            data.children.forEach(folder => {
+                const div = document.createElement('div');
+                div.className = 'folder-item';
+                div.onclick = () => {
+                    folderStack.push({ id: currentFolderId, name: currentFolderName });
+                    updateNavButtons();
+                    loadFolder(folder.id, folder.name);
+                };
+                div.innerHTML = `<i data-lucide="folder"></i><span>${folder.name}</span>`;
+                list.appendChild(div);
+            });
+            try { if (typeof lucide !== 'undefined') lucide.createIcons(); } catch (e) { }
+        }
+
+        function goUp() {
+            if (folderStack.length === 0) return;
+            const prev = folderStack.pop();
+            loadFolder(prev.id, prev.name);
+            updateNavButtons();
+        }
+
+        // --- Core Actions ---
+
+        function pullData() {
+            const isShallow = document.getElementById('chkShallow').checked;
+            setStatus('working', 'Pulling...');
+            log(`Pulling from: ${currentFolderName}... ${isShallow ? '(Shallow)' : '(Deep)'}`);
+            google.script.run
+                .withSuccessHandler(res => {
+                    log(res, 'success');
+                    setStatus('ready');
+                })
+                .withFailureHandler(handleError)
+                .Drive_pullFromDrive(currentFolderId, isShallow);
+        }
+
+        function checkAndPush() {
+            setStatus('working', 'Checking...');
+            log("Checking pending changes...");
+            BeaverSidebar.run('Drive_getPendingStats', [], {
+                onSuccess: stats => {
+                    if (stats.total === 0) {
+                        log("No pending changes found.", 'info');
+                        setStatus('ready');
+                    } else if (stats.deletes > 0) {
+                        document.getElementById('delCount').innerText = stats.deletes;
+                        document.getElementById('deleteModal').classList.add('open');
+                        setStatus('ready'); // Wait for user confirmation
+                    } else {
+                        confirmPush();
+                    }
+                },
+                toast: false
+            });
+        }
+
+        function confirmPush() {
+            document.getElementById('deleteModal').classList.remove('open');
+            setStatus('working', 'Pushing...');
+            log("Pushing changes to Drive...");
+
+            google.script.run
+                .withSuccessHandler(logs => {
+                    logs.forEach(l => log(l));
+                    log("Sync Complete.", 'success');
+                    setStatus('ready');
+                })
+                .withFailureHandler(handleError)
+                .Drive_runPushSequence();
+        }
+
+        function fillPath() {
+            setStatus('working', 'Filling...');
+            let pathParts = folderStack.filter(f => f.name !== 'Root').map(f => f.name).concat([currentFolderName]);
+            if (pathParts.length === 0) pathParts = ['My Drive']; // Fallback
+            const pathFormatted = "/" + pathParts.join("/");
+
+            log(`Filling path: ${pathFormatted}`);
+
+            google.script.run
+                .withSuccessHandler(msg => {
+                    log(msg, 'success');
+                    setStatus('ready');
+                })
+                .withFailureHandler(handleError)
+                .Drive_fillActivePath(currentFolderId, pathFormatted);
+        }
+
+        // --- Helpers ---
+        function closeModal() {
+            document.getElementById('deleteModal').classList.remove('open');
+            setStatus('ready');
+        }
+
+        function handleError(err) {
+            log(err, 'error');
+            setStatus('error');
+            google.script.run._App_logClientError(err, 'Sidebar Operation');
+        }
+
+    </script>
+</body>
+
+</html>

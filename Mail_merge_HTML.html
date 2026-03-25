@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    /* ── Design Tokens ── */
+    :root {
+      --primary: #6366f1;
+      --primary-light: #818cf8;
+      --primary-bg: #eef2ff;
+      --surface: #ffffff;
+      --background: #f5f3ff;
+      --border: #e2e0f5;
+      --border-light: #f0eef9;
+      --text: #1e1b4b;
+      --text-secondary: #6b7280;
+      --success: #10b981;
+      --success-dark: #059669;
+      --success-bg: #ecfdf5;
+      --warning: #f59e0b;
+      --warning-bg: #fffbeb;
+      --danger: #ef4444;
+      --danger-bg: #fef2f2;
+      --hover-bg: #f5f3ff;
+      --gradient-pull: linear-gradient(135deg, #6366f1, #8b5cf6);
+      --gradient-push: linear-gradient(135deg, #10b981, #14b8a6);
+      --gradient-header: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);
+      --shadow-sm: 0 1px 3px rgba(99, 102, 241, 0.08);
+      --shadow-md: 0 4px 12px rgba(99, 102, 241, 0.10);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--background);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      font-size: 13px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--surface);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--gradient-header);
+      border-radius: 0 0 2px 2px;
+    }
+
+    .header-title {
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      letter-spacing: -0.01em;
+    }
+
+    .header-title i {
+      background: var(--gradient-pull);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .status-badge {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: var(--success-bg);
+      color: var(--success);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.3s ease;
+      letter-spacing: 0.01em;
+    }
+
+    .status-badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    .status-badge.working {
+      background: var(--warning-bg);
+      color: var(--warning);
+      animation: pulse-badge 1.5s ease-in-out infinite;
+    }
+
+    .status-badge.working::before {
+      background: var(--warning);
+      animation: pulse-dot 1s ease-in-out infinite;
+    }
+
+    .status-badge.error {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    .status-badge.error::before {
+      background: var(--danger);
+    }
+
+    @keyframes pulse-badge {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.7;
+      }
+    }
+
+    @keyframes pulse-dot {
+
+      0%,
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+
+      50% {
+        transform: scale(1.4);
+        opacity: 0.6;
+      }
+    }
+
+    /* ── Main Scroll Area ── */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-height: 0;
+    }
+
+    .main::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    .main::-webkit-scrollbar-thumb {
+      background: rgba(99, 102, 241, 0.2);
+      border-radius: 10px;
+    }
+
+    /* ── Section Labels ── */
+    .section-label {
+      font-weight: 700;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .section-label i {
+      color: var(--primary-light);
+    }
+
+    /* ── Card Wrapper ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      padding: 14px;
+      transition: box-shadow 0.25s ease;
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    /* ── Dash Widgets ── */
+    .quota-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .quota-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .quota-number {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--primary);
+      line-height: 1;
+    }
+
+    .quota-number.loading {
+      font-size: 14px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .quota-number.danger {
+      color: var(--danger);
+    }
+
+    /* ── Form Items ── */
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background-color: var(--surface);
+      color: var(--text);
+      outline: none;
+      transition: all 0.2s;
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236b7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px top 50%;
+      background-size: 10px auto;
+    }
+
+    select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    /* ── Buttons ── */
+    .btn-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .btn {
+      border: none;
+      height: 40px;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+      letter-spacing: 0.01em;
+      padding: 0 16px;
+    }
+
+    .btn-full {
+      grid-column: 1 / -1;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      background: rgba(255, 255, 255, 0.15);
+      transition: opacity 0.2s ease;
+    }
+
+    .btn:hover::before {
+      opacity: 1;
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    .btn-outline {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-outline:hover:not(:disabled) {
+      background: var(--hover-bg);
+      border-color: var(--primary-light);
+    }
+
+    .btn-outline::before {
+      display: none;
+    }
+
+    .btn-pull {
+      background: var(--gradient-pull);
+      color: white;
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-pull:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+    }
+
+    .btn-pull:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 0 1px 4px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-push {
+      background: var(--gradient-push);
+      color: white;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-push:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-push:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 0 1px 4px rgba(16, 185, 129, 0.3);
+    }
+
+
+    /* ── Loader ── */
+    .loader {
+      border: 2.5px solid var(--border-light);
+      border-top: 2.5px solid var(--primary);
+      border-right: 2.5px solid var(--primary-light);
+      border-radius: 50%;
+      width: 14px;
+      height: 14px;
+      animation: spin 0.8s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-title">
+      <i data-lucide="mail" style="width:18px;"></i>
+      Mail Merge Toolkit
+    </div>
+    <div id="statusBadge" class="status-badge">
+      Ready
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main">
+
+    <!-- Dashboard Widget -->
+    <div>
+      <div class="section-label">
+        <i data-lucide="bar-chart-2" style="width:13px;"></i> Usage Stats
+      </div>
+      <div class="card quota-card">
+        <div class="quota-label">Daily Email Quota</div>
+        <div id="quota-display" class="quota-number loading">
+          <div class="loader" style="width:24px; height:24px; border-width:3px; margin: 0 auto;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Configuration -->
+    <div id="draft-section">
+      <div class="section-label">
+        <i data-lucide="file-text" style="width:13px;"></i> Template Configuration
+      </div>
+      <div class="card">
+        <select id="draft-select">
+          <option value="">Loading drafts...</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div>
+      <div class="section-label">
+        <i data-lucide="zap" style="width:13px;"></i> Actions
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-outline btn-full" id="btn-sync" onclick="handleDraftSelection()">
+          <i data-lucide="columns" style="width:15px;"></i> Pull Placeholders
+        </button>
+        <button class="btn btn-push btn-full" id="btn-run" onclick="executeActions()">
+          <i data-lucide="send" style="width:15px;"></i> Run Mail Merge
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <?!= _App_include('SidebarShared'); ?>
+  <script>
+
+    // ── Init ──
+    window.onload = function () {
+      lucide.createIcons();
+      refreshData();
+    };
+
+    function refreshData() {
+      BeaverSidebar.run('MailMerge_getGmailDrafts', [], {
+        onSuccess: function (data) {
+          populateDrafts(data.drafts);
+        }
+      });
+
+      BeaverSidebar.run('MailMerge_getQuota', [], {
+        onSuccess: function (data) {
+          updateQuota(data.remaining);
+        },
+        onError: function () {
+          const el = document.getElementById('quota-display');
+          el.innerText = "Error";
+          el.classList.remove('loading');
+        }
+      });
+    }
+
+    function updateQuota(amount) {
+      const el = document.getElementById('quota-display');
+      el.innerText = amount;
+      el.classList.remove('loading');
+      if (amount < 20) {
+        el.classList.add('danger');
+      } else {
+        el.classList.remove('danger');
+      }
+    }
+
+    function populateDrafts(drafts) {
+      const select = document.getElementById('draft-select');
+      select.innerHTML = '';
+
+      if (!drafts || drafts.length === 0) {
+        const option = document.createElement('option');
+        option.text = "No drafts found in Gmail";
+        option.value = "";
+        select.add(option);
+        return;
+      }
+
+      const defaultOption = document.createElement('option');
+      defaultOption.text = "Select a draft...";
+      defaultOption.value = "";
+      select.add(defaultOption);
+
+      drafts.forEach(d => {
+        const option = document.createElement('option');
+        option.value = d.id;
+        option.text = d.subject;
+        select.add(option);
+      });
+
+      log("Loaded " + drafts.length + " templates.", "success");
+    }
+
+    // ── Sync Columns ──
+    function handleDraftSelection() {
+      const draftId = document.getElementById('draft-select').value;
+      if (!draftId) return log('Please select a template draft from the dropdown.', 'error');
+
+      setStatus('working', 'Syncing columns...');
+      log('Syncing placeholder columns...');
+
+      BeaverSidebar.run('MailMerge_syncPlaceholders', [draftId], {
+        onSuccess: function (res) {
+          setStatus('ready');
+          log(res.message, "success");
+        },
+        toast: false
+      });
+    }
+
+    // ── Run Main Action ──
+    function executeActions(startIndex) {
+      var draftId = document.getElementById('draft-select').value;
+      if (!draftId) return log("Please select a template draft first.", 'error');
+
+      var start = startIndex || 0;
+
+      if (start === 0) {
+        var confirmAction = confirm("Execute all 'SEND' and 'DRAFT' actions in the sheet?");
+        if (!confirmAction) return;
+        setStatus('working', 'Processing Items...');
+        log("Running Mail Merge Engine... Please wait.");
+      } else {
+        setStatus('working', 'Processing Items...');
+      }
+
+      BeaverSidebar.run('MailMerge_executeActions', [draftId, start], {
+        onSuccess: function (response) { showResult(response, draftId); },
+        toast: false
+      });
+    }
+
+    function showResult(response, draftId) {
+      if (!response) {
+        setStatus('error');
+        return log("Empty response received.", 'error');
+      }
+
+      if (response.completed) {
+        setStatus('ready');
+        log(response.message || "Batch process finished successfully.", "success");
+        // Update quota after returning entirely
+        BeaverSidebar.run('MailMerge_getQuota', [], {
+          onSuccess: function (data) { updateQuota(data.remaining); },
+          toast: false
+        });
+      } else {
+        // Stream progress and fire off next batch
+        log(response.message);
+        setStatus('working', 'Items left: ' + response.remainingPending);
+        // Queue next run avoiding infinite stack freeze
+        setTimeout(function () {
+          executeActions(response.nextIndex);
+        }, 150);
+      }
+    }
+
+    // ── Helpers ──
+    function setStatus(state, workingText = 'Working...') {
+      var badge = document.getElementById('statusBadge');
+      var btns = document.querySelectorAll('.btn');
+      badge.className = 'status-badge ' + state;
+
+      if (state === 'working') {
+        badge.innerHTML = '<div class="loader" style="width:10px;height:10px;border-width:1.5px;"></div> ' + workingText;
+        btns.forEach(function (b) { b.disabled = true; });
+      } else if (state === 'error') {
+        badge.innerText = 'Error';
+        btns.forEach(function (b) { b.disabled = false; });
+      } else {
+        badge.innerText = 'Ready';
+        btns.forEach(function (b) { b.disabled = false; });
+      }
+    }
+
+    function log(msg, type) {
+      var errorMsg = (typeof msg === 'object' && msg.message) ? msg.message : String(msg);
+      console.log(`[MailMerge ${type || ''}] ${errorMsg}`);
+      if (type === 'error' || errorMsg.startsWith('Error:')) {
+        alert(errorMsg);
+      }
+    }
+
+    function handleError(err) {
+      log(err, 'error');
+      setStatus('error');
+      BeaverSidebar.logClientError(err, 'Sidebar Operation');
+    }
+  </script>
+</body>
+
+</html>

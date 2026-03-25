@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base target="_top">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+    }
+
+    /* Scrollbar styling for list */
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 4px;
+    }
+
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
+    }
+
+    .folder-item:hover {
+      background-color: #e8f0fe;
+      color: #1967d2;
+    }
+
+    .breadcrumb-item:last-child {
+      font-weight: bold;
+      color: #202124;
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body class="bg-white text-gray-800 h-screen flex flex-col overflow-hidden">
+
+  <div class="p-4 border-b border-gray-200">
+    <h2 class="text-lg font-google-sans font-medium text-gray-700">Drive Location</h2>
+    <p class="text-xs text-gray-500 mt-1">Select where folders will be created.</p>
+  </div>
+
+  <div id="breadcrumbs"
+    class="px-4 py-2 bg-gray-50 border-b border-gray-200 text-sm text-gray-600 flex overflow-x-auto whitespace-nowrap">
+    <span class="text-gray-400">Loading...</span>
+  </div>
+
+  <div id="folder-list" class="flex-1 overflow-y-auto custom-scroll p-2">
+    <div class="flex justify-center mt-10">
+      <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+    </div>
+  </div>
+
+  <div class="p-4 border-t border-gray-200 bg-white z-10 shadow-lg">
+
+    <div class="mb-3 text-sm">
+      <span class="text-gray-500">Selected:</span>
+      <span id="selected-folder-name" class="font-medium text-blue-700 ml-1">Loading...</span>
+    </div>
+
+    <div id="progress-container" class="hidden mb-4">
+      <div class="flex justify-between text-xs mb-1 text-gray-600">
+        <span id="progress-text">Initializing...</span>
+        <span id="progress-percent">0%</span>
+      </div>
+      <div class="w-full bg-gray-200 rounded-full h-2.5">
+        <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%">
+        </div>
+      </div>
+    </div>
+
+    <div class="flex gap-2">
+      <button id="btn-back" onclick="goUp()"
+        class="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 text-gray-700 font-medium">
+        Back
+      </button>
+      <button id="btn-run" onclick="startProcess()"
+        class="flex-1 px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 font-medium shadow-sm transition-colors">
+        Select & Create Folders
+      </button>
+    </div>
+  </div>
+
+  <div style="display:none;">
+    <svg id="icon-folder" class="w-5 h-5 mr-2 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+      <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+    </svg>
+  </div>
+
+  <script>
+    // Global Error Catcher
+    window.onerror = function (msg, url, line, col, error) {
+      const detail = `Error: ${msg}\nURL: ${url}\nLine: ${line}, Col: ${col}${error ? '\nStack: ' + error.stack : ''}`;
+      google.script.run._App_logClientError(detail, 'Global Error');
+      return false;
+    };
+
+    let currentFolderId = "root";
+    let isProcessing = false;
+    let progressInterval = null;
+
+    // --- INITIALIZATION ---
+    window.onload = function () {
+      loadExplorer('root');
+    };
+
+    // --- EXPLORER LOGIC ---
+
+    function loadExplorer(id) {
+      // Show spinner
+      const list = document.getElementById('folder-list');
+      list.innerHTML = '<div class="flex justify-center mt-10"><div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div></div>';
+
+      // Disable buttons
+      document.getElementById('btn-run').disabled = true;
+      document.getElementById('btn-back').disabled = true;
+
+      google.script.run
+        .withSuccessHandler(renderExplorer)
+        .withFailureHandler(showError)
+        .BulkFolder_getDriveNavData(id);
+    }
+
+    function renderExplorer(data) {
+      currentFolderId = data.current.id;
+      const list = document.getElementById('folder-list');
+      list.innerHTML = ''; // Clear spinner
+
+      // Update Selection Display
+      document.getElementById('selected-folder-name').textContent = data.current.name;
+      document.getElementById('btn-run').disabled = false;
+
+      // Update Breadcrumbs
+      const bcContainer = document.getElementById('breadcrumbs');
+      bcContainer.innerHTML = '';
+      data.breadcrumbs.forEach((bc, index) => {
+        const span = document.createElement('span');
+        span.className = "cursor-pointer hover:underline text-blue-600 breadcrumb-item flex items-center";
+        span.textContent = bc.name;
+        span.onclick = () => loadExplorer(bc.id);
+        bcContainer.appendChild(span);
+
+        if (index < data.breadcrumbs.length - 1) {
+          const sep = document.createElement('span');
+          sep.className = "mx-1 text-gray-400";
+          sep.textContent = ">";
+          bcContainer.appendChild(sep);
+        }
+      });
+
+      // Handle Empty Folder
+      if (data.children.length === 0) {
+        list.innerHTML = '<div class="text-center text-gray-400 mt-8 text-sm">No subfolders here</div>';
+      }
+
+      // Render List
+      data.children.forEach(folder => {
+        const div = document.createElement('div');
+        div.className = "folder-item flex items-center p-2 rounded cursor-pointer transition-colors";
+        div.onclick = () => loadExplorer(folder.id);
+
+        // Icon
+        const icon = document.getElementById('icon-folder').cloneNode(true);
+        div.appendChild(icon);
+
+        // Text
+        const text = document.createElement('span');
+        text.className = "text-sm truncate";
+        text.textContent = folder.name;
+        div.appendChild(text);
+
+        list.appendChild(div);
+      });
+
+      // Back Button Logic
+      const backBtn = document.getElementById('btn-back');
+      // If we are at root (or the first item in breadcrumb is root-ish), handle check logic
+      // Using breadcrumb length is a simpler proxy for "Can I go back?"
+      backBtn.disabled = data.breadcrumbs.length <= 1;
+    }
+
+    function goUp() {
+      const bcs = document.querySelectorAll('.breadcrumb-item');
+      if (bcs.length >= 2) {
+        // Click the second to last breadcrumb
+        bcs[bcs.length - 2].click();
+      }
+    }
+
+    // --- AUTOMATION LOGIC ---
+
+    function startProcess() {
+      if (isProcessing) return;
+      isProcessing = true;
+
+      // UI Reset
+      const btn = document.getElementById('btn-run');
+      btn.disabled = true;
+      btn.innerText = "Processing Rows...";
+
+      document.getElementById('progress-container').classList.remove('hidden');
+      document.getElementById('progress-text').innerText = "Running batch sequence on server...";
+      document.getElementById('progress-percent').innerText = "0%";
+      document.getElementById('progress-bar').style.width = "0%";
+      document.getElementById('progress-bar').classList.remove('animate-pulse');
+
+      // Start Polling
+      progressInterval = setInterval(pollProgress, 2000);
+
+      google.script.run
+        .withSuccessHandler(finishProcess)
+        .withFailureHandler(showError)
+        .BulkFolder_runBulkCreationSequence(currentFolderId);
+    }
+
+    function pollProgress() {
+      if (!isProcessing) return;
+      google.script.run
+        .withSuccessHandler(function (progress) {
+          if (progress && progress.total > 0) {
+            let percent = Math.round((progress.current / progress.total) * 100);
+            document.getElementById('progress-bar').style.width = percent + "%";
+            document.getElementById('progress-percent').innerText = percent + "%";
+            document.getElementById('progress-text').innerText = "Processed " + progress.current + " of " + progress.total + " rows...";
+          }
+        })
+        .BulkFolder_getProgress();
+    }
+
+    function finishProcess(responseMsg) {
+      if (progressInterval) clearInterval(progressInterval);
+      document.getElementById('progress-text').innerText = responseMsg;
+      document.getElementById('progress-bar').classList.remove('animate-pulse');
+
+      const isError = responseMsg.includes("⚠️") || responseMsg.includes("Error:") || responseMsg.includes("❌");
+      const isNoAction = responseMsg.includes("No pending");
+
+      if (isError) {
+        document.getElementById('btn-run').innerText = "Validation Failed";
+        document.getElementById('btn-run').classList.remove('bg-blue-600', 'hover:bg-blue-700');
+        document.getElementById('btn-run').classList.add('bg-red-600', 'hover:bg-red-700');
+      } else if (isNoAction) {
+        document.getElementById('btn-run').innerText = "Notice";
+        document.getElementById('btn-run').classList.remove('bg-blue-600', 'hover:bg-blue-700');
+        document.getElementById('btn-run').classList.add('bg-yellow-600', 'hover:bg-yellow-700');
+      } else {
+        document.getElementById('btn-run').innerText = "Finished";
+        document.getElementById('btn-run').classList.remove('bg-blue-600', 'hover:bg-blue-700');
+        document.getElementById('btn-run').classList.add('bg-green-600', 'hover:bg-green-700');
+        // Refresh Explorer to show new folders only on success
+        loadExplorer(currentFolderId);
+      }
+
+      setTimeout(() => {
+        alert(responseMsg);
+        resetUI();
+      }, 500);
+    }
+
+    function updateStatus(msg) {
+      document.getElementById('progress-text').innerText = msg;
+    }
+
+    function showError(e) {
+      if (progressInterval) clearInterval(progressInterval);
+      alert("Error: " + e.message);
+      resetUI();
+      google.script.run._App_logClientError(e, 'Sidebar Operation');
+    }
+
+    function resetUI() {
+      isProcessing = false;
+      document.getElementById('btn-run').innerText = "Create Folders inside Selected Folder";
+      document.getElementById('btn-run').disabled = false;
+      document.getElementById('btn-run').classList.remove('bg-green-600', 'hover:bg-green-700', 'bg-red-600', 'hover:bg-red-700', 'bg-yellow-600', 'hover:bg-yellow-700');
+      document.getElementById('btn-run').classList.add('bg-blue-600', 'hover:bg-blue-700');
+      document.getElementById('progress-container').classList.add('hidden');
+      document.getElementById('progress-bar').style.width = "0%";
+    }
+
+  </script>
+</body>
+
+</html>

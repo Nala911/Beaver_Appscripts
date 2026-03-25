@@ -1,0 +1,128 @@
+<script>
+  var BeaverSidebar = (function () {
+    function getMessage(value) {
+      if (value && typeof value === 'object' && value.message) return String(value.message);
+      return String(value || 'Unknown error');
+    }
+
+    function logClientError(detail, context) {
+      try {
+        google.script.run._App_logClientError(detail, context || 'Sidebar Operation');
+      } catch (ignore) {}
+    }
+
+    function installGlobalErrorHandlers() {
+      window.onerror = function (msg, url, line, col, error) {
+        var detail = 'Error: ' + msg + '\nURL: ' + url + '\nLine: ' + line + ', Col: ' + col + (error ? '\nStack: ' + error.stack : '');
+        logClientError(detail, 'Global Error');
+        return false;
+      };
+
+      window.onunhandledrejection = function (event) {
+        logClientError(getMessage(event && event.reason), 'Unhandled Promise Rejection');
+      };
+    }
+
+    function toggleLoading(show, text, options) {
+      var opts = options || {};
+      var overlay = document.getElementById(opts.overlayId || 'loadingOverlay');
+      var textNode = document.getElementById(opts.textId || 'loadingText');
+      if (overlay) overlay.style.display = show ? 'flex' : 'none';
+      if (show && text && textNode) textNode.innerText = text;
+    }
+
+    function showToast(message, isError, options) {
+      var opts = options || {};
+      var node = document.getElementById(opts.toastId || 'toast');
+      if (!node) return;
+
+      node.innerText = getMessage(message);
+      node.className = isError ? 'toast error-toast show' : 'toast show';
+      setTimeout(function () {
+        node.className = node.className.replace('show', '').trim();
+      }, opts.duration || 3500);
+    }
+
+    function unwrap(result) {
+      if (result && typeof result === 'object' && Object.prototype.hasOwnProperty.call(result, 'success')) {
+        if (!result.success) {
+          throw new Error(result.message || 'Operation failed.');
+        }
+        if (result.data !== undefined && result.data !== null) {
+          if (typeof result.data === 'object' && !Array.isArray(result.data)) {
+            var merged = {};
+            Object.keys(result.data).forEach(function (key) {
+              merged[key] = result.data[key];
+            });
+            if (merged.message === undefined) merged.message = result.message;
+            if (merged.meta === undefined) merged.meta = result.meta;
+            if (merged.success === undefined) merged.success = result.success;
+            return merged;
+          }
+          return {
+            success: result.success,
+            message: result.message,
+            data: result.data,
+            meta: result.meta
+          };
+        }
+      }
+      return result;
+    }
+
+    function handleError(err, options) {
+      var opts = options || {};
+      if (opts.resetLoading !== false) toggleLoading(false, null, opts);
+      if (opts.toast !== false) showToast(getMessage(err), true, opts);
+      logClientError(getMessage(err), opts.context || 'Sidebar Operation');
+      if (typeof opts.onError === 'function') {
+        opts.onError(err);
+      }
+    }
+
+    function run(methodName, args, options) {
+      var opts = options || {};
+      var timeoutMs = typeof opts.timeoutMs === 'number' ? opts.timeoutMs : 20000;
+      var settled = false;
+      var timeoutId = setTimeout(function () {
+        if (settled) return;
+        settled = true;
+        handleError(new Error(methodName + ' timed out after ' + timeoutMs + 'ms.'), opts);
+      }, timeoutMs);
+
+      var runner = google.script.run
+        .withSuccessHandler(function (result) {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeoutId);
+          try {
+            var payload = opts.unwrap === false ? result : unwrap(result);
+            if (typeof opts.onSuccess === 'function') {
+              opts.onSuccess(payload, result);
+            }
+          } catch (err) {
+            handleError(err, opts);
+          }
+        })
+        .withFailureHandler(function (err) {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeoutId);
+          handleError(err, opts);
+        });
+
+      runner[methodName].apply(runner, args || []);
+    }
+
+    installGlobalErrorHandlers();
+
+    return {
+      run: run,
+      unwrap: unwrap,
+      handleError: handleError,
+      logClientError: logClientError,
+      showToast: showToast,
+      toggleLoading: toggleLoading
+    };
+  })();
+</script>

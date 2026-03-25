@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+  <style>
+    /* ── Design Tokens ── */
+    :root {
+      --primary: #6366f1;
+      --primary-light: #818cf8;
+      --primary-bg: #eef2ff;
+      --surface: #ffffff;
+      --background: #f5f3ff;
+      --border: #e2e0f5;
+      --border-light: #f0eef9;
+      --text: #1e1b4b;
+      --text-secondary: #6b7280;
+      --success: #10b981;
+      --danger: #ef4444;
+      --danger-bg: #fef2f2;
+      --warning: #f59e0b;
+      --warning-bg: #fffbeb;
+      --gradient-pull: linear-gradient(135deg, #6366f1, #8b5cf6);
+      --gradient-push: linear-gradient(135deg, #10b981, #14b8a6);
+      --gradient-header: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);
+      --shadow-sm: 0 1px 3px rgba(99, 102, 241, 0.08);
+      --shadow-md: 0 4px 12px rgba(99, 102, 241, 0.10);
+      --shadow-lg: 0 8px 24px rgba(99, 102, 241, 0.14);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--background);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      font-size: 13px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--surface);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--gradient-header);
+      border-radius: 0 0 2px 2px;
+    }
+
+    .header .material-icons-outlined {
+      font-size: 22px;
+      background: var(--gradient-pull);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+
+    /* ── Main Container ── */
+    .container {
+      flex: 1;
+      padding: 16px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+      min-height: 0;
+    }
+
+    .container::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    .container::-webkit-scrollbar-thumb {
+      background: rgba(99, 102, 241, 0.2);
+      border-radius: 10px;
+    }
+
+    /* ── Section Labels ── */
+    .section-label {
+      font-weight: 700;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .section-label .material-icons-outlined {
+      font-size: 15px;
+      color: var(--primary-light);
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      padding: 14px;
+      transition: box-shadow 0.25s ease;
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    /* ── Widgets ── */
+    .quota-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .quota-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .quota-number {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--primary);
+      line-height: 1;
+    }
+
+    .quota-number.loading {
+      font-size: 14px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .quota-number.danger {
+      color: var(--danger);
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      width: 100%;
+      padding: 0;
+      height: 40px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+      letter-spacing: 0.01em;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      background: rgba(255, 255, 255, 0.15);
+      transition: opacity 0.2s ease;
+    }
+
+    .btn:hover::before {
+      opacity: 1;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .btn-push {
+      background: var(--gradient-push);
+      color: white;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-push:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-push:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 4px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn .material-icons-outlined {
+      font-size: 17px;
+    }
+
+    /* ── Loading Overlay ── */
+    .loading-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(245, 243, 255, 0.85);
+      backdrop-filter: blur(6px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .spinner {
+      border: 3px solid var(--border-light);
+      border-top: 3px solid var(--primary);
+      border-right: 3px solid var(--primary-light);
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      animation: spin 0.8s ease-in-out infinite;
+    }
+
+    /* Small spinner for quota */
+    .quota-card .spinner {
+      width: 24px;
+      height: 24px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loading-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* ── Toast ── */
+    .toast {
+      visibility: hidden;
+      min-width: 220px;
+      background: var(--text);
+      color: #fff;
+      text-align: center;
+      border-radius: var(--radius-sm);
+      padding: 11px 18px;
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      font-weight: 500;
+      z-index: 101;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .toast.show {
+      visibility: visible;
+      animation: toastIn 0.35s ease, toastOut 0.35s ease 3.15s;
+    }
+
+    .toast.error-toast {
+      background: var(--danger);
+    }
+
+    .toast.warning-toast {
+      background: var(--warning);
+      color: #000;
+    }
+
+    @keyframes toastIn {
+      from {
+        bottom: 0;
+        opacity: 0;
+        transform: translateX(-50%) scale(0.95);
+      }
+
+      to {
+        bottom: 30px;
+        opacity: 1;
+        transform: translateX(-50%) scale(1);
+      }
+    }
+
+    @keyframes toastOut {
+      from {
+        bottom: 30px;
+        opacity: 1;
+        transform: translateX(-50%) scale(1);
+      }
+
+      to {
+        bottom: 0;
+        opacity: 0;
+        transform: translateX(-50%) scale(0.95);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <span class="material-icons-outlined">mail</span>
+    <div class="header-title">Mail Sender</div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="container">
+
+    <!-- Dashboard Widget -->
+    <div>
+      <div class="section-label">
+        <span class="material-icons-outlined">bar_chart</span> Usage Stats
+      </div>
+      <div class="card quota-card">
+        <div class="quota-label">Daily Email Quota</div>
+        <div id="quota-display" class="quota-number loading">
+          <div class="spinner"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div>
+      <div class="section-label">
+        <span class="material-icons-outlined">rocket_launch</span> Actions
+      </div>
+      <div class="card">
+        <button class="btn btn-push" id="btn-run" onclick="runExecuteActions()">
+          <span class="material-icons-outlined">send</span> Send Custom Mail
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">Processing...</div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast">Done</div>
+
+  <script>
+    // Global Error Catcher
+    window.onerror = function (msg, url, line, col, error) {
+      const detail = `Error: ${msg}\nURL: ${url}\nLine: ${line}, Col: ${col}${error ? '\nStack: ' + error.stack : ''}`;
+      google.script.run._App_logClientError(detail, 'Global Error');
+      return false;
+    };
+
+    function handleError(err, context = 'Sidebar Operation') {
+      if (typeof pollInterval !== 'undefined' && pollInterval) clearInterval(pollInterval);
+      if (typeof toggleLoading === 'function') toggleLoading(false);
+      showToast(err.message || err, true);
+      google.script.run._App_logClientError(err, context);
+    }
+
+    let pollInterval = null;
+
+    // ── Init ──
+    window.onload = function () {
+      refreshData();
+    };
+
+    function refreshData() {
+      // Load Quota
+      google.script.run
+        .withSuccessHandler(updateQuota)
+        .withFailureHandler(err => {
+          const el = document.getElementById('quota-display');
+          el.innerText = "Error";
+          el.classList.remove('loading');
+          handleError(err, 'Refresh Quota');
+        })
+        .Mail_Sender_getQuota();
+    }
+
+    function updateQuota(amount) {
+      const el = document.getElementById('quota-display');
+      el.innerText = amount;
+      el.classList.remove('loading');
+      if (amount < 20) {
+        el.classList.add('danger');
+      } else {
+        el.classList.remove('danger');
+      }
+    }
+
+    // ── Run Main Action ──
+    function runExecuteActions() {
+      const confirmAction = confirm("Execute all 'SEND' and 'DRAFT' actions in the sheet using the provided Custom Subjects and Bodies?");
+      if (!confirmAction) return;
+
+      toggleLoading(true, "Initializing...");
+
+      // Start the main execution
+      google.script.run
+        .withSuccessHandler(handleExecutionSuccess)
+        .withFailureHandler(err => handleError(err, 'Execute Actions'))
+        .Mail_Sender_executeActions();
+
+      // Start polling for progress
+      pollInterval = setInterval(fetchProgress, 1500);
+    }
+
+    function fetchProgress() {
+      google.script.run
+        .withSuccessHandler(function (data) {
+          if (data && typeof data.total !== 'undefined' && typeof data.current !== 'undefined') {
+            if (data.total > 0) {
+              document.getElementById('loadingText').innerText = "Processing " + data.current + " of " + data.total + "...";
+            }
+          }
+        })
+        .withFailureHandler(function (e) { 
+          google.script.run._App_logClientError(e, 'Fetch Progress');
+        })
+        .Mail_Sender_getProgress();
+    }
+
+    function handleExecutionSuccess(msg) {
+      cleanupExecution();
+      showToast(msg, false);
+      refreshData();
+    }
+
+    function handleExecutionError(err) {
+      handleError(err, 'Execution Error');
+    }
+
+    function cleanupExecution() {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+      toggleLoading(false);
+    }
+
+    // ── UI Helpers ──
+    function toggleLoading(show, text) {
+      document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+      if (text) document.getElementById('loadingText').innerText = text;
+
+      const btn = document.getElementById('btn-run');
+      if (btn) btn.disabled = show;
+    }
+
+    function showToast(msg, isError) {
+      const x = document.getElementById("toast");
+      x.innerText = msg;
+
+      let toastClass = "toast show";
+      if (isError) toastClass += " error-toast";
+
+      x.className = toastClass;
+      setTimeout(() => x.className = x.className.replace("show", ""), 3000);
+    }
+  </script>
+</body>
+
+</html>
