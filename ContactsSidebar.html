@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <title>Contacts Sync</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <style>
+        /* ── Design Tokens ── */
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --primary-bg: #eef2ff;
+            --surface: #ffffff;
+            --background: #f5f3ff;
+            --border: #e2e0f5;
+            --border-light: #f0eef9;
+            --text: #1e1b4b;
+            --text-secondary: #6b7280;
+            --success: #10b981;
+            --success-dark: #059669;
+            --danger: #ef4444;
+            --danger-bg: #fef2f2;
+            --gradient-pull: linear-gradient(135deg, #6366f1, #8b5cf6);
+            --gradient-push: linear-gradient(135deg, #10b981, #14b8a6);
+            --gradient-header: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);
+            --shadow-sm: 0 1px 3px rgba(99, 102, 241, 0.08);
+            --shadow-md: 0 4px 12px rgba(99, 102, 241, 0.10);
+            --shadow-lg: 0 8px 24px rgba(99, 102, 241, 0.14);
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--background);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            font-size: 13px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── Header ── */
+        .header {
+            background: var(--surface);
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gradient-header);
+            border-radius: 0 0 2px 2px;
+        }
+
+        .header .material-icons-outlined {
+            font-size: 22px;
+            background: var(--gradient-pull);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: -0.01em;
+        }
+
+        /* ── Main Container ── */
+        .container {
+            flex: 1;
+            padding: 16px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        .container::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .container::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.2);
+            border-radius: 10px;
+        }
+
+        /* ── Section Labels ── */
+        .section-label {
+            font-weight: 700;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .section-label .material-icons-outlined {
+            font-size: 15px;
+            color: var(--primary-light);
+        }
+
+        /* ── Cards ── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            padding: 14px;
+            transition: box-shadow 0.25s ease;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        .card-title {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* ── Group List Section (Expandable) ── */
+        .group-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .group-section>.card {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .group-list-container {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-sm);
+            margin-bottom: 14px;
+            min-height: 0;
+        }
+
+        .group-list-container::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .group-list-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .group-list-container::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.18);
+            border-radius: 10px;
+        }
+
+        .group-list-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.35);
+        }
+
+        .group-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 14px;
+            gap: 10px;
+            border-bottom: 1px solid var(--border-light);
+            transition: all 0.15s ease;
+            animation: listFadeIn 0.25s ease both;
+        }
+
+        .group-item:last-child {
+            border-bottom: none;
+        }
+
+        .group-item:hover {
+            background: var(--primary-bg);
+        }
+
+        @keyframes listFadeIn {
+            from {
+                opacity: 0;
+                transform: translateX(-6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .group-name {
+            font-size: 13px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--text);
+            flex: 1;
+        }
+
+        .group-actions {
+            display: flex;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+
+        .group-btn {
+            border: none;
+            border-radius: 6px;
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .group-btn.add {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .group-btn.add:hover {
+            background: #10b981;
+            color: #fff;
+            transform: scale(1.08);
+        }
+
+        .group-btn.remove {
+            background: #fee2e2;
+            color: #ef4444;
+        }
+
+        .group-btn.remove:hover {
+            background: #ef4444;
+            color: #fff;
+            transform: scale(1.08);
+        }
+
+        /* ── Create Group Input ── */
+        .create-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .create-input {
+            flex: 1;
+            padding: 9px 10px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-family: 'Inter', sans-serif;
+            color: var(--text);
+            background: var(--surface);
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .create-input:focus {
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .create-btn {
+            background: var(--gradient-pull);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 20px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .create-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            width: 100%;
+            padding: 0;
+            height: 40px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 0.01em;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            background: rgba(255, 255, 255, 0.15);
+            transition: opacity 0.2s ease;
+        }
+
+        .btn:hover::before {
+            opacity: 1;
+        }
+
+        .btn-primary {
+            background: var(--gradient-pull);
+            color: white;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 4px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-success {
+            background: var(--gradient-push);
+            color: white;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-success:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 4px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn .material-icons-outlined {
+            font-size: 17px;
+        }
+
+        /* ── Loading Overlay ── */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(245, 243, 255, 0.85);
+            backdrop-filter: blur(6px);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .spinner {
+            border: 3px solid var(--border-light);
+            border-top: 3px solid var(--primary);
+            border-right: 3px solid var(--primary-light);
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            animation: spin 0.8s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-text {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        /* ── Toast ── */
+        .toast {
+            visibility: hidden;
+            min-width: 220px;
+            background: var(--text);
+            color: #fff;
+            text-align: center;
+            border-radius: var(--radius-sm);
+            padding: 11px 18px;
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            font-weight: 500;
+            z-index: 101;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .toast.show {
+            visibility: visible;
+            animation: toastIn 0.35s ease, toastOut 0.35s ease 3.15s;
+        }
+
+        .toast.error-toast {
+            background: var(--danger);
+        }
+
+        @keyframes toastIn {
+            from {
+                bottom: 0;
+                opacity: 0;
+                transform: translateX(-50%) scale(0.95);
+            }
+
+            to {
+                bottom: 30px;
+                opacity: 1;
+                transform: translateX(-50%) scale(1);
+            }
+        }
+
+        @keyframes toastOut {
+            from {
+                bottom: 30px;
+                opacity: 1;
+                transform: translateX(-50%) scale(1);
+            }
+
+            to {
+                bottom: 0;
+                opacity: 0;
+                transform: translateX(-50%) scale(0.95);
+            }
+        }
+
+        /* ── Empty State ── */
+        .empty-state {
+            padding: 30px 15px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <span class="material-icons-outlined">contacts</span>
+        <div class="header-title">Contacts Sync</div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container">
+
+        <!-- Sync Actions -->
+        <div>
+            <div class="section-label">
+                <span class="material-icons-outlined">sync</span> Sync Actions
+            </div>
+            <div class="card" style="display:flex; gap:10px;">
+                <button class="btn btn-primary" onclick="pullData()" style="flex:1;">
+                    <span class="material-icons-outlined">cloud_download</span> Pull
+                </button>
+                <button class="btn btn-success" onclick="pushData()" style="flex:1;">
+                    <span class="material-icons-outlined">cloud_upload</span> Push
+                </button>
+            </div>
+        </div>
+
+        <!-- Group Assistant (Expandable) -->
+        <div class="group-section">
+            <div class="section-label">
+                <span class="material-icons-outlined">label</span> Group Assistant
+            </div>
+            <div class="card">
+                <div class="card-title">
+                    <span>Groups / Labels</span>
+                </div>
+
+                <div class="group-list-container" id="groupList">
+                    <div class="empty-state">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+
+                <div class="create-row">
+                    <input type="text" id="newGroupName" class="create-input" placeholder="New group name…"
+                        onkeypress="if(event.key === 'Enter') createNewGroup()">
+                    <button class="create-btn" onclick="createNewGroup()">
+                        <span class="material-icons-outlined" style="font-size:18px;">add</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loadingText">Processing…</div>
+    </div>
+    <div id="toast" class="toast">Done</div>
+
+    <?!= _App_include('SidebarShared'); ?>
+    <script>
+
+        let allGroups = [];
+
+        window.onload = function () {
+            refreshGroupsData();
+        };
+
+        function toggleLoading(show, text) {
+            BeaverSidebar.toggleLoading(show, text);
+        }
+
+        function showToast(msg, isError) {
+            BeaverSidebar.showToast(msg, isError, { duration: 3500 });
+        }
+
+        function refreshGroupsData() {
+            toggleLoading(true, 'Loading groups…');
+            BeaverSidebar.run('Contacts_getLoadData', [], {
+                context: 'Refresh Groups',
+                onSuccess: data => {
+                    allGroups = data.groups.filter(g => g.id !== 'all');
+                    renderGroupList();
+                    toggleLoading(false);
+                },
+                onError: () => {
+                    toggleLoading(false);
+                    document.getElementById('groupList').innerHTML = '<div class="empty-state"><span class="material-icons-outlined" style="font-size:28px; color:var(--danger);">error_outline</span>Unable to load contact groups.</div>';
+                }
+            });
+        }
+
+        function renderGroupList() {
+            const list = document.getElementById('groupList');
+            list.innerHTML = '';
+
+            if (allGroups.length === 0) {
+                list.innerHTML = '<div class="empty-state"><span class="material-icons-outlined" style="font-size:28px; color:var(--text-secondary);">group_off</span>No contact groups found.</div>';
+                return;
+            }
+
+            allGroups.forEach((group, idx) => {
+                const item = document.createElement('div');
+                item.className = 'group-item';
+                item.style.animationDelay = (idx * 0.04) + 's';
+
+                const label = document.createElement('span');
+                label.className = 'group-name';
+                label.innerText = group.name;
+
+                const actions = document.createElement('div');
+                actions.className = 'group-actions';
+
+                const btnAdd = document.createElement('button');
+                btnAdd.className = 'group-btn add';
+                btnAdd.innerHTML = '<span class="material-icons-outlined" style="font-size:16px;">add</span>';
+                btnAdd.title = 'Add to active row';
+                btnAdd.onclick = (e) => { e.stopPropagation(); modifyGroup(group.name, 'add'); };
+
+                const btnRemove = document.createElement('button');
+                btnRemove.className = 'group-btn remove';
+                btnRemove.innerHTML = '<span class="material-icons-outlined" style="font-size:16px;">remove</span>';
+                btnRemove.title = 'Remove from active row';
+                btnRemove.onclick = (e) => { e.stopPropagation(); modifyGroup(group.name, 'remove'); };
+
+                actions.appendChild(btnAdd);
+                actions.appendChild(btnRemove);
+
+                item.appendChild(label);
+                item.appendChild(actions);
+                list.appendChild(item);
+            });
+        }
+
+        function modifyGroup(groupName, action) {
+            BeaverSidebar.run('Contacts_modifyGroupInActiveRow', [groupName, action], {
+                context: 'Modify Group',
+                unwrap: false,
+                onSuccess: res => {
+                    if (!res.success) showToast(res.message, true);
+                }
+            });
+        }
+
+        function createNewGroup() {
+            const input = document.getElementById('newGroupName');
+            const name = input.value.trim();
+            if (!name) return;
+
+            toggleLoading(true, 'Creating group…');
+            BeaverSidebar.run('Contacts_createContactGroup', [name], {
+                context: 'Create Group',
+                onSuccess: newGroup => {
+                    input.value = '';
+                    allGroups.push({ id: newGroup.id, name: newGroup.name });
+                    allGroups.sort((a, b) => a.name.localeCompare(b.name));
+                    renderGroupList();
+                    toggleLoading(false);
+                    showToast('Created: ' + newGroup.name, false);
+                },
+                onError: () => { toggleLoading(false); }
+            });
+        }
+
+        function pullData() {
+            toggleLoading(true, 'Pulling contacts…');
+            BeaverSidebar.run('Contacts_pullContacts', [{ groupIds: ['all'] }], {
+                context: 'Pull Contacts',
+                onSuccess: res => {
+                    toggleLoading(false);
+                    showToast(res.message, false);
+                },
+                onError: () => { toggleLoading(false); }
+            });
+        }
+
+        function pushData() {
+            toggleLoading(true, 'Pushing changes…');
+            BeaverSidebar.run('Contacts_pushChanges', [], {
+                context: 'Push Changes',
+                onSuccess: res => {
+                    toggleLoading(false);
+                    showToast(res.message, false);
+                    refreshGroupsData();
+                },
+                onError: () => { toggleLoading(false); }
+            });
+        }
+    </script>
+</body>
+
+</html>

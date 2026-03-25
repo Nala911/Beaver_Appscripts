@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* ── Design Tokens ── */
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --primary-bg: #eef2ff;
+            --surface: #ffffff;
+            --background: #f5f3ff;
+            --border: #e2e0f5;
+            --border-light: #f0eef9;
+            --text: #1e1b4b;
+            --text-secondary: #6b7280;
+            --success: #10b981;
+            --success-dark: #059669;
+            --success-bg: #ecfdf5;
+            --warning: #f59e0b;
+            --warning-bg: #fffbeb;
+            --danger: #ef4444;
+            --danger-bg: #fef2f2;
+            --hover-bg: #f5f3ff;
+            --gradient-pull: linear-gradient(135deg, #6366f1, #8b5cf6);
+            --gradient-push: linear-gradient(135deg, #10b981, #14b8a6);
+            --gradient-header: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);
+            --shadow-sm: 0 1px 3px rgba(99, 102, 241, 0.08);
+            --shadow-md: 0 4px 12px rgba(99, 102, 241, 0.10);
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--background);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            font-size: 13px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── Header ── */
+        .header {
+            background: var(--surface);
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gradient-header);
+            border-radius: 0 0 2px 2px;
+        }
+
+        .header-title {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: -0.01em;
+        }
+
+        .header-title i {
+            background: var(--gradient-pull);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .status-badge {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: var(--success-bg);
+            color: var(--success);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.3s ease;
+            letter-spacing: 0.01em;
+        }
+
+        .status-badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .status-badge.working {
+            background: var(--warning-bg);
+            color: var(--warning);
+            animation: pulse-badge 1.5s ease-in-out infinite;
+        }
+
+        .status-badge.working::before {
+            background: var(--warning);
+            animation: pulse-dot 1s ease-in-out infinite;
+        }
+
+        .status-badge.error {
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+
+        .status-badge.error::before {
+            background: var(--danger);
+        }
+
+        @keyframes pulse-badge {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        @keyframes pulse-dot {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.4);
+                opacity: 0.6;
+            }
+        }
+
+        /* ── Main Scroll Area ── */
+        .main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-height: 0;
+        }
+
+        .main::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .main::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.2);
+            border-radius: 10px;
+        }
+
+        /* ── Section Labels ── */
+        .section-label {
+            font-weight: 700;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .section-label i {
+            color: var(--primary-light);
+        }
+
+        /* ── Card Wrapper ── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            padding: 14px;
+            transition: box-shadow 0.25s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        /* ── Form Inputs ── */
+        .input-field {
+            width: 100%;
+            padding: 10px 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            font-weight: 500;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background-color: var(--surface);
+            color: var(--text);
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .input-field:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .input-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        /* ── Buttons ── */
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            border: none;
+            height: 40px;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 0.01em;
+            padding: 0 16px;
+        }
+
+        .btn-full {
+            grid-column: 1 / -1;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            background: rgba(255, 255, 255, 0.15);
+            transition: opacity 0.2s ease;
+        }
+
+        .btn:hover::before {
+            opacity: 1;
+        }
+
+        .btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .btn-outline {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-outline:hover:not(:disabled) {
+            background: var(--hover-bg);
+            border-color: var(--primary-light);
+        }
+
+        .btn-outline.active {
+            background: var(--gradient-pull);
+            color: white;
+            border: none;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-pull {
+            background: var(--gradient-pull);
+            color: white;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-push {
+            background: var(--gradient-push);
+            color: white;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+
+
+        /* ── Loader ── */
+        .loader {
+            border: 2.5px solid var(--border-light);
+            border-top: 2.5px solid var(--primary);
+            border-right: 2.5px solid var(--primary-light);
+            border-radius: 50%;
+            width: 14px;
+            height: 14px;
+            animation: spin 0.8s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ── Folder Search ── */
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+            box-shadow: var(--shadow-md);
+            max-height: 150px;
+            overflow-y: auto;
+            z-index: 10;
+            display: none;
+        }
+
+        .search-results.active {
+            display: block;
+        }
+
+        .folder-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 11px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .folder-item:hover {
+            background: var(--hover-bg);
+        }
+
+        .folder-item i {
+            color: var(--primary-light);
+        }
+
+        .folder-item:last-child {
+            border-bottom: none;
+        }
+
+        /* ── Selected State ── */
+        .selected-info {
+            margin-top: 6px;
+            color: var(--success-dark);
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            animation: fadeSlide 0.3s ease;
+            font-weight: 500;
+        }
+
+        .selected-info i {
+            color: var(--success);
+        }
+
+        .input-has-selection {
+            border-color: var(--success) !important;
+            background-color: var(--success-bg) !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-title">
+            <i data-lucide="file-text" style="width:18px;"></i>
+            Docs Merge Toolkit
+        </div>
+        <div id="statusBadge" class="status-badge">
+            Ready
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main">
+
+        <!-- Mode Selection -->
+        <div>
+            <div class="section-label">
+                <i data-lucide="settings" style="width:13px;"></i> Export Mode
+            </div>
+            <div class="card" style="flex-direction: row; gap: 8px; padding: 10px;">
+                <button class="btn btn-outline active" style="flex:1; height: 32px;" id="mode-individual"
+                    onclick="setMode('INDIVIDUAL')">
+                    Individual Files
+                </button>
+                <button class="btn btn-outline" style="flex:1; height: 32px;" id="mode-single"
+                    onclick="setMode('SINGLE')">
+                    Single File
+                </button>
+            </div>
+            <p style="color:var(--text-secondary); margin-top: 6px; font-size:11px; padding: 0 4px;"
+                id="mode-description">
+                Generates a separate PDF for each non-empty row.
+            </p>
+        </div>
+
+        <!-- Configuration -->
+        <div>
+            <div class="section-label">
+                <i data-lucide="link" style="width:13px;"></i> Configuration URLs
+            </div>
+            <div class="card">
+                <div>
+                    <label class="input-label">Template Google Doc</label>
+                    <div style="position: relative;">
+                        <input type="text" id="doc-query" class="input-field"
+                            placeholder="Type document name to search..." oninput="debounceSearchDoc()"
+                            autocomplete="off">
+                        <div id="doc-results" class="search-results"></div>
+                    </div>
+                    <!-- Hidden input to store selected URL -->
+                    <input type="hidden" id="template-url">
+                    <div id="selected-doc-display" class="selected-info" style="display: none;">
+                        <i data-lucide="check-circle" style="width: 13px; height: 13px;"></i>
+                        <span></span>
+                    </div>
+                </div>
+                <div>
+                    <label class="input-label">Destination Folder</label>
+                    <div style="position: relative;">
+                        <input type="text" id="folder-query" class="input-field"
+                            placeholder="Type folder name to search..." oninput="debounceSearch()" autocomplete="off">
+                        <div id="folder-results" class="search-results"></div>
+                    </div>
+                    <!-- Hidden input to store selected URL -->
+                    <input type="hidden" id="folder-url">
+                    <div id="selected-folder-display" class="selected-info" style="display: none;">
+                        <i data-lucide="check-circle" style="width: 13px; height: 13px;"></i>
+                        <span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div>
+            <div class="section-label">
+                <i data-lucide="zap" style="width:13px;"></i> Actions
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-pull btn-full" id="btn-sync" onclick="syncPlaceholders()">
+                    <i data-lucide="columns" style="width:15px;"></i> Pull Placeholders
+                </button>
+                <button class="btn btn-push btn-full" id="btn-run" onclick="executeActions()">
+                    <i data-lucide="printer" style="width:15px;"></i> Run Docs Merge
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <?!= _App_include('SidebarShared'); ?>
+    <script>
+
+        // ── Init ──
+        window.onload = function () {
+            lucide.createIcons();
+            log("Booting system... Dashboard ready.", "success");
+            loadConfig();
+        };
+
+        let currentMode = 'INDIVIDUAL';
+        let searchTimeout = null;
+        let searchDocTimeout = null;
+
+        function loadConfig() {
+            setStatus('working', 'Loading settings...');
+            BeaverSidebar.run('DocsMerge_getConfig', [], {
+                onSuccess: function (config) {
+                    if (config.templateUrl) {
+                        document.getElementById('template-url').value = config.templateUrl;
+                        document.getElementById('doc-query').classList.add('input-has-selection');
+                        document.getElementById('selected-doc-display').style.display = 'flex';
+                        document.getElementById('selected-doc-display').querySelector('span').innerText = config.templateName || "Saved Document";
+                    }
+                    if (config.folderUrl) {
+                        document.getElementById('folder-url').value = config.folderUrl;
+                        document.getElementById('folder-query').classList.add('input-has-selection');
+                        document.getElementById('selected-folder-display').style.display = 'flex';
+                        document.getElementById('selected-folder-display').querySelector('span').innerText = config.folderName || "Saved Folder";
+                    }
+                    setStatus('ready');
+                },
+                onError: function (err) {
+                    log("Failed to load prev config: " + err, 'error');
+                    setStatus('ready');
+                },
+                toast: false
+            });
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+
+            const btnIndiv = document.getElementById('mode-individual');
+            const btnSingle = document.getElementById('mode-single');
+            const desc = document.getElementById('mode-description');
+
+            if (mode === 'INDIVIDUAL') {
+                btnIndiv.classList.add('active');
+                btnSingle.classList.remove('active');
+                desc.innerText = "Generates a separate PDF/Doc for each non-empty row.";
+            } else {
+                btnSingle.classList.add('active');
+                btnIndiv.classList.remove('active');
+                desc.innerText = "Merges all generated pages into a single large PDF.";
+            }
+        }
+
+        // ── Folder Search ──
+        function debounceSearch() {
+            clearTimeout(searchTimeout);
+            var query = document.getElementById('folder-query').value.trim();
+            var resultsBox = document.getElementById('folder-results');
+
+            // Remove selection styling on user typing
+            document.getElementById('folder-url').value = "";
+            document.getElementById('folder-query').classList.remove('input-has-selection');
+            document.getElementById('selected-folder-display').style.display = 'none';
+
+            if (query.length < 2) {
+                resultsBox.classList.remove('active');
+                return;
+            }
+
+            searchTimeout = setTimeout(function () {
+                resultsBox.innerHTML = '<div class="folder-item">Searching...</div>';
+                resultsBox.classList.add('active');
+
+                BeaverSidebar.run('DocsMerge_searchFolders', [query], {
+                    onSuccess: function (data) {
+                        showSearchResults(data.results);
+                    },
+                    onError: function () {
+                        resultsBox.innerHTML = '<div class="folder-item" style="color:var(--danger)">Search failed</div>';
+                    },
+                    toast: false
+                });
+            }, 600);
+        }
+
+        function showSearchResults(results) {
+            var resultsBox = document.getElementById('folder-results');
+            resultsBox.innerHTML = '';
+
+            if (!results || results.length === 0) {
+                resultsBox.innerHTML = '<div class="folder-item">No folders found</div>';
+                return;
+            }
+
+            results.forEach(function (folder) {
+                var div = document.createElement('div');
+                div.className = 'folder-item';
+                div.innerHTML = '<i data-lucide="folder" style="width:14px;height:14px;"></i> ' + folder.name;
+                div.onclick = function () {
+                    selectFolder(folder);
+                };
+                resultsBox.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        function selectFolder(folder) {
+            document.getElementById('folder-url').value = folder.url;
+            document.getElementById('folder-query').value = "";
+            document.getElementById('folder-query').placeholder = "Search again to change folder...";
+            document.getElementById('folder-query').classList.add('input-has-selection');
+            document.getElementById('folder-results').classList.remove('active');
+
+            var display = document.getElementById('selected-folder-display');
+            display.style.display = 'flex';
+            display.querySelector('span').innerText = folder.name;
+            lucide.createIcons();
+        }
+
+        // Hide results when clicking outside
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('#folder-results') && !e.target.closest('#folder-query')) {
+                var resultsBox = document.getElementById('folder-results');
+                if (resultsBox) resultsBox.classList.remove('active');
+            }
+            if (!e.target.closest('#doc-results') && !e.target.closest('#doc-query')) {
+                var docBox = document.getElementById('doc-results');
+                if (docBox) docBox.classList.remove('active');
+            }
+        });
+
+        // ── Template Doc Search ──
+        function debounceSearchDoc() {
+            clearTimeout(searchDocTimeout);
+            var query = document.getElementById('doc-query').value.trim();
+            var resultsBox = document.getElementById('doc-results');
+
+            // Remove selection styling on user typing
+            document.getElementById('template-url').value = "";
+            document.getElementById('doc-query').classList.remove('input-has-selection');
+            document.getElementById('selected-doc-display').style.display = 'none';
+
+            if (query.length < 2) {
+                resultsBox.classList.remove('active');
+                return;
+            }
+
+            searchDocTimeout = setTimeout(function () {
+                resultsBox.innerHTML = '<div class="folder-item">Searching...</div>';
+                resultsBox.classList.add('active');
+
+                BeaverSidebar.run('DocsMerge_searchDocs', [query], {
+                    onSuccess: function (data) {
+                        showSearchDocResults(data.results);
+                    },
+                    onError: function () {
+                        resultsBox.innerHTML = '<div class="folder-item" style="color:var(--danger)">Search failed</div>';
+                    },
+                    toast: false
+                });
+            }, 600);
+        }
+
+        function showSearchDocResults(results) {
+            var resultsBox = document.getElementById('doc-results');
+            resultsBox.innerHTML = '';
+
+            if (!results || results.length === 0) {
+                resultsBox.innerHTML = '<div class="folder-item">No documents found</div>';
+                return;
+            }
+
+            results.forEach(function (doc) {
+                var div = document.createElement('div');
+                div.className = 'folder-item';
+                div.innerHTML = '<i data-lucide="file-text" style="width:14px;height:14px;"></i> ' + doc.name;
+                div.onclick = function () {
+                    selectDoc(doc);
+                };
+                resultsBox.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        function selectDoc(doc) {
+            document.getElementById('template-url').value = doc.url;
+            document.getElementById('doc-query').value = "";
+            document.getElementById('doc-query').placeholder = "Search again to change doc...";
+            document.getElementById('doc-query').classList.add('input-has-selection');
+            document.getElementById('doc-results').classList.remove('active');
+
+            var display = document.getElementById('selected-doc-display');
+            display.style.display = 'flex';
+            display.querySelector('span').innerText = doc.name;
+            lucide.createIcons();
+        }
+
+        function syncPlaceholders() {
+            const url = document.getElementById('template-url').value.trim();
+            if (!url) {
+                return log('Please provide a Template Google Doc URL.', 'error');
+            }
+
+            setStatus('working', 'Syncing columns...');
+            log('Syncing placeholder columns from template...');
+
+            BeaverSidebar.run('DocsMerge_syncPlaceholders', [url], {
+                onSuccess: function (res) {
+                    setStatus('ready');
+                    log(res.message, "success");
+                },
+                toast: false
+            });
+        }
+
+        // ── Real-time Execution Engine ──
+
+        function executeActions() {
+            const templateUrl = document.getElementById('template-url').value.trim();
+            const folderUrl = document.getElementById('folder-url').value.trim();
+            const templateName = document.getElementById('selected-doc-display').querySelector('span').innerText;
+            const folderName = document.getElementById('selected-folder-display').querySelector('span').innerText;
+
+            if (!templateUrl || !folderUrl) {
+                return log('Both Template Doc URL and Destination Folder are required.', 'error');
+            }
+
+            const confirmMsg = currentMode === 'INDIVIDUAL'
+                ? "Generate individual documents for all 'Generate PDF/Doc' actions?"
+                : "Generate a single merged PDF for all 'Generate Doc/PDF' actions?";
+
+            if (!confirm(confirmMsg)) return;
+
+            setStatus('working', 'Initializing...');
+            log("Initializing Docs Merge Engine...");
+            document.getElementById('console').innerHTML = '';
+
+            const config = {
+                templateUrl: templateUrl,
+                folderUrl: folderUrl,
+                templateName: templateName,
+                folderName: folderName,
+                mode: currentMode
+            };
+
+            BeaverSidebar.run('DocsMerge_initExport', [config], {
+                onSuccess: function (exportData) {
+                    log("Found " + exportData.rowsToProcess.length + " rows to process.", "success");
+                    processNextRow(exportData, 0);
+                },
+                toast: false
+            });
+        }
+
+        function processNextRow(exportData, index) {
+            if (index >= exportData.rowsToProcess.length) {
+                // Done with rows, finish up
+                log("All rows processed, finalizing...", "success");
+                setStatus('working', 'Finalizing...');
+
+                const config = { mode: currentMode };
+                BeaverSidebar.run('DocsMerge_finishExport', [config, exportData.masterDocId, exportData.folderId, exportData.rowsToProcess], {
+                    onSuccess: function (res) {
+                        setStatus('ready');
+                        log(res.message, "success");
+                    },
+                    toast: false
+                });
+                return;
+            }
+
+            const item = exportData.rowsToProcess[index];
+            const isFirst = index === 0;
+            const isLast = index === (exportData.rowsToProcess.length - 1);
+
+            setStatus('working', 'Row ' + (item.index + 1) + '...');
+            log("Processing row " + (item.index + 1) + " [" + (index + 1) + "/" + exportData.rowsToProcess.length + "]...");
+
+            const config = { mode: currentMode };
+
+            BeaverSidebar.run('DocsMerge_processRow', [item, config, exportData.masterDocId, exportData.templateId, exportData.folderId, exportData.headers, isFirst, isLast], {
+                unwrap: false,
+                onSuccess: function (res) {
+                    if (res.success) {
+                        log(res.message, "success");
+                    } else {
+                        log(res.message, "error");
+                    }
+                    // Process next regardless of generic success/fail
+                    processNextRow(exportData, index + 1);
+                },
+                onError: function (err) {
+                    log("Hard fail on row " + (item.index + 1) + ": " + err, "error");
+                    // Keep going even if script failed hard
+                    processNextRow(exportData, index + 1);
+                },
+                toast: false
+            });
+        }
+
+        // ── Helpers ──
+        function setStatus(state, workingText = 'Working...') {
+            var badge = document.getElementById('statusBadge');
+            var btns = document.querySelectorAll('.btn');
+            badge.className = 'status-badge ' + state;
+
+            if (state === 'working') {
+                badge.innerHTML = '<div class="loader" style="width:10px;height:10px;border-width:1.5px;"></div> ' + workingText;
+                btns.forEach(function (b) { b.disabled = true; });
+            } else if (state === 'error') {
+                badge.innerHTML = 'Error';
+                btns.forEach(function (b) { b.disabled = false; });
+            } else {
+                badge.innerHTML = 'Ready';
+                btns.forEach(function (b) { b.disabled = false; });
+            }
+        }
+
+        function log(msg, type) {
+            var errorMsg = (typeof msg === 'object' && msg.message) ? msg.message : String(msg);
+            console.log(`[DocsMerge ${type || ''}] ${errorMsg}`);
+            if (type === 'error' || errorMsg.startsWith('Error:')) {
+                alert(errorMsg);
+            }
+        }
+
+    function handleError(err) {
+      log(err, 'error');
+      setStatus('error');
+      BeaverSidebar.logClientError(err, 'Sidebar Operation');
+    }
+    </script>
+</body>
+
+</html>
