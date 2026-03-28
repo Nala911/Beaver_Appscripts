@@ -26,7 +26,7 @@ BeaverEngine.registerTool('DOCS_MERGE', {
 });
 
 // Column-index aliases — kept for backward compatibility within this file.
-// Metadata (title, sidebar, headers, widths) now lives in APP_REGISTRY.DOCS_MERGE.
+// Metadata (title, sidebar, headers, widths) now lives in BeaverEngine.getTool('DOCS_MERGE').
 var DOCS_MERGE_CFG = {
   COLUMNS: {
     ACTION: 0, DOC_NAME: 1
@@ -300,7 +300,7 @@ function DocsMerge_processRow(item, config, masterDocId, templateId, folderId, h
       masterOpened.saveAndClose();
       DriveApp.getFileById(tempId).setTrashed(true);
 
-      Logger.info(APP_REGISTRY.DOCS_MERGE.TITLE, 'Row ' + (item.index + 2), "✅ Appended to Master");
+      Logger.info(BeaverEngine.getTool('DOCS_MERGE').TITLE, 'Row ' + (item.index + 2), "✅ Appended to Master");
       sheet.getRange(item.index + 2, DOCS_MERGE_CFG.COLUMNS.ACTION + 1).setValue("");
 
       return _App_ok("Row " + (item.index + 1) + " appended.");
@@ -326,7 +326,7 @@ function DocsMerge_processRow(item, config, masterDocId, templateId, folderId, h
         finalUrl = tempFile.getUrl();
       }
 
-      Logger.info(APP_REGISTRY.DOCS_MERGE.TITLE, 'Row ' + (item.index + 2), '✅ ' + outputFormat + ' Created');
+      Logger.info(BeaverEngine.getTool('DOCS_MERGE').TITLE, 'Row ' + (item.index + 2), '✅ ' + outputFormat + ' Created');
       sheet.getRange(item.index + 2, DOCS_MERGE_CFG.COLUMNS.ACTION + 1).setValue("");
 
       // Insert rich text link
@@ -340,7 +340,7 @@ function DocsMerge_processRow(item, config, masterDocId, templateId, folderId, h
       return _App_ok("Created " + outputFormat + " for row " + (item.index + 1));
     }
   } catch (e) {
-    Logger.error(APP_REGISTRY.DOCS_MERGE.TITLE, 'Row ' + (item.index + 2), e);
+    Logger.error(BeaverEngine.getTool('DOCS_MERGE').TITLE, 'Row ' + (item.index + 2), e);
     return _App_fail("Error on row " + (item.index + 1) + ": " + e.message);
   }
 }
@@ -378,7 +378,7 @@ function DocsMerge_finishExport(config, masterDocId, folderId, rowsProcessed) {
 
       rowsProcessed.forEach(function (item) {
         sheet.getRange(item.index + 2, linkColIndex).setRichTextValue(richText);
-        Logger.info(APP_REGISTRY.DOCS_MERGE.TITLE, 'Row ' + (item.index + 2), "✅ Merged into Single " + formatName);
+        Logger.info(BeaverEngine.getTool('DOCS_MERGE').TITLE, 'Row ' + (item.index + 2), "✅ Merged into Single " + formatName);
       });
 
       return _App_ok("Successfully generated and linked Master " + formatName + ".");

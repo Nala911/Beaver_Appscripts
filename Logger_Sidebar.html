@@ -451,23 +451,7 @@
       </div>
     </div>
 
-    <!-- AI Debugging -->
-    <div>
-      <div class="section-label">
-        <span class="material-icons-outlined">smart_toy</span>
-        AI Debugging
-      </div>
-      <div class="card" style="animation-delay: 0.1s; display: flex; flex-direction: column; gap: 12px;">
-         <div class="toggle-info">
-             <span class="label">AI Error Prompt Generator</span>
-             <span class="sub-label">Creates a highly-detailed bug report of the latest failed script run, ready to paste to ChatGPT or Claude.</span>
-         </div>
-         <button class="btn btn-primary" id="copyAIBtn" onclick="copyAIDump()">
-             <span class="material-icons-outlined">content_copy</span>
-             <span id="copyAIBtnText">Copy Latest AI Error Dump</span>
-         </button>
-      </div>
-    </div>
+
 
     <!-- Clean Up Actions -->
     <div style="margin-top: 16px;">
@@ -483,10 +467,6 @@
         <button class="btn btn-danger" onclick="clearLogs()">
             <span class="material-icons-outlined">delete</span>
             Clear All Logs
-        </button>
-        <button class="btn btn-danger" onclick="deleteAllOtherSheets()">
-            <span class="material-icons-outlined">layers_clear</span>
-            Remove All Other Sheets
         </button>
       </div>
     </div>
@@ -610,45 +590,6 @@
         .Logger_runSystemAudit();
     }
 
-    /* ── AI Debug Dump ── */
-    function copyAIDump() {
-      const btn = document.getElementById('copyAIBtn');
-      const textSpan = document.getElementById('copyAIBtnText');
-      var originalText = textSpan.innerText;
-      btn.disabled = true;
-      textSpan.innerText = 'Generating Dump...';
-
-      google.script.run
-        .withSuccessHandler(function(res) {
-          btn.disabled = false;
-          textSpan.innerText = originalText;
-          if (res.error) {
-              showToast(res.error, 'error');
-              return;
-          }
-          if (res.message) {
-              showToast(res.message, 'success');
-              return;
-          }
-          
-          if (navigator.clipboard && window.isSecureContext) {
-              navigator.clipboard.writeText(res.dump).then(function() {
-                  showToast('AI dump copied to clipboard!', 'success');
-              }).catch(function(err) {
-                  prompt("Clipboard access denied. Copy the dump below:", res.dump);
-              });
-          } else {
-              // Fallback for non-secure contexts (like some IFrames in AppScripts)
-              prompt("Copy this dump manually (Ctrl+C, Enter):", res.dump);
-          }
-        })
-        .withFailureHandler(function(err) {
-          btn.disabled = false;
-          textSpan.innerText = originalText;
-          handleError(err, 'AI Debug Dump');
-        })
-        .Logger_getLatestErrorDump();
-    }
 
     /* ── Save ── */
     function saveSettings() {
@@ -699,25 +640,6 @@
             .Logger_clearLogs();
     }
 
-    /* ── Remove All Other Sheets ── */
-    function deleteAllOtherSheets() {
-        if (!confirm('⚠️ WARNING: Are you sure you want to delete ALL sheets except the developer log sheet?\n\nThis action is permanent and cannot be undone.')) return;
-
-        toggleLoading(true, 'Deleting sheets…');
-        google.script.run
-            .withSuccessHandler(function(res) {
-                toggleLoading(false);
-                if (res.success) {
-                    showToast(res.message, 'success');
-                } else {
-                    showToast(res.message, 'error');
-                }
-            })
-            .withFailureHandler(function(err) {
-                handleError(err, 'Delete All Other Sheets');
-            })
-            .Logger_deleteAllOtherSheets();
-    }
 
     /* ── Helpers ── */
     function toggleLoading(show, text) {

@@ -33,7 +33,7 @@ BeaverEngine.registerTool('MAIL_SENDER', {
 });
 
 // Column-index aliases kept for backward compatibility within this file.
-// Metadata (title, sidebar, headers, widths) now lives in APP_REGISTRY.MAIL_SENDER.
+// Metadata (title, sidebar, headers, widths) now lives in BeaverEngine.getTool('MAIL_SENDER').
 var MAIL_SENDER_CFG = {
   COLUMNS: {
     ACTION: 0, EMAIL_TO: 1, CC: 2, BCC: 3, THREAD_ID: 4,
@@ -278,7 +278,7 @@ function Mail_Sender_executeActions() {
 
         var reference = 'Row ' + (index + 2);
         if (emailSubject) reference += ' (' + emailSubject + ')';
-        Logger.info(APP_REGISTRY.MAIL_SENDER.TITLE, reference, rowUpdates.status);
+        Logger.info(BeaverEngine.getTool('MAIL_SENDER').TITLE, reference, rowUpdates.status);
 
         updatesCount++;
         _App_setProgress('MAIL_SENDER', updatesCount, validRowsCount);
@@ -286,7 +286,7 @@ function Mail_Sender_executeActions() {
       } catch (e) {
         rowUpdates.status = e.message;
         var reference = 'Row ' + (index + 2);
-        Logger.error(APP_REGISTRY.MAIL_SENDER.TITLE, reference, e);
+        Logger.error(BeaverEngine.getTool('MAIL_SENDER').TITLE, reference, e);
       }
 
       return rowUpdates;

@@ -34,7 +34,7 @@ BeaverEngine.registerTool('MAIL_MERGE', {
 });
 
 // Column-index aliases kept for backward compatibility within this file.
-// Metadata (title, sidebar, headers, widths) now lives in APP_REGISTRY.MAIL_MERGE.
+// Metadata (title, sidebar, headers, widths) now lives in BeaverEngine.getTool('MAIL_MERGE').
 var MAILMERGE_CFG = {
   COLUMNS: {
     ACTION: 0, EMAIL_TO: 1, CC: 2, BCC: 3, THREAD_ID: 4, ATTACHMENTS: 5, STATUS: 6
@@ -379,13 +379,13 @@ function MailMerge_executeActions(draftId, startIndex) {
 
       } catch (e) {
         rowUpdates.status = e.message;
-        Logger.error(APP_REGISTRY.MAIL_MERGE.TITLE, 'Row ' + (originalIdx + 2), e);
+        Logger.error(BeaverEngine.getTool('MAIL_MERGE').TITLE, 'Row ' + (originalIdx + 2), e);
       }
 
       if (action === "SEND" || action === "DRAFT") {
           var isSuccess = rowUpdates.status.indexOf('✅') > -1 || rowUpdates.status.indexOf('📝') > -1;
           if (isSuccess) {
-              Logger.info(APP_REGISTRY.MAIL_MERGE.TITLE, 'Row ' + (originalIdx + 2), rowUpdates.status);
+              Logger.info(BeaverEngine.getTool('MAIL_MERGE').TITLE, 'Row ' + (originalIdx + 2), rowUpdates.status);
           }
       }
 

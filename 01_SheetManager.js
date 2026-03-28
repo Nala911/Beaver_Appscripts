@@ -188,13 +188,71 @@ var SheetManager = (function() {
     }
 
     function patchRow(toolKey, rowNumber, updates) {
+        if (!updates || Object.keys(updates).length === 0) return;
         var sheet = getSheet(toolKey);
         var headerMap = getHeaderMap(toolKey);
-        Object.keys(updates || {}).forEach(function(header) {
+        var lastCol = sheet.getLastColumn();
+        if (lastCol === 0) return;
+
+        var range = sheet.getRange(rowNumber, 1, 1, lastCol);
+        var rowData = range.getValues()[0];
+
+        var hasChanges = false;
+        Object.keys(updates).forEach(function(header) {
             if (headerMap[header]) {
-                sheet.getRange(rowNumber, headerMap[header]).setValue(updates[header]);
+                var colIndex = headerMap[header] - 1;
+                if (colIndex < lastCol && rowData[colIndex] !== updates[header]) {
+                    rowData[colIndex] = updates[header];
+                    hasChanges = true;
+                }
             }
         });
+
+        if (hasChanges) {
+            range.setValues([rowData]);
+        }
+    }
+
+    function batchPatchRows(toolKey, rowNumbers, updatesArray) {
+        if (!rowNumbers || !updatesArray || rowNumbers.length === 0 || rowNumbers.length !== updatesArray.length) return;
+        
+        var sheet = getSheet(toolKey);
+        var headerMap = getHeaderMap(toolKey);
+        var lastRow = sheet.getLastRow();
+        var lastCol = sheet.getLastColumn();
+        
+        if (lastRow < 2 || lastCol === 0) return;
+        
+        // Find min and max row to fetch a single block
+        var minRow = Math.min.apply(null, rowNumbers);
+        var maxRow = Math.max.apply(null, rowNumbers);
+        var numRows = maxRow - minRow + 1;
+        
+        var range = sheet.getRange(minRow, 1, numRows, lastCol);
+        var data = range.getValues();
+        var hasChanges = false;
+        
+        for (var i = 0; i < rowNumbers.length; i++) {
+            var actualRow = rowNumbers[i];
+            var relativeIdx = actualRow - minRow; // index in 'data' array
+            var updates = updatesArray[i];
+            
+            if (updates && relativeIdx >= 0 && relativeIdx < data.length) {
+                Object.keys(updates).forEach(function(header) {
+                    if (headerMap[header]) {
+                        var colIndex = headerMap[header] - 1;
+                        if (colIndex < lastCol && data[relativeIdx][colIndex] !== updates[header]) {
+                            data[relativeIdx][colIndex] = updates[header];
+                            hasChanges = true;
+                        }
+                    }
+                });
+            }
+        }
+        
+        if (hasChanges) {
+            range.setValues(data);
+        }
     }
 
     function assertActiveSheet(toolKey) {
@@ -222,6 +280,7 @@ var SheetManager = (function() {
         hasPendingActions: hasPendingActions,
         getActionStats: getActionStats,
         patchRow: patchRow,
+        batchPatchRows: batchPatchRows,
         assertActiveSheet: assertActiveSheet,
         syncDynamicColumns: syncDynamicColumns
     };

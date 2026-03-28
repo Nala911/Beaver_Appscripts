@@ -1,0 +1,306 @@
+<script>
+// Global Error Catcher
+        window.onerror = function (msg, url, line, col, error) {
+            const detail = `Error: ${msg}\nURL: ${url}\nLine: ${line}, Col: ${col}${error ? '\nStack: ' + error.stack : ''}`;
+            google.script.run._App_logClientError(detail, 'Global Error');
+            return false;
+        };
+
+        function handleError(err, context = 'Sidebar Operation') {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) overlay.style.display = 'none';
+            const saveBtn = document.getElementById('saveBtn');
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                if (saveBtn.dataset.originalText) saveBtn.innerHTML = saveBtn.dataset.originalText;
+            }
+            const resetBtn = document.getElementById('resetBtn');
+            if (resetBtn) {
+                resetBtn.disabled = false;
+                if (resetBtn.dataset.originalText) resetBtn.innerHTML = resetBtn.dataset.originalText;
+            }
+            showToast(err.message || err, true);
+            google.script.run._App_logClientError(err, context);
+        }
+
+        let currentTheme = null;
+        let defaultTheme = null;
+
+        // Initialize from server
+        google.script.run
+            .withSuccessHandler(initDashboard)
+            .withFailureHandler(err => {
+                const overlay = document.getElementById('loading-overlay');
+                if (overlay) overlay.style.display = 'none';
+                showToast(err.message, true);
+                google.script.run._App_logClientError(err, 'Get Theme Config');
+            })
+            .UI_getThemeConfig();
+
+        function initDashboard(config) {
+            currentTheme = config.current;
+            
+            defaultTheme = config.defaults;
+
+            mapDataToInputs(currentTheme);
+            bindLivePreviewEvents();
+
+            document.getElementById('loading-overlay').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('loading-overlay').style.display = 'none';
+                document.getElementById('theme-form').style.display = 'grid';
+            }, 300);
+        }
+
+        // Sidebar Navigation
+        function switchTab(tabId, el) {
+            // Update nav active state
+            document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+            el.classList.add('active');
+
+            // Hide all sections, show target
+            document.querySelectorAll('.settings-section').forEach(sec => sec.classList.remove('active'));
+            document.getElementById('sec-' + tabId).classList.add('active');
+        }
+
+        // Custom Segment Control Logic
+        function selectSegment(el, value) {
+            const container = el.parentElement;
+            container.querySelectorAll('.segment').forEach(seg => seg.classList.remove('active'));
+            el.classList.add('active');
+            container.dataset.value = value;
+
+            // Trigger live preview update manually since it's not a standard input
+            updateLivePreviewFromEl(container);
+        }
+
+        // UI Binding & Live Preview Logic
+        function bindLivePreviewEvents() {
+            // Text boxes, Search, Color Pickers
+            document.querySelectorAll('input, select').forEach(el => {
+                if (el.dataset.path) {
+                    el.addEventListener('input', function () {
+                        if (this.type === 'color') {
+                            this.nextElementSibling.value = this.value; // Sync hex
+                        }
+                        updateLivePreviewFromEl(this);
+                    });
+                } else if (el.classList.contains('color-hex')) {
+                    el.addEventListener('input', function () {
+                        let hex = this.value;
+                        if (!hex.startsWith('#')) hex = '#' + hex;
+                        
+                        // Check if it's a valid hex
+                        if (/^#([0-9A-F]{3}){1,2}$/i.test(hex)) {
+                            const colorPicker = this.previousElementSibling;
+                            colorPicker.value = hex;
+                            colorPicker.dispatchEvent(new Event('input'));
+                        }
+                    });
+                    
+                    el.addEventListener('blur', function() {
+                        const colorPicker = this.previousElementSibling;
+                        this.value = colorPicker.value;
+                    });
+                }
+            });
+        }
+
+        function updateLivePreviewFromEl(el) {
+            const cssVar = el.dataset.var;
+            let val = el.value || el.dataset.value;
+            const suffix = el.dataset.suffix || '';
+
+            if (cssVar && val !== undefined) {
+                if (cssVar === '--sheet-font-primary' || cssVar === '--sheet-font-mono') {
+                    val = '"' + val + '", sans-serif';
+                } else if (cssVar === '--sheet-border-style') {
+                    // Map Google Sheets BorderStyle enum names to CSS equivalents
+                    const borderMap = {
+                        'SOLID': { style: 'solid', width: '1px' },
+                        'SOLID_MEDIUM': { style: 'solid', width: '2px' },
+                        'SOLID_THICK': { style: 'solid', width: '3px' },
+                        'DASHED': { style: 'dashed', width: '1px' },
+                        'DOTTED': { style: 'dotted', width: '1px' },
+                        'DOUBLE': { style: 'double', width: '3px' }
+                    };
+                    const mapped = borderMap[val] || borderMap['SOLID'];
+                    document.documentElement.style.setProperty('--sheet-border-style', mapped.style);
+                    document.documentElement.style.setProperty('--sheet-border-width', mapped.width);
+                    return;
+                } else if (cssVar === '--sheet-body-wrap') {
+                    // Map enum wrap strategy to explicit CSS rules for the live preview table content cells
+                    if (val === 'WRAP') {
+                        document.documentElement.style.setProperty('--mock-white-space', 'normal');
+                        document.documentElement.style.setProperty('--mock-overflow', 'visible');
+                        document.documentElement.style.setProperty('--mock-text-overflow', 'clip');
+                    } else if (val === 'OVERFLOW') {
+                        document.documentElement.style.setProperty('--mock-white-space', 'nowrap');
+                        document.documentElement.style.setProperty('--mock-overflow', 'visible');
+                        document.documentElement.style.setProperty('--mock-text-overflow', 'clip');
+                    } else { // CLIP
+                        document.documentElement.style.setProperty('--mock-white-space', 'nowrap');
+                        document.documentElement.style.setProperty('--mock-overflow', 'hidden');
+                        document.documentElement.style.setProperty('--mock-text-overflow', 'clip');
+                    }
+                    return; // Return early, custom processing applied
+                }
+                document.documentElement.style.setProperty(cssVar, val + suffix);
+            }
+        }
+
+        // Range & Number sync
+        function syncRangeNum(rangeEl) {
+            rangeEl.nextElementSibling.value = rangeEl.value;
+        }
+        function syncNumRange(numEl) {
+            numEl.previousElementSibling.value = numEl.value;
+            // dispatch input event to trigger live preview
+            numEl.previousElementSibling.dispatchEvent(new Event('input'));
+        }
+
+
+        // Data Mapping (Data -> UI)
+        function mapDataToInputs(themeObj) {
+            document.querySelectorAll('[data-path]').forEach(el => {
+                const path = el.getAttribute('data-path');
+                const val = getDeepValue(themeObj, path);
+                if (val !== undefined && val !== null) {
+
+                    if (el.classList.contains('segmented-control')) {
+                        el.dataset.value = val;
+                        el.querySelectorAll('.segment').forEach(seg => {
+                            const onclickAttr = seg.getAttribute('onclick');
+                            const match = onclickAttr ? onclickAttr.match(/'([^']+)'/)[1] : '';
+                            const targetVal = val.toString().toLowerCase();
+                            
+                            if ((match && match === targetVal) || (!match && seg.textContent.toLowerCase().includes(targetVal))) {
+                                seg.classList.add('active');
+                            } else {
+                                seg.classList.remove('active');
+                            }
+                        });
+                        updateLivePreviewFromEl(el);
+                    } else {
+                        el.value = val;
+                        // specific UI syncing
+                        if (el.type === 'color') {
+                            el.nextElementSibling.value = val;
+                        }
+                        if (el.type === 'range') {
+                            el.nextElementSibling.value = val;
+                        }
+                        updateLivePreviewFromEl(el);
+                    }
+                }
+            });
+        }
+
+        // Data Mapping (UI -> Data)
+        function mapInputsToData(baseObj) {
+            const newTheme = JSON.parse(JSON.stringify(baseObj));
+            document.querySelectorAll('[data-path]').forEach(el => {
+                const path = el.getAttribute('data-path');
+                let val;
+
+                if (el.classList.contains('segmented-control')) {
+                    val = el.dataset.value;
+                } else {
+                    val = el.value;
+                    if (el.type === 'range' || el.type === 'number') val = parseInt(val, 10);
+                }
+
+                setDeepValue(newTheme, path, val);
+            });
+            return newTheme;
+        }
+
+        function getDeepValue(obj, path) {
+            return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+        }
+
+        function setDeepValue(obj, path, value) {
+            const parts = path.split('.');
+            const last = parts.pop();
+            const target = parts.reduce((acc, part) => {
+                if (!acc[part]) acc[part] = {};
+                return acc[part];
+            }, obj);
+            target[last] = value;
+        }
+
+        // Actions
+        function saveTheme() {
+            const btn = document.getElementById('saveBtn');
+            if (!btn.dataset.originalText) btn.dataset.originalText = btn.innerHTML;
+            const originalText = btn.dataset.originalText;
+            
+            btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;margin:0;margin-right:8px;border-top-color:white;"></div> Saving...';
+            btn.disabled = true;
+
+            const updatedTheme = mapInputsToData(currentTheme);
+
+            google.script.run
+                .withSuccessHandler(res => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    if (res.success) {
+                        showToast(res.message);
+                        currentTheme = updatedTheme;
+                    } else {
+                        showToast(res.message, true);
+                    }
+                })
+                .withFailureHandler(err => handleError(err, 'Save Theme'))
+                .UI_saveThemeConfig(updatedTheme);
+        }
+
+        function resetTheme() {
+            if (!confirm("Revert all styles back to Beaver defaults?")) return;
+
+            const btn = document.getElementById('resetBtn');
+            if (!btn.dataset.originalText) btn.dataset.originalText = btn.innerHTML;
+            const originalText = btn.dataset.originalText;
+
+            btn.innerHTML = 'Resetting...';
+            btn.disabled = true;
+
+            google.script.run
+                .withSuccessHandler(res => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    if (res.success) {
+                        showToast(res.message);
+                        mapDataToInputs(defaultTheme);
+                        currentTheme = JSON.parse(JSON.stringify(defaultTheme));
+                    } else {
+                        showToast(res.message, true);
+                    }
+                })
+                .withFailureHandler(err => handleError(err, 'Reset Theme'))
+                .UI_resetThemeConfig();
+        }
+
+        // Toast Notification
+        let toastTimeout;
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+
+            const icon = document.getElementById('toast-icon');
+            if (isError) {
+                toast.classList.add('error');
+                icon.innerHTML = '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>';
+                icon.setAttribute('stroke', 'white');
+            } else {
+                toast.classList.remove('error');
+                icon.innerHTML = '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>';
+            }
+
+            toast.classList.add('show');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+</script>

@@ -8,8 +8,19 @@ This file serves as a reference guide for AI agents and developers working on th
 The project consists of `.js` (Google Apps Script server-side code) and `.html` (Sidebar interfaces) pairs for each tool.
 
 ### Core System Files
-- `00_AppConfig.js`: The central configuration hub. Evaluated first by the runtime. Defines `BeaverEngine` for tool registration, global sheet names (`SHEET_NAMES`), base themes, property registry (`APP_PROPS`), and unified utilities (`_App_openSidebar`, `_App_ensureSheetExists`, `_App_applyBodyFormatting`, `_App_throttle`, `_App_callWithBackoff`, `_App_setProgress`).
+The legacy `00_AppConfig.js` monolith has been split into sequential modules evaluated in order:
+- `00_Config_Constants.js`: Global registries, `SHEET_NAMES`, `APP_PROPS`, and enum structures.
+- `01_Config_Theme.js`: Default theme definitions, colors, and `SHEET_THEME` proxy.
+- `02_Config_Storage.js`: Unified properties service wrappers (`setAppProp`, `getAppProp`).
+- `03_Core_Utils.js`: Core utilities (`_App_throttle`, `_App_callWithBackoff`, `_App_setProgress`, etc.).
+- `04_Core_Validators.js`: Validation helpers for types and constraints.
+- `05_Core_State.js`: Global application state management.
+- `06_Sheets_Helpers.js`: Low-level spreadsheet operations (`_App_ensureSheetExists`, etc.).
+- `07_Sheets_Formatting.js`: UI/styling application to sheets (`_App_applyBodyFormatting`).
+- `08_Engine_Core.js`: The `BeaverEngine` plugin registration and retrieval system.
+- `09_Engine_UI.js`: UI abstractions for opening sidebars and dialogs.
 - `UI.js`: The central UI orchestrator. Responsible for creating the custom "🦫 Beaver Tools" menu (`onOpen`), providing the global wrapper for the Theme Editor sidebar, and connecting user actions to the tools.
+- `SidebarShared.html`: Shared HTML, CSS, and JS components to eliminate redundant sidebar code and infinite spinners.
 - `01_SheetManager.js`: Centralized data access object (DAO). Uses `BeaverEngine` configurations to map sheet data to JavaScript objects and vice-versa.
 - `Logger.js`: Unified logging system. Provides `Logger.info`, `Logger.error`, etc., and manages the `🛠️ Developer Log` sheet. Registers itself with `BeaverEngine`.
 - `SystemAudit.js`: Runs comprehensive audits across all registered tools, verifying sheet integrity, API access, and schema setup, and generates AI debug output logs.
@@ -35,12 +46,10 @@ Each tool has a Backend file, a Frontend sidebar file, and a global Entry Functi
 | **Theme Editor** | (Inside `UI.js`) | `ThemeEditorSidebar.html` | `UI_openThemeDialog` |
 
 > [!CAUTION]
-> **Large File Warning:** The following files are large (30KB+). Use surgical reads.
-> - `00_AppConfig.js` (~26KB): Global registry and core utilities.
+> **Large File Warning:** The following files are large (25KB+). Use surgical reads.
 > - `DriveFileDetails.gs.js` (~32KB): Complex Drive synchronization logic.
 > - `Contacts_Sync.js` (~27KB): People API integration logic.
-> - `PipelineSidebar.html` (~35KB): Complex reactive UI for Pipeline Control.
-> - `ThemeEditorSidebar.html` (~49KB): Massive CSS/JS for the Theme Studio.
+> - *Note: `00_AppConfig.js`, `PipelineSidebar.html`, and `ThemeEditorSidebar.html` have been modularized into smaller files and are no longer monolithic.*
 
 ## 🔑 Google API Scopes & Services Used
 
@@ -67,7 +76,7 @@ All keys used across the codebase. **Do NOT invent new key names** — check her
 
 | Key | File | Store Type | Purpose |
 |---|---|---|---|
-| `BEAVER_SHEET_THEME` | `00_AppConfig.js` | `DocumentProperties` | Custom theme JSON overrides |
+| `BEAVER_SHEET_THEME` | `01_Config_Theme.js` | `DocumentProperties` | Custom theme JSON overrides |
 | `SYSTEM_ENABLED` | `PipelineControl.js` | `ScriptProperties` | Master on/off toggle for pipeline |
 | `DOCS_MERGE_TEMPLATE_URL` | `Docs_Merge_Code.js` | `DocumentProperties` | Saved template Doc URL |
 | `DOCS_MERGE_FOLDER_URL` | `Docs_Merge_Code.js` | `DocumentProperties` | Saved output folder URL |
@@ -88,18 +97,18 @@ The codebase follows a strict and predictable design pattern across all tools:
 
 ### 1. Decentralized Plugin Architecture (`BeaverEngine`)
 The project uses a decentralized registration pattern to manage tools.
-- **`BeaverEngine`**: A singleton in `00_AppConfig.js` that handles tool registration (`registerTool`) and retrieval (`getTool`).
+- **`BeaverEngine`**: A singleton in `08_Engine_Core.js` that handles tool registration (`registerTool`) and retrieval (`getTool`).
 - **Self-Registration**: Each tool module (e.g., `Mail_Sender.js`) registers its own configuration block at the top of its file.
-- **Monolith Removal**: The old `APP_REGISTRY` monolith has been replaced. A backward-compatibility Proxy is maintained in `00_AppConfig.js` for legacy code.
+- **Monolith Removal**: The old `APP_REGISTRY` monolith has been replaced. A backward-compatibility Proxy is maintained in `08_Engine_Core.js` for legacy code.
 - **Registry Metadata**: Configuration includes `SHEET_NAME`, `TITLE`, `SIDEBAR_HTML`, `COL_WIDTHS`, and a `COL_SCHEMA` for declarative column validations and types.
 
 ### 2. Unified Utilities (`_App_`)
-Core logic is abstracted into `_App_` prefixed functions in `00_AppConfig.js`:
-- `_App_openSidebar(toolKey)`: Opens the sidebar and ensures the sheet exists via `BeaverEngine`.
-- `_App_ensureSheetExists(toolKey)`: Scaffolds the tool sheet based on `BeaverEngine` metadata.
-- `_App_applyBodyFormatting(sheet, numRows, config)`: Applies consistent styling and conditional rules.
-- `_App_callWithBackoff(func)`: Standardized exponential backoff for Google API calls.
-- `_App_throttle(tracker, callsMade)`: Unified rate limiting for API batches.
+Core logic is abstracted into `_App_` prefixed functions spread across `03_Core_Utils.js` to `09_Engine_UI.js`:
+- `_App_openSidebar(toolKey)`: Opens the sidebar and ensures the sheet exists via `BeaverEngine` (`09_Engine_UI.js`).
+- `_App_ensureSheetExists(toolKey)`: Scaffolds the tool sheet based on `BeaverEngine` metadata (`06_Sheets_Helpers.js`).
+- `_App_applyBodyFormatting(sheet, numRows, config)`: Applies consistent styling and conditional rules (`07_Sheets_Formatting.js`).
+- `_App_callWithBackoff(func)`: Standardized exponential backoff for Google API calls (`03_Core_Utils.js`).
+- `_App_throttle(tracker, callsMade)`: Unified rate limiting for API batches (`03_Core_Utils.js`).
 
 ### 3. Flat Function Prefix Architecture
 To avoid naming collisions and facilitate AI interaction, functions use `ToolName_` prefixes.
@@ -116,9 +125,9 @@ function ToolName_showSidebar() {
 
 ## 🌍 Global Variables & State
 
-- **`SHEET_THEME`**: A Proxy object in `00_AppConfig.js` that provides access to theme colors and styles, lazily loading from `PropertiesService`.
-- **`SHEET_NAMES`**: Centralized mapping of internal keys to actual tab names.
-- **`APP_PROPS`**: Metadata registry for all `PropertiesService` keys to ensure type safety (JSON vs String) and store consistency.
+- **`SHEET_THEME`**: A Proxy object in `01_Config_Theme.js` that provides access to theme colors and styles, lazily loading from `PropertiesService`.
+- **`SHEET_NAMES`**: Centralized mapping of internal keys to actual tab names in `00_Config_Constants.js`.
+- **`APP_PROPS`**: Metadata registry for all `PropertiesService` keys in `00_Config_Constants.js` to ensure type safety (JSON vs String) and store consistency.
 
 ## 🔌 Connection Flow (Frontend <-> Backend)
 1. **Trigger**: User clicks menu or sidebar button.
@@ -134,6 +143,6 @@ All public functions called by sidebars MUST return:
 
 ## 🤖 AI Agent Workflow Rules
 1. **Minimize file reads**: ONLY read the specific tool files needed.
-2. **Consult `00_AppConfig.js` first**: Most configuration and UI logic is defined there.
+2. **Consult Core Modules first**: Global configuration and logic are defined in `00_Config_Constants.js` through `09_Engine_UI.js`.
 3. **Use `Logger.run()`**: Wrap primary tool operations in `Logger.run('TOOL_KEY', 'Context', () => { ... })` for consistent logging.
-4. **Follow `APP_REGISTRY`**: When modifying sheet structure, update the registry in `00_AppConfig.js` rather than hardcoding in the tool file.
+4. **Follow `BeaverEngine`**: When modifying sheet structure, update the registration metadata in the tool's backend file, which registers with `BeaverEngine`.

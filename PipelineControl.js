@@ -282,9 +282,9 @@ function _Pipeline_runPipeline(sheet, rowIdx, rowData) {
 
     var reference = pipelineName ? pipelineName : ('Row ' + rowIdx);
     if (isSuccess) {
-        Logger.info(APP_REGISTRY.PIPELINE.TITLE, reference, logMessage);
+        Logger.info(BeaverEngine.getTool('PIPELINE').TITLE, reference, logMessage);
     } else {
-        Logger.error(APP_REGISTRY.PIPELINE.TITLE, reference, logMessage);
+        Logger.error(BeaverEngine.getTool('PIPELINE').TITLE, reference, logMessage);
     }
 }
 
@@ -294,7 +294,7 @@ function Pipeline_formatControlCenter() {
     // Re-apply standard setup from Registry.
     // Note: _App_applyBodyFormatting already replaces all conditional format rules and
     // data validations via setConditionalFormatRules, so no pre-clear is needed.
-    var cfg = APP_REGISTRY.PIPELINE;
+    var cfg = BeaverEngine.getTool('PIPELINE');
     _App_applyBodyFormatting(sheet, 0, cfg.FORMAT_CONFIG);
     // Schema-driven validation now handles this within _App_applyBodyFormatting
 
