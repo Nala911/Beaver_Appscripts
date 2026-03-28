@@ -14,7 +14,7 @@ function onOpen() {
     .addToUi();
 }
 
-// Global settings and Theme Config have been moved to 00_AppConfig.js
+// Global settings and Theme Config have been moved to 00_Config_Constants.js and 01_Config_Theme.js
 // so that Apps Script evaluates them before the rest of the files.
 
 
@@ -27,7 +27,7 @@ function Logger_showSidebar() {
 }
 
 function UI_openThemeDialog() {
-  const html = HtmlService.createHtmlOutputFromFile('ThemeEditorSidebar')
+  const html = HtmlService.createTemplateFromFile('ThemeEditorSidebar').evaluate()
     .setTitle('🎨 Theme Studio')
     .setWidth(1200)
     .setHeight(800);

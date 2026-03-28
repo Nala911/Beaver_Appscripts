@@ -27,7 +27,7 @@ BeaverEngine.registerTool('BULK_FOLDER', {
 });
 
 // Column-index aliases — kept for backward compatibility.
-// Metadata (title, sidebar, headers, widths) now lives in APP_REGISTRY.BULK_FOLDER.
+// Metadata (title, sidebar, headers, widths) now lives in BeaverEngine.getTool('BULK_FOLDER').
 var BULKFOLDER_COL = {
   ACTION: 0
 };
@@ -157,7 +157,7 @@ function BulkFolder_runBulkCreationSequence(targetFolderId) {
       }
 
       if (pendingRows.length === 0) {
-        Logger.warn(APP_REGISTRY.BULK_FOLDER.TITLE, 'Global', "No pending 'Create' actions found.");
+        Logger.warn(BeaverEngine.getTool('BULK_FOLDER').TITLE, 'Global', "No pending 'Create' actions found.");
         return "No pending 'Create' actions found.";
       }
 
@@ -202,7 +202,7 @@ function BulkFolder_runBulkCreationSequence(targetFolderId) {
           errMsgs.push("No folder names specified in rows: " + emptyErrors.join(", "));
         }
         var fullError = "⚠️ Validation Error:\n" + errMsgs.join("\n");
-        Logger.warn(APP_REGISTRY.BULK_FOLDER.TITLE, 'Pre-Validation', fullError);
+        Logger.warn(BeaverEngine.getTool('BULK_FOLDER').TITLE, 'Pre-Validation', fullError);
         return fullError + "\nPlease fix and try again.";
       }
       // --- PRE-VALIDATION END ---
@@ -242,12 +242,12 @@ function BulkFolder_runBulkCreationSequence(targetFolderId) {
 
           // Update data matrix successfully
           data[rowNum - 1][actionColIdx] = "";
-          Logger.success(APP_REGISTRY.BULK_FOLDER.TITLE, 'Row ' + rowNum, '✅ Created: ' + folderNames.join('/'));
+          Logger.success(BeaverEngine.getTool('BULK_FOLDER').TITLE, 'Row ' + rowNum, '✅ Created: ' + folderNames.join('/'));
           processedCount++;
 
         } catch (e) {
           errorCount++;
-          Logger.error(APP_REGISTRY.BULK_FOLDER.TITLE, 'Row ' + rowNum, '❌ ' + e.message);
+          Logger.error(BeaverEngine.getTool('BULK_FOLDER').TITLE, 'Row ' + rowNum, '❌ ' + e.message);
         }
 
         _App_setProgress('BULK_FOLDER', k + 1, pendingRows.length);
@@ -318,12 +318,12 @@ function BulkFolder_setupSheet_bulkcreation(sheet) {
     return _App_ensureSheetExists('BULK_FOLDER');
   }
   // For direct calls with an existing sheet (e.g., resetting), delegate setup manually
-  _App_applyBodyFormatting(sheet, 0, APP_REGISTRY.BULK_FOLDER.FORMAT_CONFIG);
+  _App_applyBodyFormatting(sheet, 0, BeaverEngine.getTool('BULK_FOLDER').FORMAT_CONFIG);
   return "Sheet has been setup successfully for Bulk Folder Creation.";
 }
 
 function _BulkFolder_initializeHeaders(sheet) {
-  var allHeaders = APP_REGISTRY.BULK_FOLDER.HEADERS;
+  var allHeaders = BeaverEngine.getTool('BULK_FOLDER').HEADERS;
   sheet.getRange(1, 1, 1, allHeaders.length).setValues([allHeaders])
     .setFontWeight(SHEET_THEME.LAYOUT.HEADER_WEIGHT)
     .setBackground(SHEET_THEME.HEADER)
@@ -334,8 +334,8 @@ function _BulkFolder_initializeHeaders(sheet) {
   sheet.setFrozenColumns(1); // freeze system columns (Action)
 
   // Set widths
-  if (APP_REGISTRY.BULK_FOLDER.COL_WIDTHS) {
-    APP_REGISTRY.BULK_FOLDER.COL_WIDTHS.forEach(function (w, i) {
+  if (BeaverEngine.getTool('BULK_FOLDER').COL_WIDTHS) {
+    BeaverEngine.getTool('BULK_FOLDER').COL_WIDTHS.forEach(function (w, i) {
       if (w !== null) sheet.setColumnWidth(i + 1, w);
     });
   }

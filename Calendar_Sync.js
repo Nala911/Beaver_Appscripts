@@ -37,7 +37,7 @@ BeaverEngine.registerTool('CALENDAR_SYNC', {
 });
 
 // --- CONFIGURATION & CONSTANTS ---
-// Metadata (title, sidebar, headers, widths) lives in APP_REGISTRY.CALENDAR_SYNC.
+// Metadata (title, sidebar, headers, widths) lives in BeaverEngine.getTool('CALENDAR_SYNC').
 var CALENDAR_SYNC_CFG = {
   COLORS: ["Default"].concat(Object.keys(CalendarApp.EventColor)),
   VISIBILITY: ["Default", "Public", "Private"]
@@ -103,7 +103,7 @@ function Calendar_pullEvents(request) {
     var TARGET_SHEET_NAME = SHEET_NAMES.CALENDAR_SYNC;
     var sheet = _CalendarSync_ensureSheetExistsAndActivate();
 
-    Logger.info(APP_REGISTRY.CALENDAR_SYNC.TITLE, 'Pull Events', 'Pull started — calendars: [' + request.calIds.join(', ') + '] from ' + request.startDate + ' to ' + request.endDate);
+    Logger.info(BeaverEngine.getTool('CALENDAR_SYNC').TITLE, 'Pull Events', 'Pull started — calendars: [' + request.calIds.join(', ') + '] from ' + request.startDate + ' to ' + request.endDate);
 
     SheetManager.clearData('CALENDAR_SYNC');
 
@@ -135,9 +135,9 @@ function Calendar_pullEvents(request) {
             'Original Calendar ID': cal.getId()
           });
         });
-        Logger.info(APP_REGISTRY.CALENDAR_SYNC.TITLE, 'Pull Events', 'Pulled ' + events.length + ' event(s) from calendar: ' + cal.getName());
+        Logger.info(BeaverEngine.getTool('CALENDAR_SYNC').TITLE, 'Pull Events', 'Pulled ' + events.length + ' event(s) from calendar: ' + cal.getName());
       } catch (err) {
-        Logger.error(APP_REGISTRY.CALENDAR_SYNC.TITLE, 'Pull Events — ' + calId, err);
+        Logger.error(BeaverEngine.getTool('CALENDAR_SYNC').TITLE, 'Pull Events — ' + calId, err);
       }
     });
 
@@ -146,7 +146,7 @@ function Calendar_pullEvents(request) {
 
     Calendar_savePreferences(request.calIds, request.startDate, request.endDate);
     var summary = 'Successfully imported ' + outputObjects.length + " events into '" + TARGET_SHEET_NAME + "'.";
-    Logger.info(APP_REGISTRY.CALENDAR_SYNC.TITLE, 'Pull Events', summary);
+    Logger.info(BeaverEngine.getTool('CALENDAR_SYNC').TITLE, 'Pull Events', summary);
     return _App_ok(summary);
   });
 }
@@ -165,7 +165,7 @@ function Calendar_pushChanges() {
       return "No data to sync.";
     }
 
-    Logger.info(APP_REGISTRY.CALENDAR_SYNC.TITLE, 'Global', 'Push started — processing ' + dataObjects.length + ' row(s)');
+    Logger.info(BeaverEngine.getTool('CALENDAR_SYNC').TITLE, 'Global', 'Push started — processing ' + dataObjects.length + ' row(s)');
 
     var allCals = CalendarApp.getAllCalendars();
     var calMap = new Map();
@@ -369,12 +369,12 @@ function Calendar_pushChanges() {
       var isError = rowUpdates.status && (rowUpdates.status.indexOf('❌') > -1 || rowUpdates.status.indexOf('⚠️') > -1);
       var rowNum = index + 2;
       if (isError) {
-        Logger.error(APP_REGISTRY.CALENDAR_SYNC.TITLE, 'Row ' + rowNum, caughtRowError || rowUpdates.status, {
+        Logger.error(BeaverEngine.getTool('CALENDAR_SYNC').TITLE, 'Row ' + rowNum, caughtRowError || rowUpdates.status, {
            rowData: rowObj,
            updates: rowUpdates
         });
       } else if (rowUpdates.status) {
-        Logger.info(APP_REGISTRY.CALENDAR_SYNC.TITLE, 'Row ' + rowNum, rowUpdates.status || 'N/A', {
+        Logger.info(BeaverEngine.getTool('CALENDAR_SYNC').TITLE, 'Row ' + rowNum, rowUpdates.status || 'N/A', {
            rowData: rowObj
         });
       }
@@ -551,7 +551,7 @@ function _CalendarSync_addMeetLinkToEvent(calendarId, eventId) {
 
 function _CalendarSync_setupSheetStructure(sheet) {
   // Logic mostly shifted to APP_REGISTRY, kept for backward compatibility if ever called directly
-  var headers = APP_REGISTRY.CALENDAR_SYNC.HEADERS;
+  var headers = BeaverEngine.getTool('CALENDAR_SYNC').HEADERS;
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 }
 

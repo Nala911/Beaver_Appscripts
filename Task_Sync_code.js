@@ -54,7 +54,7 @@ function _TaskSync_colLetter(idx) {
 }
 
 /**
- * @deprecated — Use _App_throttle(tracker, calls) from 00_AppConfig.js instead.
+ * @deprecated — Use _App_throttle(tracker, calls) from 03_Core_Utils.js instead.
  * Kept as a thin proxy for backward compatibility.
  */
 function _TaskSync_throttle(counter, calls) {
@@ -418,9 +418,9 @@ function _TaskSync_pushTasks() {
 
     var reference = 'Row ' + rowIndex + ' (' + (row[map['TITLE']] || 'Unknown') + ')';
     if (isError) {
-      Logger.error(APP_REGISTRY.TASKS.TITLE, reference, logMsg);
+      Logger.error(BeaverEngine.getTool('TASKS').TITLE, reference, logMsg);
     } else if (logMsg) {
-      Logger.info(APP_REGISTRY.TASKS.TITLE, reference, logMsg);
+      Logger.info(BeaverEngine.getTool('TASKS').TITLE, reference, logMsg);
     }
 
     if (!isError && map['ACTION'] !== undefined) {

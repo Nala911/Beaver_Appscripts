@@ -43,7 +43,7 @@ function Logger_clearLogs() {
             var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAMES.LOGS);
             if (sheet && sheet.getLastRow() > 1) {
                 sheet.deleteRows(2, sheet.getLastRow() - 1);
-                if (APP_REGISTRY.LOGS) _App_applyBodyFormatting(sheet, 0, APP_REGISTRY.LOGS.FORMAT_CONFIG);
+                if (BeaverEngine.getTool('LOGS')) _App_applyBodyFormatting(sheet, 0, BeaverEngine.getTool('LOGS').FORMAT_CONFIG);
             }
             return _App_ok('Logs cleared successfully.');
         });
@@ -52,44 +52,6 @@ function Logger_clearLogs() {
     }
 }
 
-/**
- * Deletes untracked sheets while preserving all Beaver-managed sheets.
- */
-function Logger_deleteAllOtherSheets() {
-    try {
-        return _App_withDocumentLock('LOGGER_DELETE_OTHER_SHEETS', function () {
-            var ss = SpreadsheetApp.getActiveSpreadsheet();
-            var sheets = ss.getSheets();
-            var loggerSheetName = SHEET_NAMES.LOGS;
-            var deletedCount = 0;
-            var protectedSheetNames = {};
-             
-            // Ensure logger sheet exists before deleting others
-            if (!ss.getSheetByName(loggerSheetName)) {
-                return _App_fail("Logger sheet not found. Cannot proceed.");
-            }
-
-            BeaverEngine.getToolKeys().forEach(function(toolKey) {
-                protectedSheetNames[BeaverEngine.getTool(toolKey).SHEET_NAME] = true;
-            });
-            
-            for (var i = 0; i < sheets.length; i++) {
-                var sheet = sheets[i];
-                if (!protectedSheetNames[sheet.getName()]) {
-                    ss.deleteSheet(sheet);
-                    deletedCount++;
-                }
-            }
-
-            if (deletedCount === 0) {
-                return _App_ok("No untracked sheets found.");
-            }
-            return _App_ok("Deleted " + deletedCount + " untracked sheet(s).");
-        });
-    } catch (e) {
-        return _App_fail('Failed to delete sheets: ' + e.message);
-    }
-}
 
 /**
  * Retrieves a summary of the most recent execution (grouped by Run ID).

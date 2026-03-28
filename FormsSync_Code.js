@@ -32,7 +32,7 @@ BeaverEngine.registerTool('FORMS_SYNC', {
 
 // --- CONFIGURATION ---
 // Column-index aliases (1-based) — kept for backward compatibility.
-// Tool metadata now lives in APP_REGISTRY.FORMS_SYNC.
+// Tool metadata now lives in BeaverEngine.getTool('FORMS_SYNC').
 var FORMSSYNC_CFG = {
     COLUMNS: {
         ACTION: 1, TITLE: 2, TYPE: 3, OPTIONS: 4, HELP_TEXT: 5, REQUIRED: 6, ID: 7
@@ -145,7 +145,7 @@ function _FormsSync_pullForm(formInput) {
             }
 
             // Apply body formatting via shared utility
-            _App_applyBodyFormatting(sheet, sheetData.length, APP_REGISTRY.FORMS_SYNC.FORMAT_CONFIG);
+            _App_applyBodyFormatting(sheet, sheetData.length, BeaverEngine.getTool('FORMS_SYNC').FORMAT_CONFIG);
 
             // Save Form ID to PropertiesService for syncing back
             _App_setProperty(APP_PROPS.FORMS_CURRENT_FORM, formId);
@@ -241,7 +241,7 @@ function _FormsSync_syncToForm() {
                         });
 
                         updateObj.id = targetItem.getId().toString();
-                        Logger.info(APP_REGISTRY.FORMS_SYNC.TITLE, 'Item: ' + title, '✅ Created');
+                        Logger.info(BeaverEngine.getTool('FORMS_SYNC').TITLE, 'Item: ' + title, '✅ Created');
                         updateObj.action = "";
                     }
                     else if (action === "UPDATE") {
@@ -258,7 +258,7 @@ function _FormsSync_syncToForm() {
                                 updItem.setHelpText(helpText);
                                 _applyItemProperties(updItem, type, required, optionsArr, gridRows, gridCols);
                             });
-                            Logger.info(APP_REGISTRY.FORMS_SYNC.TITLE, 'Item: ' + title, '✅ Updated');
+                            Logger.info(BeaverEngine.getTool('FORMS_SYNC').TITLE, 'Item: ' + title, '✅ Updated');
                         } else {
                             // Type changed! Google Forms API doesn't allow changing types of existing items.
                             // We must cache the index, delete the old, and create a new item of the target type.
@@ -294,7 +294,7 @@ function _FormsSync_syncToForm() {
                             });
 
                             updateObj.id = newItem.getId().toString();
-                            Logger.info(APP_REGISTRY.FORMS_SYNC.TITLE, 'Item: ' + title, '✅ Updated (Type Recreated)');
+                            Logger.info(BeaverEngine.getTool('FORMS_SYNC').TITLE, 'Item: ' + title, '✅ Updated (Type Recreated)');
                         }
                         updateObj.action = "";
                     }
@@ -303,14 +303,14 @@ function _FormsSync_syncToForm() {
                         var delItem = _App_callWithBackoff(function () { return form.getItemById(parseInt(id, 10)); });
                         if (delItem) {
                             _App_callWithBackoff(function () { form.deleteItem(delItem); });
-                            Logger.info(APP_REGISTRY.FORMS_SYNC.TITLE, 'ID Map: ' + id, '🗑️ Removed');
+                            Logger.info(BeaverEngine.getTool('FORMS_SYNC').TITLE, 'ID Map: ' + id, '🗑️ Removed');
                         } else {
-                            Logger.info(APP_REGISTRY.FORMS_SYNC.TITLE, 'ID Map: ' + id, '⚠️ Already Deleted');
+                            Logger.info(BeaverEngine.getTool('FORMS_SYNC').TITLE, 'ID Map: ' + id, '⚠️ Already Deleted');
                         }
                         updateObj.action = "";
                     }
                 } catch (err) {
-                    Logger.error(APP_REGISTRY.FORMS_SYNC.TITLE, 'Row ' + i, err);
+                    Logger.error(BeaverEngine.getTool('FORMS_SYNC').TITLE, 'Row ' + i, err);
                 }
 
                 rowUpdates.push(updateObj);
