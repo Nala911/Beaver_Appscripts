@@ -283,7 +283,7 @@ function Drive_pullFromDrive(targetFolderId, isShallow) {
           });
         } catch (e) {
           if (e.message && e.message.indexOf("Time limit") !== -1) throw e;
-          Logger.warn('DRIVE_SYNC', 'recursiveFetch', "Error fetching folder " + parentId + ": " + e.message);
+          Logger.warn(BeaverEngine.getTool('DRIVE_SYNC').TITLE, 'recursiveFetch', "Error fetching folder " + parentId + ": " + e.message);
         }
       }
 
@@ -318,7 +318,7 @@ function Drive_pullFromDrive(targetFolderId, isShallow) {
         try {
           var actualRoot = Drive.Files.get("root", { fields: "name", supportsAllDrives: true });
           if (actualRoot && actualRoot.name) rootFolderName = actualRoot.name;
-        } catch (e) { Logger.warn('DRIVE_SYNC', 'Path Resolution', "Could not fetch root name, using default."); }
+        } catch (e) { Logger.warn(BeaverEngine.getTool('DRIVE_SYNC').TITLE, 'Path Resolution', "Could not fetch root name, using default."); }
       }
 
       if (targetFolderId === "root" || foundSharedDriveRoot) {
@@ -419,7 +419,7 @@ function Drive_pullFromDrive(targetFolderId, isShallow) {
         if (isPartialPull) {
           msg = "⚠️ Partial Pull: " + msg + " (Execution Time Limit Reached. Run again to continue)";
         }
-        Logger.info('DRIVE_SYNC', 'Pull Complete', msg);
+        Logger.info(BeaverEngine.getTool('DRIVE_SYNC').TITLE, 'Pull Complete', msg);
         return msg;
       } else {
         return "Target folder is empty.";

@@ -125,7 +125,7 @@ function _FormsSync_pullForm(formInput) {
                         options = cbGridRows.join("\n") + "\n||\n" + cbGridCols.join("\n");
                     }
                 } catch (propErr) {
-                    Logger.warn('FORMS_SYNC', 'Property Error', "Error reading item properties for ID " + id + ": " + propErr);
+                    Logger.warn(BeaverEngine.getTool('FORMS_SYNC').TITLE, 'Property Error', "Error reading item properties for ID " + id + ": " + propErr);
                 }
 
                 sheetData.push(["", title, type, options, helpText, required, id]);
@@ -370,7 +370,7 @@ function _applyItemProperties(targetItem, type, required, optionsArr, gridRows, 
             if (gridCols && gridCols.length > 0) cbGridItem.setColumns(gridCols);
         }
     } catch (e) {
-        Logger.warn('FORMS_SYNC', 'Apply Properties', "Failed to apply properties", e);
+        Logger.warn(BeaverEngine.getTool('FORMS_SYNC').TITLE, 'Apply Properties', "Failed to apply properties", e);
     }
 }
 
@@ -430,7 +430,7 @@ function _setChoicesSafe(item, optionsArr, type) {
             item.showOtherOption(true);
         }
     } catch (e) {
-        Logger.warn('FORMS_SYNC', 'Set Choices', "Failed to set choices", e);
+        Logger.warn(BeaverEngine.getTool('FORMS_SYNC').TITLE, 'Set Choices', "Failed to set choices", e);
     }
 }
 // --- PUBLIC ENTRY POINTS ---
@@ -467,7 +467,7 @@ function FormsSync_getForms() {
 
             return { forms: mappedForms, savedFormId: savedFormId };
         } catch (e) {
-            Logger.error('FORMS_SYNC', 'Get Forms', e);
+            Logger.error(BeaverEngine.getTool('FORMS_SYNC').TITLE, 'Get Forms', e);
             throw new Error("Failed to fetch forms: " + e.toString());
         }
     });

@@ -22,7 +22,7 @@ The legacy `00_AppConfig.js` monolith has been split into sequential modules eva
 - `UI.js`: The central UI orchestrator. Responsible for creating the custom "🦫 Beaver Tools" menu (`onOpen`), providing the global wrapper for the Theme Editor sidebar, and connecting user actions to the tools.
 - `SidebarShared.html`: Shared HTML, CSS, and JS components to eliminate redundant sidebar code and infinite spinners.
 - `01_SheetManager.js`: Centralized data access object (DAO). Uses `BeaverEngine` configurations to map sheet data to JavaScript objects and vice-versa.
-- `Logger.js`: Unified logging system. Provides `Logger.info`, `Logger.error`, etc., and manages the `🛠️ Developer Log` sheet. Registers itself with `BeaverEngine`.
+- `Logger.js`: Unified logging system. Provides `Logger.info`, `Logger.error`, etc., using a buffered transporter architecture with `CacheService` and `LockService` for performant, concurrent-safe logging. Registers itself with `BeaverEngine`.
 - `SystemAudit.js`: Runs comprehensive audits across all registered tools, verifying sheet integrity, API access, and schema setup, and generates AI debug output logs.
 - `Logger_SidebarController.js`: Backend controller for the Developer Log sidebar, handling client-to-server interactions like fetching logs and running system audits.
 - `appsscript.json` / `.clasp.json`: Google Apps Script configuration and Clasp deployment environment details.
@@ -134,6 +134,13 @@ function ToolName_showSidebar() {
 2. **Launch**: `_App_openSidebar('TOOL_KEY')` handles sheet prep and sidebar rendering.
 3. **Execution**: Sidebar calls `google.script.run` -> Backend function -> `Logger.run()` for automatic logging/error tracking.
 4. **Response**: Backend returns `{ success: true, message: "..." }`.
+
+## 🛠️ Developer Logging Architecture
+The project employs a robust, asynchronous-style logging system to minimize the performance impact on tool execution.
+- **Transporter Pattern**: Logs are first queued into an internal buffer (`CacheService`) to avoid frequent, slow spreadsheet writes.
+- **Orchestration**: The `Logger.run()` method serves as an execution supervisor, automatically managing the `Run ID`, recording start/success events, and ensuring all buffered logs are flushed to the sheet in the `finally` block.
+- **Concurrency Safety**: The system uses `LockService.getDocumentLock()` during the "flush" phase to prevent data corruption when multiple script instances (e.g., parallel time-based triggers) attempt to write to the `🛠️ Developer Log` sheet simultaneously.
+- **Deep Context Capture**: Complex objects, Errors, and circular references are safely stringified. When an error occurs, the logger automatically attaches the most recent `executionBreadcrumbs` to provide a clear path to the failure point.
 
 ## ⚠️ Standard Return Contract
 All public functions called by sidebars MUST return:
