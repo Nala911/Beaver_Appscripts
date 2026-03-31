@@ -204,7 +204,7 @@ var GlobalAuditRules = [
                 }
                 
             } catch (e) {
-                _addGlobalResult(summary, results, 'Environment Config', 'ERROR', 'Error accessing properties service: ' + e.message);
+                _addGlobalResult(summary, results, 'Environment Config', 'ERROR', 'Error accessing properties service: ' + e.message, e);
             }
         }
     },
@@ -240,7 +240,7 @@ var GlobalAuditRules = [
                     }
                 }
             } catch (e) {
-                _addGlobalResult(summary, results, 'Trigger Health', 'ERROR', 'Error fetching triggers: ' + e.message);
+                _addGlobalResult(summary, results, 'Trigger Health', 'ERROR', 'Error fetching triggers: ' + e.message, e);
             }
         }
     },
@@ -253,13 +253,13 @@ var GlobalAuditRules = [
                     deepMergeTheme_(DEFAULT_SHEET_THEME, JSON.parse(themeStr));
                 }
             } catch (e) {
-                _addGlobalResult(summary, results, 'Storage Health', 'ERROR', 'BEAVER_SHEET_THEME contains malformed JSON. UI layers may crash: ' + e.message);
+                _addGlobalResult(summary, results, 'Storage Health', 'ERROR', 'BEAVER_SHEET_THEME contains malformed JSON. UI layers may crash: ' + e.message, e);
             }
         }
     }
 ];
 
-function _addGlobalResult(summary, results, title, status, msg) {
+function _addGlobalResult(summary, results, title, status, msg, errorObj) {
     results.push({
         key: 'GLOBAL', 
         title: title, 
@@ -268,7 +268,7 @@ function _addGlobalResult(summary, results, title, status, msg) {
     });
     if (status === 'ERROR') {
         summary.errors++;
-        Logger.error(title, 'Audit Global Check', msg);
+        Logger.error(title, 'Audit Global Check', errorObj || msg);
     } else if (status === 'WARN') {
         summary.warnings++;
         Logger.warn(title, 'Audit Global Check', msg);
@@ -301,7 +301,7 @@ function Logger_runSystemAudit() {
 
         keys.forEach(function (key) {
             var cfg = tools[key];
-            var report = { key: key, title: cfg.TITLE || key, status: 'SUCCESS', issues: [] };
+            var report = { key: key, title: cfg.TITLE || key, status: 'SUCCESS', issues: [], errorObj: null };
             
             try {
                 var sheet = ss.getSheetByName(cfg.SHEET_NAME);
@@ -310,17 +310,19 @@ function Logger_runSystemAudit() {
                         rule.run(cfg, sheet, report);
                     } catch (e) {
                         report.status = 'ERROR';
+                        report.errorObj = e;
                         report.issues.push("Rule '" + rule.name + "' crashed: " + e.message);
                     }
                 });
             } catch(e) {
                 report.status = 'ERROR';
+                report.errorObj = e;
                 report.issues.push("Audit Crash for " + key + ": " + e.message);
             }
 
             if (report.status === 'ERROR') {
                 summary.errors++;
-                Logger.error(report.title, 'Audit Test', report.issues.join(' | '), { issues: report.issues, module: key });
+                Logger.error(report.title, 'Audit Test', report.errorObj || report.issues.join(' | '), { issues: report.issues, module: key });
             } else if (report.status === 'WARN') {
                 summary.warnings++;
                 Logger.warn(report.title, 'Audit Test', report.issues.join(' | '), { issues: report.issues, module: key });

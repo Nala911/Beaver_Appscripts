@@ -60,56 +60,58 @@ function BulkFolder_showSidebarbulkcreation() {
 // --- EXPLORER LOGIC ---
 
 function BulkFolder_getDriveNavData(folderId) {
-  try {
-    var folder;
-    if (!folderId || folderId === 'root') {
-      folder = DriveApp.getRootFolder();
-    } else {
-      folder = DriveApp.getFolderById(folderId);
-    }
+  return Logger.run('BULK_FOLDER', 'Fetch Nav Data', function () {
+    try {
+      var folder;
+      if (!folderId || folderId === 'root') {
+        folder = DriveApp.getRootFolder();
+      } else {
+        folder = DriveApp.getFolderById(folderId);
+      }
 
-    var currentId = folder.getId();
-    var currentName = folder.getName();
+      var currentId = folder.getId();
+      var currentName = folder.getName();
 
-    var breadcrumbs = [];
-    var parent = folder;
-    var depth = 0;
-    while (depth < 5) {
-      try {
-        breadcrumbs.unshift({ id: parent.getId(), name: parent.getName() });
-        var parents = parent.getParents();
-        if (parents.hasNext()) {
-          parent = parents.next();
-        } else {
+      var breadcrumbs = [];
+      var parent = folder;
+      var depth = 0;
+      while (depth < 5) {
+        try {
+          breadcrumbs.unshift({ id: parent.getId(), name: parent.getName() });
+          var parents = parent.getParents();
+          if (parents.hasNext()) {
+            parent = parents.next();
+          } else {
+            break;
+          }
+        } catch (e) {
           break;
         }
-      } catch (e) {
-        break;
+        depth++;
       }
-      depth++;
+
+      var folders = folder.getFolders();
+      var folderList = [];
+      while (folders.hasNext()) {
+        var f = folders.next();
+        folderList.push({
+          id: f.getId(),
+          name: f.getName()
+        });
+      }
+
+      folderList.sort(function (a, b) { return a.name.localeCompare(b.name); });
+
+      return {
+        current: { id: currentId, name: currentName },
+        breadcrumbs: breadcrumbs,
+        children: folderList
+      };
+
+    } catch (e) {
+      throw new Error("Error fetching Drive data: " + e.message);
     }
-
-    var folders = folder.getFolders();
-    var folderList = [];
-    while (folders.hasNext()) {
-      var f = folders.next();
-      folderList.push({
-        id: f.getId(),
-        name: f.getName()
-      });
-    }
-
-    folderList.sort(function (a, b) { return a.name.localeCompare(b.name); });
-
-    return {
-      current: { id: currentId, name: currentName },
-      breadcrumbs: breadcrumbs,
-      children: folderList
-    };
-
-  } catch (e) {
-    throw new Error("Error fetching Drive data: " + e.message);
-  }
+  });
 }
 
 // --- BATCH CREATION LOGIC ---
@@ -247,7 +249,7 @@ function BulkFolder_runBulkCreationSequence(targetFolderId) {
 
         } catch (e) {
           errorCount++;
-          Logger.error(BeaverEngine.getTool('BULK_FOLDER').TITLE, 'Row ' + rowNum, '❌ ' + e.message);
+          Logger.error(BeaverEngine.getTool('BULK_FOLDER').TITLE, 'Row ' + rowNum, e);
         }
 
         _App_setProgress('BULK_FOLDER', k + 1, pendingRows.length);

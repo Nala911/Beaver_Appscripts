@@ -80,20 +80,25 @@ function _TaskSync_ensureSheetExistsAndActivate() {
 
 /** Opens the Tasks sidebar and ensures the sheet exists. */
 function Tasks_showSidebar() {
-  _App_launchTool('TASKS');
+  return Logger.run('TASKS', 'Open Sidebar', function () {
+    _App_launchTool('TASKS');
+  });
 }
 
 function Tasks_getTaskLists() {
-  try {
-    var items = Tasks.Tasklists.list().items || [];
-    return _App_ok('Task lists loaded.', {
-      lists: items.map(function (i) {
-      return { id: i.id, title: i.title };
-      })
-    });
-  } catch (e) {
-    throw new Error('Failed to fetch lists: ' + e.message);
-  }
+  return Logger.run('TASKS', 'Get Task Lists', function () {
+    try {
+      var items = Tasks.Tasklists.list().items || [];
+      return _App_ok('Task lists loaded.', {
+        lists: items.map(function (i) {
+          return { id: i.id, title: i.title };
+        })
+      });
+    } catch (e) {
+      Logger.error(BeaverEngine.getTool('TASKS').TITLE, 'Get Task Lists', e);
+      throw new Error('Failed to fetch lists: ' + e.message);
+    }
+  });
 }
 
 function Tasks_pullRPC(selectedListIds, includeCompleted) {
@@ -281,6 +286,7 @@ function _TaskSync_pushTasks() {
 
     var logMsg = '';
     var isError = false;
+    var errorObj = null;
 
     try {
       var listName = row[map['LIST NAME']];
@@ -412,13 +418,14 @@ function _TaskSync_pushTasks() {
 
     } catch (e) {
       isError = true;
+      errorObj = e;
       logMsg = 'ERROR: ' + e.message;
       console.error('Row ' + rowIndex + ': ' + e.message);
     }
 
     var reference = 'Row ' + rowIndex + ' (' + (row[map['TITLE']] || 'Unknown') + ')';
     if (isError) {
-      Logger.error(BeaverEngine.getTool('TASKS').TITLE, reference, logMsg);
+      Logger.error(BeaverEngine.getTool('TASKS').TITLE, reference, errorObj || logMsg);
     } else if (logMsg) {
       Logger.info(BeaverEngine.getTool('TASKS').TITLE, reference, logMsg);
     }

@@ -62,37 +62,39 @@ function Contacts_showSidebar() {
 }
 
 function Contacts_getLoadData() {
-    if (typeof People === 'undefined') {
-        throw new Error("⚠️ People API is not enabled. Go to Services -> Add 'People API'.");
-    }
-
-    try {
-        var groupsResponse = _App_callWithBackoff(function () {
-            return People.ContactGroups.list({ pageSize: 1000 });
-        });
-        var groups = groupsResponse.contactGroups || [];
-
-        var excluded = ['Friends', 'Family', 'Coworkers', 'All Contacts', 'Chat contacts'];
-        var formattedGroups = groups.map(function (g) {
-            return { id: g.resourceName, name: g.formattedName || g.name };
-        }).filter(function (g) {
-            return g.id && g.name && !excluded.includes(g.name);
-        });
-
-        formattedGroups.unshift({ id: 'all', name: 'All Contacts' });
-
-        var savedGroupIds = _App_getProperty(APP_PROPS.CONTACTS_SELECTED_GROUPS);
-        if (!Array.isArray(savedGroupIds) || savedGroupIds.length === 0) {
-            savedGroupIds = ['all'];
+    return Logger.run('CONTACTS_SYNC', 'Load Data', function () {
+        if (typeof People === 'undefined') {
+            throw new Error("⚠️ People API is not enabled. Go to Services -> Add 'People API'.");
         }
 
-        return _App_ok('Contacts load data ready.', {
-            groups: formattedGroups,
-            savedGroupIds: savedGroupIds
-        });
-    } catch (err) {
-        throw new Error('Unable to load contact groups. ' + err.message);
-    }
+        try {
+            var groupsResponse = _App_callWithBackoff(function () {
+                return People.ContactGroups.list({ pageSize: 1000 });
+            });
+            var groups = groupsResponse.contactGroups || [];
+
+            var excluded = ['Friends', 'Family', 'Coworkers', 'All Contacts', 'Chat contacts'];
+            var formattedGroups = groups.map(function (g) {
+                return { id: g.resourceName, name: g.formattedName || g.name };
+            }).filter(function (g) {
+                return g.id && g.name && !excluded.includes(g.name);
+            });
+
+            formattedGroups.unshift({ id: 'all', name: 'All Contacts' });
+
+            var savedGroupIds = _App_getProperty(APP_PROPS.CONTACTS_SELECTED_GROUPS);
+            if (!Array.isArray(savedGroupIds) || savedGroupIds.length === 0) {
+                savedGroupIds = ['all'];
+            }
+
+            return _App_ok('Contacts load data ready.', {
+                groups: formattedGroups,
+                savedGroupIds: savedGroupIds
+            });
+        } catch (err) {
+            throw new Error('Unable to load contact groups. ' + err.message);
+        }
+    });
 }
 
 function Contacts_savePreferences(groupIds) {
@@ -263,7 +265,8 @@ function Contacts_pushChanges() {
             var rowUpdates = {
                 action: row[CONTACTS_SYNC_CFG.COLUMNS.ACTION],
                 contactId: row[CONTACTS_SYNC_CFG.COLUMNS.CONTACT_ID],
-                status: ""
+                status: "",
+                errorObj: null
             };
 
             if (!rowUpdates.action) return null;
@@ -436,7 +439,8 @@ function Contacts_pushChanges() {
                         rowUpdates.status = "❓ Unknown Action '" + action + "'";
                 }
             } catch (e) {
-                rowUpdates.status = e.message;
+                rowUpdates.status = "⚠️ " + e.message;
+                rowUpdates.errorObj = e;
             }
             return rowUpdates;
         });
@@ -449,7 +453,7 @@ function Contacts_pushChanges() {
 
                 var isError = u.status && (u.status.indexOf('❌') > -1 || u.status.indexOf('⚠️') > -1);
                 if (isError) {
-                    Logger.error(BeaverEngine.getTool('CONTACTS_SYNC').TITLE, 'Row ' + rowNum, u.status || 'N/A');
+                    Logger.error(BeaverEngine.getTool('CONTACTS_SYNC').TITLE, 'Row ' + rowNum, u.errorObj || u.status || 'N/A');
                 } else if (u.status) {
                     Logger.info(BeaverEngine.getTool('CONTACTS_SYNC').TITLE, 'Row ' + rowNum, u.status || 'N/A');
                 }
@@ -525,69 +529,75 @@ function _ContactsSync_applyDataValidationsInternal(sheet) {
 }
 
 function Contacts_modifyGroupInActiveRow(groupName, action) {
-    var validation = _App_validateActiveSheet(SHEET_NAMES.CONTACTS_SYNC);
-    if (!validation.valid) return { success: false, message: validation.message };
-    var sheet = validation.sheet;
+    return Logger.run('CONTACTS_SYNC', 'Modify Group Row', function () {
+        var validation = _App_validateActiveSheet(SHEET_NAMES.CONTACTS_SYNC);
+        if (!validation.valid) return { success: false, message: validation.message };
+        var sheet = validation.sheet;
 
-    var cell = sheet.getActiveCell();
-    var row = cell.getRow();
+        var cell = sheet.getActiveCell();
+        var row = cell.getRow();
 
-    // Ensure user is on a valid data row
-    if (row < 2) return { success: false, message: "Please select a contact row." };
+        // Ensure user is on a valid data row
+        if (row < 2) return { success: false, message: "Please select a contact row." };
 
-    var groupCell = sheet.getRange(row, CONTACTS_SYNC_CFG.COLUMNS.GROUPS + 1);
-    var currentVal = groupCell.getValue().toString().trim();
-    var existingGroups = currentVal ? currentVal.split(',').map(function (s) { return s.trim(); }) : [];
+        var groupCell = sheet.getRange(row, CONTACTS_SYNC_CFG.COLUMNS.GROUPS + 1);
+        var currentVal = groupCell.getValue().toString().trim();
+        var existingGroups = currentVal ? currentVal.split(',').map(function (s) { return s.trim(); }) : [];
 
-    var changed = false;
+        var changed = false;
 
-    if (action === 'add') {
-        if (!existingGroups.includes(groupName)) {
-            existingGroups.push(groupName);
-            changed = true;
-        } else {
-            return { success: true, message: "Group '" + groupName + "' is already on this row." };
+        if (action === 'add') {
+            if (!existingGroups.includes(groupName)) {
+                existingGroups.push(groupName);
+                changed = true;
+            } else {
+                return { success: true, message: "Group '" + groupName + "' is already on this row." };
+            }
+        } else if (action === 'remove') {
+            var index = existingGroups.indexOf(groupName);
+            if (index > -1) {
+                existingGroups.splice(index, 1);
+                changed = true;
+            } else {
+                return { success: true, message: "Group '" + groupName + "' is not on this row." };
+            }
         }
-    } else if (action === 'remove') {
-        var index = existingGroups.indexOf(groupName);
-        if (index > -1) {
-            existingGroups.splice(index, 1);
-            changed = true;
-        } else {
-            return { success: true, message: "Group '" + groupName + "' is not on this row." };
-        }
-    }
 
-    if (changed) {
-        groupCell.setValue(existingGroups.join(', '));
-        // Auto-set Action to UPDATE if not CREATE
-        var actionRange = sheet.getRange(row, CONTACTS_SYNC_CFG.COLUMNS.ACTION + 1);
-        var currentAction = actionRange.getValue().toString().trim().toUpperCase();
-        if (currentAction !== "CREATE") {
-            actionRange.setValue("UPDATE");
+        if (changed) {
+            groupCell.setValue(existingGroups.join(', '));
+            // Auto-set Action to UPDATE if not CREATE
+            var actionRange = sheet.getRange(row, CONTACTS_SYNC_CFG.COLUMNS.ACTION + 1);
+            var currentAction = actionRange.getValue().toString().trim().toUpperCase();
+            if (currentAction !== "CREATE") {
+                actionRange.setValue("UPDATE");
+            }
+            return { success: true, message: (action === 'add' ? "Added" : "Removed") + " '" + groupName + "'." };
         }
-        return { success: true, message: (action === 'add' ? "Added" : "Removed") + " '" + groupName + "'." };
-    }
-    return { success: true, message: "No changes made." };
+        return { success: true, message: "No changes made." };
+    });
 }
 
 function Contacts_createContactGroup(groupName) {
-    if (typeof People === 'undefined') throw new Error("People API not enabled");
-    var newGroup = _App_callWithBackoff(function () {
-        return People.ContactGroups.create({
-            contactGroup: { name: groupName }
+    return Logger.run('CONTACTS_SYNC', 'Create Group', function () {
+        if (typeof People === 'undefined') throw new Error("People API not enabled");
+        var newGroup = _App_callWithBackoff(function () {
+            return People.ContactGroups.create({
+                contactGroup: { name: groupName }
+            });
         });
-    });
-    return _App_ok('Contact group created.', {
-        id: newGroup.resourceName,
-        name: newGroup.formattedName || newGroup.name
+        return _App_ok('Contact group created.', {
+            id: newGroup.resourceName,
+            name: newGroup.formattedName || newGroup.name
+        });
     });
 }
 
 function Contacts_deleteContactGroup(resourceName) {
-    if (typeof People === 'undefined') throw new Error("People API not enabled");
-    _App_callWithBackoff(function () {
-        People.ContactGroups.remove(resourceName, { deleteContacts: false });
+    return Logger.run('CONTACTS_SYNC', 'Delete Group', function () {
+        if (typeof People === 'undefined') throw new Error("People API not enabled");
+        _App_callWithBackoff(function () {
+            People.ContactGroups.remove(resourceName, { deleteContacts: false });
+        });
+        return true;
     });
-    return true;
 }

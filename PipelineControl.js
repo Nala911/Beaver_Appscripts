@@ -59,13 +59,17 @@ function Pipeline_showSidebar() {
 // --- GLOBAL CONTROLS ---
 
 function Pipeline_getSystemStatus() {
-    var enabled = _App_getProperty(APP_PROPS.SYSTEM_ENABLED);
-    return enabled === null ? 'true' : enabled;
+    return Logger.run('PIPELINE', 'Get Status', function () {
+        var enabled = _App_getProperty(APP_PROPS.SYSTEM_ENABLED);
+        return enabled === null ? 'true' : enabled;
+    });
 }
 
 function Pipeline_setSystemStatus(isEnabled) {
-    _App_setProperty(APP_PROPS.SYSTEM_ENABLED, isEnabled.toString());
-    return isEnabled;
+    return Logger.run('PIPELINE', 'Set Status', function () {
+        _App_setProperty(APP_PROPS.SYSTEM_ENABLED, isEnabled.toString());
+        return isEnabled;
+    });
 }
 
 // --- PIPELINE EXECUTION ---
@@ -73,7 +77,7 @@ function Pipeline_setSystemStatus(isEnabled) {
 function Pipeline_processPipelines() {
     return Logger.run('PIPELINE', 'Scheduled Execution', function () {
         return _App_withDocumentLock('PIPELINE_PROCESS', function () {
-            if (Pipeline_getSystemStatus() !== 'true') {
+            if (_App_getProperty(APP_PROPS.SYSTEM_ENABLED) !== 'true') {
                 Logger.info('PIPELINE', 'Global', "System is globally disabled. Skipping execution.");
                 return;
             }
@@ -143,53 +147,55 @@ function _Pipeline_shouldRun(row) {
 }
 
 function Pipeline_getPipelineDashboardData() {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAMES.PIPELINE);
-    if (!sheet) return null;
+    return Logger.run('PIPELINE', 'Dashboard Data', function () {
+        var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAMES.PIPELINE);
+        if (!sheet) return null;
 
-    var dataRange = sheet.getDataRange();
-    var data = dataRange.getValues();
+        var dataRange = sheet.getDataRange();
+        var data = dataRange.getValues();
 
-    var summary = {
-        total: 0,
-        active: 0,
-        success: 0,
-        failed: 0
-    };
-    var pipelines = [];
+        var summary = {
+            total: 0,
+            active: 0,
+            success: 0,
+            failed: 0
+        };
+        var pipelines = [];
 
-    for (var i = PIPELINE_NON_DATA_ROWS; i < data.length; i++) {
-        var row = data[i];
-        var statusVal = row[0];
-        var isEnabled = (String(statusVal).toLowerCase() === 'enabled') || (statusVal === true);
-        var name = row[1];
-        var lastRun = row[7];
+        for (var i = PIPELINE_NON_DATA_ROWS; i < data.length; i++) {
+            var row = data[i];
+            var statusVal = row[0];
+            var isEnabled = (String(statusVal).toLowerCase() === 'enabled') || (statusVal === true);
+            var name = row[1];
+            var lastRun = row[7];
 
-        if (name) { 
-            summary.total++;
-            if (isEnabled) summary.active++;
+            if (name) { 
+                summary.total++;
+                if (isEnabled) summary.active++;
 
-            var formattedDate = "";
-            if (lastRun && lastRun instanceof Date) {
-                var opts = { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-                formattedDate = lastRun.toLocaleDateString(undefined, opts);
-            } else if (lastRun) {
-                formattedDate = String(lastRun);
+                var formattedDate = "";
+                if (lastRun && lastRun instanceof Date) {
+                    var opts = { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+                    formattedDate = lastRun.toLocaleDateString(undefined, opts);
+                } else if (lastRun) {
+                    formattedDate = String(lastRun);
+                }
+
+                pipelines.push({
+                    rowIndex: i + 1,
+                    name: name,
+                    isEnabled: isEnabled,
+                    lastRun: formattedDate,
+                    lastStatus: "Check Logs" 
+                });
             }
-
-            pipelines.push({
-                rowIndex: i + 1,
-                name: name,
-                isEnabled: isEnabled,
-                lastRun: formattedDate,
-                lastStatus: "Check Logs" 
-            });
         }
-    }
 
-    return {
-        summary: summary,
-        pipelines: pipelines
-    };
+        return {
+            summary: summary,
+            pipelines: pipelines
+        };
+    });
 }
 
 function Pipeline_runSelectedPipelines(rowIndexes) {
@@ -219,6 +225,7 @@ function Pipeline_runSelectedPipelines(rowIndexes) {
 function _Pipeline_runPipeline(sheet, rowIdx, rowData) {
     var logMessage = "";
     var isSuccess = false;
+    var errorObj = null;
     var pipelineName = rowData[1];
 
     function getSheetFromUrl(url) {
@@ -323,6 +330,7 @@ function _Pipeline_runPipeline(sheet, rowIdx, rowData) {
 
     } catch (e) {
         logMessage = "Error: " + e.message;
+        errorObj = e;
         isSuccess = false;
     }
 
@@ -333,25 +341,27 @@ function _Pipeline_runPipeline(sheet, rowIdx, rowData) {
     if (isSuccess) {
         Logger.info(BeaverEngine.getTool('PIPELINE').TITLE, reference, logMessage);
     } else {
-        Logger.error(BeaverEngine.getTool('PIPELINE').TITLE, reference, logMessage);
+        Logger.error(BeaverEngine.getTool('PIPELINE').TITLE, reference, errorObj || logMessage);
     }
 }
 
 function Pipeline_formatControlCenter() {
-    var sheet = _App_ensureSheetExists('PIPELINE');
+    return Logger.run('PIPELINE', 'Format Center', function () {
+        var sheet = _App_ensureSheetExists('PIPELINE');
 
-    // Re-apply standard setup from Registry.
-    // Note: _App_applyBodyFormatting already replaces all conditional format rules and
-    // data validations via setConditionalFormatRules, so no pre-clear is needed.
-    var cfg = BeaverEngine.getTool('PIPELINE');
-    _App_applyBodyFormatting(sheet, 0, cfg.FORMAT_CONFIG);
-    // Schema-driven validation now handles this within _App_applyBodyFormatting
+        // Re-apply standard setup from Registry.
+        // Note: _App_applyBodyFormatting already replaces all conditional format rules and
+        // data validations via setConditionalFormatRules, so no pre-clear is needed.
+        var cfg = BeaverEngine.getTool('PIPELINE');
+        _App_applyBodyFormatting(sheet, 0, cfg.FORMAT_CONFIG);
+        // Schema-driven validation now handles this within _App_applyBodyFormatting
 
-    // Column group separators (Pipeline-specific visual grouping)
-    sheet.getRange("C:C").setBorder(null, true, null, null, null, null, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
-    sheet.getRange("E:E").setBorder(null, true, null, null, null, null, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
-    sheet.getRange("G:G").setBorder(null, true, null, null, null, null, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
-    sheet.getRange("H:H").setBorder(null, true, null, null, null, null, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
+        // Column group separators (Pipeline-specific visual grouping)
+        sheet.getRange("C:C").setBorder(null, true, null, null, null, null, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
+        sheet.getRange("E:E").setBorder(null, true, null, null, null, null, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
+        sheet.getRange("G:G").setBorder(null, true, null, null, null, null, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
+        sheet.getRange("H:H").setBorder(null, true, null, null, null, null, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
 
-    return "Formatted Control Center with Dark Theme & Elegant Groups!";
+        return "Formatted Control Center with Dark Theme & Elegant Groups!";
+    });
 }
