@@ -49,12 +49,6 @@
             toggleLoading(false);
             if (!data) return;
 
-            // Update Scorecards
-            document.getElementById('dash-total').innerText = data.summary.total;
-            document.getElementById('dash-active').innerText = data.summary.active;
-            document.getElementById('dash-success').innerText = data.summary.success;
-            document.getElementById('dash-failed').innerText = data.summary.failed;
-
             pipelineData = data.pipelines;
             renderPipelineList();
         }

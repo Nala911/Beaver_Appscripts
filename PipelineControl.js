@@ -13,7 +13,7 @@ BeaverEngine.registerTool('PIPELINE', {
     SIDEBAR_WIDTH: 300,
     FROZEN_ROWS: 1,
     FROZEN_COLS: 2,
-    COL_WIDTHS: [60, 200, 200, 200, 200, 200, 200, 200, 200, 200],
+    COL_WIDTHS: [60, 200, 200, 200, 200, 200, 200, 200],
     FORMAT_CONFIG: {
         numReadOnlyColsAtEnd: 1,
         conditionalRules: [
@@ -24,10 +24,8 @@ BeaverEngine.registerTool('PIPELINE', {
             { header: 'ON/OFF', type: 'CHECKBOX' },
             { header: 'Pipeline Name', type: 'TEXT' },
             { header: 'Source URL', type: 'URL' },
-            { header: 'Source Sheet Name', type: 'TEXT' },
             { header: 'Source Range', type: 'TEXT' },
             { header: 'Destination URL', type: 'URL' },
-            { header: 'Destination Sheet Name', type: 'TEXT' },
             { header: 'Destination Cell', type: 'TEXT' },
             { header: 'Sync Interval', type: 'TEXT' },
             { header: 'Last Run Time', type: 'DATETIME' }
@@ -39,10 +37,9 @@ BeaverEngine.registerTool('PIPELINE', {
  * Column Mappings (0-indexed):
  * 0: ON/OFF
  * 1: Pipeline Name                2: Source URL
- * 3: Source Sheet Name            4: Source Range
- * 5: Destination URL              6: Destination Sheet Name
- * 7: Destination Cell             8: Sync Interval
- * 9: Last Run Time
+ * 3: Source Range                 4: Destination URL
+ * 5: Destination Cell             6: Sync Interval
+ * 7: Last Run Time
  */
 
 var PIPELINE_NON_DATA_ROWS = 1;
@@ -120,8 +117,8 @@ function Pipeline_runAllPipelines() {
 }
 
 function _Pipeline_shouldRun(row) {
-    var intervalStr = String(row[8]);
-    var lastRun = row[9];
+    var intervalStr = String(row[6]);
+    var lastRun = row[7];
 
     if (intervalStr === "Manual Only") return false;
     if (!lastRun || lastRun === "") return true;
@@ -165,7 +162,7 @@ function Pipeline_getPipelineDashboardData() {
         var statusVal = row[0];
         var isEnabled = (String(statusVal).toLowerCase() === 'enabled') || (statusVal === true);
         var name = row[1];
-        var lastRun = row[9];
+        var lastRun = row[7];
 
         if (name) { 
             summary.total++;
@@ -199,7 +196,7 @@ function Pipeline_runSelectedPipelines(rowIndexes) {
     return Logger.run('PIPELINE', 'Run Selected', function () {
         return _App_withDocumentLock('PIPELINE_RUN_SELECTED', function () {
             var sheet = SheetManager.getSheet('PIPELINE');
-            var colCount = BeaverEngine.getTool('PIPELINE').HEADERS.length;
+            var colCount = BeaverEngine.getTool('PIPELINE').FORMAT_CONFIG.COL_SCHEMA.length;
             var results = [];
 
             for (var i = 0; i < rowIndexes.length; i++) {
@@ -211,7 +208,7 @@ function Pipeline_runSelectedPipelines(rowIndexes) {
                 results.push({
                     rowIndex: rowIdx,
                     lastStatus: "Check Logs",
-                    lastRun: updatedData[9] ? updatedData[9].toString() : ""
+                    lastRun: updatedData[7] ? updatedData[7].toString() : ""
                 });
             }
             return _App_ok('Selected pipelines completed', results);
@@ -224,48 +221,100 @@ function _Pipeline_runPipeline(sheet, rowIdx, rowData) {
     var isSuccess = false;
     var pipelineName = rowData[1];
 
-    try {
-        var sourceUrl = rowData[2];
-        var sourceSheetName = rowData[3];
-        var sourceRangeA1 = rowData[4];
-        var destUrl = rowData[5];
-        var destSheetName = rowData[6];
-        var destStartCell = rowData[7];
+    function getSheetFromUrl(url) {
+        var match = url.match(/gid=([0-9]+)/);
+        var ss = SpreadsheetApp.openByUrl(url);
+        if (match) {
+            var gid = parseInt(match[1], 10);
+            var sheets = ss.getSheets();
+            for (var i = 0; i < sheets.length; i++) {
+                if (sheets[i].getSheetId() === gid) return sheets[i];
+            }
+        }
+        return ss.getSheets()[0];
+    }
 
-        if (!sourceUrl || !sourceSheetName || !sourceRangeA1 || !destUrl || !destSheetName || !destStartCell) {
-            throw new Error("Missing required config (URL, Sheet Name, Range, or Destination)");
+    try {
+        var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+        var colMap = {};
+        for (var i = 0; i < headers.length; i++) {
+            if (headers[i]) colMap[headers[i].trim()] = i;
         }
 
-        var sSs;
+        var sourceUrlIdx = colMap['Source URL'];
+        var sourceRangeIdx = colMap['Source Range'];
+        var destUrlIdx = colMap['Destination URL'];
+        var destCellIdx = colMap['Destination Cell'];
+
+        if (sourceUrlIdx === undefined || destUrlIdx === undefined || destCellIdx === undefined) {
+            throw new Error("Invalid sheet headers! Please click 'Format Active Sheet' in the sidebar.");
+        }
+
+        var sourceUrl = rowData[sourceUrlIdx];
+        var sourceRangeA1 = rowData[sourceRangeIdx];
+        var destUrl = rowData[destUrlIdx];
+        var destStartCell = rowData[destCellIdx];
+
+        if (!destStartCell || destStartCell.toString().trim() === "") {
+            destStartCell = "A1";
+        }
+
+        if (!sourceUrl || !destUrl) {
+            throw new Error(`Missing details -> Source URL: ${sourceUrl ? 'OK' : 'Blank'}, Dest URL: ${destUrl ? 'OK' : 'Blank'}`);
+        }
+
+        var sSheet;
         try {
-            sSs = SpreadsheetApp.openByUrl(sourceUrl);
+            sSheet = getSheetFromUrl(sourceUrl);
         } catch (e) {
             throw new Error("Cannot access Source URL (Check permissions or URL validity)");
         }
-        var sSheet = sSs.getSheetByName(sourceSheetName);
-        if (!sSheet) throw new Error("Source sheet '" + sourceSheetName + "' not found");
+        if (!sSheet) throw new Error("Source sheet not found");
 
-        var values = sSheet.getRange(sourceRangeA1).getValues();
+        var values;
+        var isSheetLevelSync = false;
+        if (sourceRangeA1 && String(sourceRangeA1).trim() !== "") {
+            values = sSheet.getRange(String(sourceRangeA1).trim()).getValues();
+        } else {
+            isSheetLevelSync = true;
+            values = sSheet.getDataRange().getValues();
+        }
+        
         if (values.length === 0) throw new Error("Source range empty");
 
-        var dSs;
+        var dSheet;
         try {
-            dSs = SpreadsheetApp.openByUrl(destUrl);
+            dSheet = getSheetFromUrl(destUrl);
         } catch (e) {
             throw new Error("Cannot access Destination URL (Check permissions or URL validity)");
         }
-        var dSheet = dSs.getSheetByName(destSheetName);
-        if (!dSheet) throw new Error("Destination sheet '" + destSheetName + "' not found");
+        if (!dSheet) throw new Error("Destination sheet not found");
 
         var numRows = values.length;
         var numCols = values[0].length;
 
         if (numRows > 0 && numCols > 0) {
+            if (isSheetLevelSync) {
+                dSheet.clearContents();
+            }
+
             var destRange = dSheet.getRange(destStartCell);
             var startRow = destRange.getRow();
             var startCol = destRange.getColumn();
 
+            var reqRows = startRow + numRows - 1;
+            var reqCols = startCol + numCols - 1;
+
+            if (dSheet.getMaxRows() < reqRows) {
+                dSheet.insertRowsAfter(dSheet.getMaxRows(), reqRows - dSheet.getMaxRows());
+            }
+            if (dSheet.getMaxColumns() < reqCols) {
+                dSheet.insertColumnsAfter(dSheet.getMaxColumns(), reqCols - dSheet.getMaxColumns());
+            }
+
             dSheet.getRange(startRow, startCol, numRows, numCols).setValues(values);
+            if (isSheetLevelSync) SpreadsheetApp.flush();
+            
             logMessage = "Synced " + numRows + " rows.";
             isSuccess = true;
         } else {
@@ -278,7 +327,7 @@ function _Pipeline_runPipeline(sheet, rowIdx, rowData) {
     }
 
     var timestamp = new Date();
-    sheet.getRange(rowIdx, 10).setValue(timestamp);
+    sheet.getRange(rowIdx, 8).setValue(timestamp);
 
     var reference = pipelineName ? pipelineName : ('Row ' + rowIdx);
     if (isSuccess) {
@@ -300,11 +349,9 @@ function Pipeline_formatControlCenter() {
 
     // Column group separators (Pipeline-specific visual grouping)
     sheet.getRange("C:C").setBorder(null, true, null, null, null, null, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
-    sheet.getRange("F:F").setBorder(null, true, null, null, null, null, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
-    sheet.getRange("I:I").setBorder(null, true, null, null, null, null, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
-    sheet.getRange("J:J").setBorder(null, true, null, null, null, null, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
+    sheet.getRange("E:E").setBorder(null, true, null, null, null, null, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
+    sheet.getRange("G:G").setBorder(null, true, null, null, null, null, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
+    sheet.getRange("H:H").setBorder(null, true, null, null, null, null, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
 
     return "Formatted Control Center with Dark Theme & Elegant Groups!";
 }
-
-
