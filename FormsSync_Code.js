@@ -48,7 +48,9 @@ function _FormsSync_ensureSheetExistsAndActivate() {
 
 /** Opens the Forms Sync sidebar and ensures the sheet exists. */
 function FormsSync_openSidebar() {
-    _App_launchTool('FORMS_SYNC');
+    return Logger.run('FORMS_SYNC', 'Open Sidebar', function () {
+        _App_launchTool('FORMS_SYNC');
+    });
 }
 
 // --- CORE HELPER LOGIC ---
@@ -368,7 +370,7 @@ function _applyItemProperties(targetItem, type, required, optionsArr, gridRows, 
             if (gridCols && gridCols.length > 0) cbGridItem.setColumns(gridCols);
         }
     } catch (e) {
-        Logger.warn('FORMS_SYNC', 'Apply Properties', "Failed to apply properties: " + e.message);
+        Logger.warn('FORMS_SYNC', 'Apply Properties', "Failed to apply properties", e);
     }
 }
 
@@ -428,7 +430,7 @@ function _setChoicesSafe(item, optionsArr, type) {
             item.showOtherOption(true);
         }
     } catch (e) {
-        Logger.warn('FORMS_SYNC', 'Set Choices', "Failed to set choices: " + e.message);
+        Logger.warn('FORMS_SYNC', 'Set Choices', "Failed to set choices", e);
     }
 }
 // --- PUBLIC ENTRY POINTS ---
@@ -436,36 +438,39 @@ function _setChoicesSafe(item, optionsArr, type) {
 
 
 function FormsSync_getForms() {
-    try {
-        var files = DriveApp.searchFiles("mimeType='application/vnd.google-apps.form' and trashed=false");
-        var forms = [];
-        var count = 0;
-        var MAX_FORMS = 10;
+    return Logger.run('FORMS_SYNC', 'Get Forms', function () {
+        try {
+            var files = DriveApp.searchFiles("mimeType='application/vnd.google-apps.form' and trashed=false");
+            var forms = [];
+            var count = 0;
+            var MAX_FORMS = 10;
 
-        while (files.hasNext() && count < MAX_FORMS) {
-            var file = files.next();
-            forms.push({
-                id: file.getId(),
-                title: file.getName() || "Untitled Form",
-                lastUpdated: file.getLastUpdated().getTime()
+            while (files.hasNext() && count < MAX_FORMS) {
+                var file = files.next();
+                forms.push({
+                    id: file.getId(),
+                    title: file.getName() || "Untitled Form",
+                    lastUpdated: file.getLastUpdated().getTime()
+                });
+                count++;
+            }
+
+            forms.sort(function (a, b) {
+                return b.lastUpdated - a.lastUpdated;
             });
-            count++;
+
+            var mappedForms = forms.map(function (f) {
+                return { id: f.id, title: f.title };
+            });
+
+            var savedFormId = _App_getProperty(APP_PROPS.FORMS_SELECTED_FORM);
+
+            return { forms: mappedForms, savedFormId: savedFormId };
+        } catch (e) {
+            Logger.error('FORMS_SYNC', 'Get Forms', e);
+            throw new Error("Failed to fetch forms: " + e.toString());
         }
-
-        forms.sort(function (a, b) {
-            return b.lastUpdated - a.lastUpdated;
-        });
-
-        var mappedForms = forms.map(function (f) {
-            return { id: f.id, title: f.title };
-        });
-
-        var savedFormId = _App_getProperty(APP_PROPS.FORMS_SELECTED_FORM);
-
-        return { forms: mappedForms, savedFormId: savedFormId };
-    } catch (e) {
-        throw new Error("Failed to fetch forms: " + e.toString());
-    }
+    });
 }
 
 function FormsSync_pullForm(formInput) {
@@ -477,18 +482,20 @@ function FormsSync_syncToForm() {
 }
 
 function FormsSync_getFormLinks() {
-    var formId = _App_getProperty(APP_PROPS.FORMS_CURRENT_FORM);
-    if (!formId) return null;
-    try {
-        var form = FormApp.openById(formId);
-        return {
-            editUrl: form.getEditUrl(),
-            responsesUrl: form.getSummaryUrl()
-        };
-    } catch (e) {
-        return {
-            editUrl: 'https://docs.google.com/forms/d/' + formId + '/edit',
-            responsesUrl: 'https://docs.google.com/forms/d/' + formId + '/edit#responses'
-        };
-    }
+    return Logger.run('FORMS_SYNC', 'Get Form Links', function () {
+        var formId = _App_getProperty(APP_PROPS.FORMS_CURRENT_FORM);
+        if (!formId) return null;
+        try {
+            var form = FormApp.openById(formId);
+            return {
+                editUrl: form.getEditUrl(),
+                responsesUrl: form.getSummaryUrl()
+            };
+        } catch (e) {
+            return {
+                editUrl: 'https://docs.google.com/forms/d/' + formId + '/edit',
+                responsesUrl: 'https://docs.google.com/forms/d/' + formId + '/edit#responses'
+            };
+        }
+    });
 }

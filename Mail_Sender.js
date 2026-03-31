@@ -53,7 +53,9 @@ function Mail_Sender_openSidebar() {
 }
 
 function Mail_Sender_getQuota() {
-  return MailApp.getRemainingDailyQuota();
+  return Logger.run('MAIL_SENDER', 'Get Quota', function () {
+    return MailApp.getRemainingDailyQuota();
+  });
 }
 
 

@@ -69,7 +69,9 @@ function _DriveSync_ensureSheetExistsAndActivate() {
 
 /** Opens the Drive Sync sidebar and ensures the sheet exists. */
 function Drive_showSidebar() {
-  _App_launchTool('DRIVE_SYNC');
+  return Logger.run('DRIVE_SYNC', 'Open Sidebar', function () {
+    _App_launchTool('DRIVE_SYNC');
+  });
 }
 
 
@@ -80,153 +82,162 @@ function Drive_showSidebar() {
    ========================================================================== */
 
 function Drive_getFolderContent(folderId) {
-  try {
-    var parentId = folderId || "root";
-    var query = "'" + parentId + "' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
-    var folders = [];
-    var pageToken = null;
-
-    var currentFolder = null;
+  return Logger.run('DRIVE_SYNC', 'Get Folder Content', function () {
     try {
-      currentFolder = Drive.Files.get(parentId, { fields: "id, name", supportsAllDrives: true });
-    } catch (e) {
+      var parentId = folderId || "root";
+      var query = "'" + parentId + "' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
+      var folders = [];
+      var pageToken = null;
+
+      var currentFolder = null;
       try {
-        var drv = Drive.Drives.get(parentId);
-        currentFolder = { id: drv.id, name: drv.name };
-      } catch (e2) {
-        currentFolder = { id: parentId, name: parentId === "root" ? "Root" : "Unknown" };
+        currentFolder = Drive.Files.get(parentId, { fields: "id, name", supportsAllDrives: true });
+      } catch (e) {
+        try {
+          var drv = Drive.Drives.get(parentId);
+          currentFolder = { id: drv.id, name: drv.name };
+        } catch (e2) {
+          currentFolder = { id: parentId, name: parentId === "root" ? "Root" : "Unknown" };
+        }
       }
-    }
 
-    do {
-      var result = Drive.Files.list({
-        q: query,
-        fields: "nextPageToken, files(id, name)",
-        orderBy: "name",
-        pageToken: pageToken,
-        includeItemsFromAllDrives: true,
-        supportsAllDrives: true
-      });
-      if (result.files) folders = folders.concat(result.files);
-      pageToken = result.nextPageToken;
-    } while (pageToken);
-
-    return {
-      current: { id: currentFolder.id, name: currentFolder.name },
-      children: folders,
-      success: true
-    };
-  } catch (e) {
-    return { success: false, error: e.message };
-  }
-}
-
-function Drive_getDrivesList() {
-  try {
-    var drives = [];
-    var pageToken = null;
-    do {
-      var result = Drive.Drives.list({
-        pageToken: pageToken,
-        fields: "nextPageToken, drives(id, name)"
-      });
-      if (result.drives) drives = drives.concat(result.drives);
-      pageToken = result.nextPageToken;
-    } while (pageToken);
-
-    drives.sort(function (a, b) {
-      return a.name.localeCompare(b.name);
-    });
-
-    return { success: true, drives: drives };
-  } catch (e) {
-    return { success: false, error: e.message };
-  }
-}
-
-function Drive_getFolderHierarchy() {
-  try {
-    var query = "mimeType = 'application/vnd.google-apps.folder' and trashed = false";
-    var folders = [];
-    var pageToken = null;
-
-    // 1. Fetch all folders
-    do {
-      var result = _App_callWithBackoff(function () {
-        return Drive.Files.list({
+      do {
+        var result = Drive.Files.list({
           q: query,
-          fields: "nextPageToken, files(id, name, parents)",
+          fields: "nextPageToken, files(id, name)",
           orderBy: "name",
           pageToken: pageToken,
           includeItemsFromAllDrives: true,
-          supportsAllDrives: true,
-          pageSize: 1000
+          supportsAllDrives: true
         });
-      });
-      if (result.files) folders = folders.concat(result.files);
-      pageToken = result.nextPageToken;
-    } while (pageToken);
+        if (result.files) folders = folders.concat(result.files);
+        pageToken = result.nextPageToken;
+      } while (pageToken);
 
-    // 2. Fetch all shared drives
-    var drives = [];
-    var drivePageToken = null;
-    do {
-      var dResult = Drive.Drives.list({
-        pageToken: drivePageToken,
-        fields: "nextPageToken, drives(id, name)"
-      });
-      if (dResult.drives) drives = drives.concat(dResult.drives);
-      drivePageToken = dResult.nextPageToken;
-    } while (drivePageToken);
-
-    drives.sort(function (a, b) {
-      return a.name.localeCompare(b.name);
-    });
-
-    var topology = {
-      rootDrives: drives,
-      dict: {},
-      myDriveId: "root"
-    };
-
-    // 3. Resolve the actual ID of "My Drive"
-    try {
-      var actualRoot = Drive.Files.get("root", { fields: "id", supportsAllDrives: true });
-      if (actualRoot && actualRoot.id) {
-        topology.myDriveId = actualRoot.id;
-      }
-    } catch (e) { }
-
-    // 4. Group folders by parentId
-    for (var i = 0; i < folders.length; i++) {
-      var f = folders[i];
-      if (f.parents && f.parents.length > 0) {
-        var parentId = f.parents[0];
-        if (!topology.dict[parentId]) {
-          topology.dict[parentId] = [];
-        }
-        topology.dict[parentId].push({ id: f.id, name: f.name });
-      }
+      return {
+        current: { id: currentFolder.id, name: currentFolder.name },
+        children: folders,
+        success: true
+      };
+    } catch (e) {
+      return { success: false, error: e.message };
     }
+  });
+}
 
-    return { success: true, topology: topology };
-  } catch (e) {
-    return { success: false, error: e.message };
-  }
+function Drive_getDrivesList() {
+  return Logger.run('DRIVE_SYNC', 'Get Drives List', function () {
+    try {
+      var drives = [];
+      var pageToken = null;
+      do {
+        var result = Drive.Drives.list({
+          pageToken: pageToken,
+          fields: "nextPageToken, drives(id, name)"
+        });
+        if (result.drives) drives = drives.concat(result.drives);
+        pageToken = result.nextPageToken;
+      } while (pageToken);
+
+      drives.sort(function (a, b) {
+        return a.name.localeCompare(b.name);
+      });
+
+      return { success: true, drives: drives };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
+}
+
+function Drive_getFolderHierarchy() {
+  return Logger.run('DRIVE_SYNC', 'Get Folder Hierarchy', function () {
+    try {
+      var query = "mimeType = 'application/vnd.google-apps.folder' and trashed = false";
+      var folders = [];
+      var pageToken = null;
+
+      // 1. Fetch all folders
+      do {
+        var result = _App_callWithBackoff(function () {
+          return Drive.Files.list({
+            q: query,
+            fields: "nextPageToken, files(id, name, parents)",
+            orderBy: "name",
+            pageToken: pageToken,
+            includeItemsFromAllDrives: true,
+            supportsAllDrives: true,
+            pageSize: 1000
+          });
+        });
+        if (result.files) folders = folders.concat(result.files);
+        pageToken = result.nextPageToken;
+      } while (pageToken);
+
+      // 2. Fetch all shared drives
+      var drives = [];
+      var drivePageToken = null;
+      do {
+        var dResult = Drive.Drives.list({
+          pageToken: drivePageToken,
+          fields: "nextPageToken, drives(id, name)"
+        });
+        if (dResult.drives) drives = drives.concat(dResult.drives);
+        drivePageToken = dResult.nextPageToken;
+      } while (drivePageToken);
+
+      drives.sort(function (a, b) {
+        return a.name.localeCompare(b.name);
+      });
+
+      var topology = {
+        rootDrives: drives,
+        dict: {},
+        myDriveId: "root"
+      };
+
+      // 3. Resolve the actual ID of "My Drive"
+      try {
+        var actualRoot = Drive.Files.get("root", { fields: "id", supportsAllDrives: true });
+        if (actualRoot && actualRoot.id) {
+          topology.myDriveId = actualRoot.id;
+        }
+      } catch (e) { }
+
+      // 4. Group folders by parentId
+      for (var i = 0; i < folders.length; i++) {
+        var f = folders[i];
+        if (f.parents && f.parents.length > 0) {
+          var parentId = f.parents[0];
+          if (!topology.dict[parentId]) {
+            topology.dict[parentId] = [];
+          }
+          topology.dict[parentId].push({ id: f.id, name: f.name });
+        }
+      }
+
+      return { success: true, topology: topology };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
 }
 
 function Drive_getPendingStats() {
-  SheetManager.assertActiveSheet('DRIVE_SYNC');
-  var stats = SheetManager.getActionStats('DRIVE_SYNC', ['Create', 'Update', 'Delete', 'Clone']);
-  stats.total = (stats.Create || 0) + (stats.Update || 0) + (stats.Delete || 0) + (stats.Clone || 0);
-  return _App_ok('Pending stats loaded.', {
-    creates: stats.Create || 0,
-    updates: stats.Update || 0,
-    deletes: stats.Delete || 0,
-    clones: stats.Clone || 0,
-    total: stats.total
+  return Logger.run('DRIVE_SYNC', 'Get Pending Stats', function () {
+    SheetManager.assertActiveSheet('DRIVE_SYNC');
+    var stats = SheetManager.getActionStats('DRIVE_SYNC', ['Create', 'Update', 'Delete', 'Clone']);
+    stats.total = (stats.Create || 0) + (stats.Update || 0) + (stats.Delete || 0) + (stats.Clone || 0);
+    return _App_ok('Pending stats loaded.', {
+      creates: stats.Create || 0,
+      updates: stats.Update || 0,
+      deletes: stats.Delete || 0,
+      clones: stats.Clone || 0,
+      total: stats.total
+    });
   });
 }
+
 
 function Drive_pullFromDrive(targetFolderId, isShallow) {
   return Logger.run('DRIVE_SYNC', 'Pull from Drive', function () {
@@ -522,25 +533,27 @@ function Drive_runPushSequence() {
 }
 
 function Drive_setupSheet(sheet) {
-  if (!sheet) {
-    sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    sheet.clear();
-    const maxRows = sheet.getMaxRows();
-    const maxCols = sheet.getMaxColumns();
-    if (maxRows > 0 && maxCols > 0) sheet.getRange(1, 1, maxRows, maxCols).clearDataValidations();
-  }
+  return Logger.run('DRIVE_SYNC', 'Setup Sheet', function () {
+    if (!sheet) {
+      sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+      sheet.clear();
+      const maxRows = sheet.getMaxRows();
+      const maxCols = sheet.getMaxColumns();
+      if (maxRows > 0 && maxCols > 0) sheet.getRange(1, 1, maxRows, maxCols).clearDataValidations();
+    }
 
-  _DriveSync_initializeHeaders(sheet);
-  
-  var cfg = BeaverEngine.getTool('DRIVE_SYNC');
-  if (cfg.COL_WIDTHS) {
-    cfg.COL_WIDTHS.forEach(function (w, i) {
-      if (w !== null && w !== undefined) sheet.setColumnWidth(i + 1, w);
-    });
-  }
-  // Schema-driven validation now handles this within _App_applyBodyFormatting
-  
-  return _App_ok("Sheet has been reset successfully.");
+    _DriveSync_initializeHeaders(sheet);
+    
+    var cfg = BeaverEngine.getTool('DRIVE_SYNC');
+    if (cfg.COL_WIDTHS) {
+      cfg.COL_WIDTHS.forEach(function (w, i) {
+        if (w !== null && w !== undefined) sheet.setColumnWidth(i + 1, w);
+      });
+    }
+    // Schema-driven validation now handles this within _App_applyBodyFormatting
+    
+    return _App_ok("Sheet has been reset successfully.");
+  });
 }
 
 /* ==========================================================================
@@ -873,19 +886,21 @@ function _DriveSync_handleDelete(row) {
 }
 
 function Drive_fillActivePath(folderId, pathString) {
-  var sheet = _App_assertActiveSheet(SHEET_NAMES.DRIVE_SYNC);
+  return Logger.run('DRIVE_SYNC', 'Fill Active Path', function () {
+    var sheet = _App_assertActiveSheet(SHEET_NAMES.DRIVE_SYNC);
 
-  var cell = sheet.getActiveCell();
-  var row = cell.getRow();
+    var cell = sheet.getActiveCell();
+    var row = cell.getRow();
 
-  if (row < 2) throw new Error("Please select a row in the data area (Row 2 or below).");
+    if (row < 2) throw new Error("Please select a row in the data area (Row 2 or below).");
 
-  // Col.PATH is 10 (index), so column is 11
-  // Col.PARENT_ID is 14 (index), so column is 15
+    // Col.PATH is 10 (index), so column is 11
+    // Col.PARENT_ID is 14 (index), so column is 15
 
-  sheet.getRange(row, DRIVE_SYNC_COL.PATH + 1).setValue(pathString);
-  sheet.getRange(row, DRIVE_SYNC_COL.PARENT_ID + 1).setValue(folderId);
+    sheet.getRange(row, DRIVE_SYNC_COL.PATH + 1).setValue(pathString);
+    sheet.getRange(row, DRIVE_SYNC_COL.PARENT_ID + 1).setValue(folderId);
 
-  return "Updated Row " + row + " with path: " + pathString;
+    return "Updated Row " + row + " with path: " + pathString;
+  });
 }
 

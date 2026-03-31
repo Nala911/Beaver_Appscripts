@@ -49,74 +49,84 @@ function _MailMerge_ensureSheetExistsAndActivate() {
 
 /** Opens the Mail Merge sidebar and ensures the sheet exists. */
 function MailMerge_openSidebar() {
-  _App_launchTool('MAIL_MERGE');
+  return Logger.run('MAIL_MERGE', 'Open Sidebar', function () {
+    _App_launchTool('MAIL_MERGE');
+  });
 }
 
 
 function MailMerge_getQuota() {
-  return _App_ok('Quota loaded.', { remaining: MailApp.getRemainingDailyQuota() });
+  return Logger.run('MAIL_MERGE', 'Get Quota', function () {
+    return _App_ok('Quota loaded.', { remaining: MailApp.getRemainingDailyQuota() });
+  });
 }
 
 function MailMerge_getGmailDrafts() {
-  try {
-    var drafts = GmailApp.getDrafts();
-    var validDrafts = [];
-    var regex = /\{\{[^{}]+\}\}/;
+  return Logger.run('MAIL_MERGE', 'Get Gmail Drafts', function () {
+    try {
+      var drafts = GmailApp.getDrafts();
+      var validDrafts = [];
+      var regex = /\{\{[^{}]+\}\}/;
 
-    for (var i = 0; i < drafts.length; i++) {
-      var msg = drafts[i].getMessage();
-      var subject = msg.getSubject() || "";
-      var body = msg.getBody() || "";
+      for (var i = 0; i < drafts.length; i++) {
+        var msg = drafts[i].getMessage();
+        var subject = msg.getSubject() || "";
+        var body = msg.getBody() || "";
 
-      if (regex.test(subject) || regex.test(body)) {
-        validDrafts.push({
-          id: drafts[i].getId(),
-          subject: subject || "(No Subject)"
-        });
+        if (regex.test(subject) || regex.test(body)) {
+          validDrafts.push({
+            id: drafts[i].getId(),
+            subject: subject || "(No Subject)"
+          });
 
-        if (validDrafts.length >= 10) {
-          break;
+          if (validDrafts.length >= 10) {
+            break;
+          }
         }
       }
+      return _App_ok('Drafts loaded.', { drafts: validDrafts });
+    } catch (e) {
+      return _App_ok('No drafts available.', { drafts: [] });
     }
-    return _App_ok('Drafts loaded.', { drafts: validDrafts });
-  } catch (e) {
-    return _App_ok('No drafts available.', { drafts: [] });
-  }
+  });
 }
 
 function MailMerge_syncPlaceholders(draftId) {
-  if (!draftId) return _App_fail("No draft selected.");
-  try {
-    var draft = GmailApp.getDraft(draftId);
-    if (!draft) throw new Error("Draft not found.");
-    var msg = draft.getMessage();
-    var subject = msg.getSubject() || "";
-    var body = msg.getBody() || "";
+  return Logger.run('MAIL_MERGE', 'Sync Placeholders', function () {
+    if (!draftId) return _App_fail("No draft selected.");
+    try {
+      var draft = GmailApp.getDraft(draftId);
+      if (!draft) throw new Error("Draft not found.");
+      var msg = draft.getMessage();
+      var subject = msg.getSubject() || "";
+      var body = msg.getBody() || "";
 
-    var placeholders = [];
-    var regex = /\{\{([^{}]+)\}\}/g;
+      var placeholders = [];
+      var regex = /\{\{([^{}]+)\}\}/g;
 
-    var match;
-    while ((match = regex.exec(subject)) !== null) {
-      if (placeholders.indexOf(match[1]) === -1) placeholders.push(match[1]);
+      var match;
+      while ((match = regex.exec(subject)) !== null) {
+        if (placeholders.indexOf(match[1]) === -1) placeholders.push(match[1]);
+      }
+      while ((match = regex.exec(body)) !== null) {
+        if (placeholders.indexOf(match[1]) === -1) placeholders.push(match[1]);
+      }
+
+      var syncResult = SheetManager.syncDynamicColumns('MAIL_MERGE', placeholders, {
+        anchorHeader: 'Status',
+        dynamicColWidth: 150
+      });
+
+      return _App_ok('Synced ' + placeholders.length + ' placeholders.', {
+        placeholders: placeholders,
+        headers: syncResult.headers
+      });
+    } catch (e) {
+      var toolConfig = BeaverEngine.getTool('MAIL_MERGE') || { TITLE: 'MAIL_MERGE' };
+      Logger.error(toolConfig.TITLE, 'Sync Placeholders', e);
+      return _App_fail("Sync failed: " + e.message + (e.stack ? "\nTrace:\n" + e.stack : ""));
     }
-    while ((match = regex.exec(body)) !== null) {
-      if (placeholders.indexOf(match[1]) === -1) placeholders.push(match[1]);
-    }
-
-    var syncResult = SheetManager.syncDynamicColumns('MAIL_MERGE', placeholders, {
-      anchorHeader: 'Status',
-      dynamicColWidth: 150
-    });
-
-    return _App_ok('Synced ' + placeholders.length + ' placeholders.', {
-      placeholders: placeholders,
-      headers: syncResult.headers
-    });
-  } catch (e) {
-    return _App_fail("Sync failed: " + e.message + (e.stack ? "\nTrace:\n" + e.stack : ""));
-  }
+  });
 }
 
 function _MailMerge_escapeRegExp(string) {
@@ -410,18 +420,20 @@ function MailMerge_executeActions(draftId, startIndex) {
 }
 
 function MailMerge_getRemainingPendingCount() {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAMES.MAIL_MERGE);
-  if (!sheet) return 0;
-  var maxRows = sheet.getMaxRows();
-  if (maxRows < 2) return 0;
-  var actionRange = sheet.getRange(2, MAILMERGE_CFG.COLUMNS.ACTION + 1, maxRows - 1);
-  var values = actionRange.getValues();
-  var count = 0;
-  for (var i = 0; i < values.length; i++) {
-    var act = String(values[i][0]).toUpperCase();
-    if (act === "SEND" || act === "DRAFT") {
-      count++;
+  return Logger.run('MAIL_MERGE', 'Get Pending Count', function () {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAMES.MAIL_MERGE);
+    if (!sheet) return 0;
+    var maxRows = sheet.getMaxRows();
+    if (maxRows < 2) return 0;
+    var actionRange = sheet.getRange(2, MAILMERGE_CFG.COLUMNS.ACTION + 1, maxRows - 1);
+    var values = actionRange.getValues();
+    var count = 0;
+    for (var i = 0; i < values.length; i++) {
+      var act = String(values[i][0]).toUpperCase();
+      if (act === "SEND" || act === "DRAFT") {
+        count++;
+      }
     }
-  }
-  return count;
+    return count;
+  });
 }
