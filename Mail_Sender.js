@@ -49,7 +49,9 @@ function _Mail_Sender_ensureSheetExistsAndActivate() {
 
 /** Opens the Mail Sender sidebar and ensures the sheet exists. */
 function Mail_Sender_openSidebar() {
-  _App_launchTool('MAIL_SENDER');
+  return Logger.run('MAIL_SENDER', 'Open Sidebar', function () {
+    _App_launchTool('MAIL_SENDER');
+  });
 }
 
 function Mail_Sender_getQuota() {
@@ -320,7 +322,7 @@ function Mail_Sender_executeActions() {
       _App_clearProgress('MAIL_SENDER');
 
       var finalResult = updatesCount + " actions processed!";
-      Logger.info("Mail Sender", "Execute Actions", finalResult);
+      Logger.info(BeaverEngine.getTool('MAIL_SENDER').TITLE, "Execute Actions", finalResult);
     return finalResult;
   });
 }

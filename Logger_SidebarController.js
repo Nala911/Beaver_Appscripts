@@ -46,14 +46,8 @@ function Logger_saveSettings(enabled) {
 function Logger_clearLogs() {
     return Logger.run('LOGS', 'Clear Logs', function () {
         try {
-            return _App_withDocumentLock('LOGGER_CLEAR', function () {
-                var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAMES.LOGS);
-                if (sheet && sheet.getLastRow() > 1) {
-                    sheet.deleteRows(2, sheet.getLastRow() - 1);
-                    if (BeaverEngine.getTool('LOGS')) _App_applyBodyFormatting(sheet, 0, BeaverEngine.getTool('LOGS').FORMAT_CONFIG);
-                }
-                return _App_ok('Logs cleared successfully.');
-            });
+            Logger.clearLogs();
+            return _App_ok('Logs cleared successfully.');
         } catch (e) {
             return _App_fail('Clear failed: ' + e.message);
         }
