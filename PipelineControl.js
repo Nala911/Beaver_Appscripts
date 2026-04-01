@@ -17,8 +17,7 @@ BeaverEngine.registerTool('PIPELINE', {
     FORMAT_CONFIG: {
         numReadOnlyColsAtEnd: 1,
         conditionalRules: [
-            { type: 'custom', formula: '=$A2=TRUE', color: SHEET_THEME.STATUS.SUCCESS, scope: 'actionOnly', actionCol: 'A' },
-            { type: 'custom', formula: '=$A2=FALSE', color: SHEET_THEME.STATUS.ERROR, scope: 'actionOnly', actionCol: 'A' }
+            { type: 'custom', formula: '=$A2=TRUE', color: SHEET_THEME.STATUS.SUCCESS, scope: 'actionOnly', actionCol: 'A' }
         ],
         COL_SCHEMA: [
             { header: 'ON/OFF', type: 'CHECKBOX' },
@@ -27,7 +26,7 @@ BeaverEngine.registerTool('PIPELINE', {
             { header: 'Source Range', type: 'TEXT' },
             { header: 'Destination URL', type: 'URL' },
             { header: 'Destination Cell', type: 'TEXT' },
-            { header: 'Sync Interval', type: 'TEXT' },
+            { header: 'Sync Interval', type: 'DROPDOWN', options: ['Manual Only', '15 min', '30 min', '1 hour', '4 hours', '12 hours', '1 day'] },
             { header: 'Last Run Time', type: 'DATETIME' }
         ]
     }
@@ -53,7 +52,9 @@ function _Pipeline_ensureSheetExistsAndActivate() {
 
 /** Opens the Pipeline sidebar, creating the sheet if needed. */
 function Pipeline_showSidebar() {
-    _App_launchTool('PIPELINE');
+    return Logger.run('PIPELINE', 'Open Sidebar', function () {
+        _App_launchTool('PIPELINE');
+    });
 }
 
 // --- GLOBAL CONTROLS ---
@@ -61,15 +62,44 @@ function Pipeline_showSidebar() {
 function Pipeline_getSystemStatus() {
     return Logger.run('PIPELINE', 'Get Status', function () {
         var enabled = _App_getProperty(APP_PROPS.SYSTEM_ENABLED);
-        return enabled === null ? 'true' : enabled;
+        return enabled === null ? 'false' : enabled;
     });
 }
 
 function Pipeline_setSystemStatus(isEnabled) {
     return Logger.run('PIPELINE', 'Set Status', function () {
         _App_setProperty(APP_PROPS.SYSTEM_ENABLED, isEnabled.toString());
+        _Pipeline_manageTrigger(isEnabled);
         return isEnabled;
     });
+}
+
+/**
+ * Manages the background execution trigger for Pipeline sync.
+ * @param {boolean} isEnabled Whether the system should be active.
+ */
+function _Pipeline_manageTrigger(isEnabled) {
+    var functionName = 'Pipeline_processPipelines';
+    var triggers = ScriptApp.getProjectTriggers();
+    
+    // Remove existing triggers to avoid duplicates or when disabling
+    for (var i = 0; i < triggers.length; i++) {
+        var handler = triggers[i].getHandlerFunction();
+        if (handler === functionName) {
+            ScriptApp.deleteTrigger(triggers[i]);
+        }
+    }
+    
+    // Create new trigger if enabled
+    if (isEnabled) {
+        ScriptApp.newTrigger(functionName)
+            .timeBased()
+            .everyMinutes(15) // Check every 15 mins (minimum interval supported)
+            .create();
+        Logger.info('PIPELINE', 'System', 'Background sync trigger created (15m interval).');
+    } else {
+        Logger.info('PIPELINE', 'System', 'Background sync trigger removed.');
+    }
 }
 
 // --- PIPELINE EXECUTION ---

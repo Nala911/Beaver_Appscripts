@@ -22,6 +22,7 @@ function _App_logClientError(err, context) {
     
     // Only attempt to log if Logger framework is loaded
     if (typeof Logger !== 'undefined' && typeof Logger.error === 'function') {
+        Logger.setRunId(); // Ensure a Run ID exists for this independent execution
         Logger.error(source, ref, msg);
         if (typeof Logger.flushLogs === 'function') Logger.flushLogs();
     } else {
@@ -35,6 +36,7 @@ function _App_logClientError(err, context) {
  */
 function _App_logClientInfo(message, context) {
     if (typeof Logger !== 'undefined' && typeof Logger.info === 'function') {
+        Logger.setRunId(); // Ensure a Run ID exists for this independent execution
         Logger.info('Client UI', context || 'Default', message);
         if (typeof Logger.flushLogs === 'function') Logger.flushLogs();
     } else {

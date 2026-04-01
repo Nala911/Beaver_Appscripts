@@ -1,17 +1,23 @@
 function onOpen() {
-  const ui = SpreadsheetApp.getUi();
-  const menu = ui.createMenu('🦫 Beaver Tools');
+  return Logger.run('SYSTEM', 'Initialize UI', function () {
+    const ui = SpreadsheetApp.getUi();
+    const menu = ui.createMenu('🦫 Beaver Tools');
 
-  _App_getMenuTools().forEach(function(cfg) {
-    if (cfg.MENU_ENTRYPOINT) {
-      menu.addItem(cfg.MENU_LABEL, cfg.MENU_ENTRYPOINT);
-    }
+    _App_getMenuTools().forEach(function(cfg) {
+      if (cfg.MENU_ENTRYPOINT) {
+        menu.addItem(cfg.MENU_LABEL, cfg.MENU_ENTRYPOINT);
+      }
+    });
+
+    menu
+      .addSeparator()
+      .addItem('⚙️ Theme Settings', 'UI_openThemeDialog')
+      .addToUi();
   });
+}
 
-  menu
-    .addSeparator()
-    .addItem('⚙️ Theme Settings', 'UI_openThemeDialog')
-    .addToUi();
+function onInstall(e) {
+  onOpen(e);
 }
 
 // Global settings and Theme Config have been moved to 00_Config_Constants.js and 01_Config_Theme.js
@@ -23,23 +29,29 @@ function onOpen() {
 // ==========================================
 
 function Logger_showSidebar() {
-  _App_launchTool('LOGS');
+  return Logger.run('LOGS', 'Open Sidebar', function () {
+    _App_launchTool('LOGS');
+  });
 }
 
 function UI_openThemeDialog() {
-  const html = HtmlService.createTemplateFromFile('ThemeEditorSidebar').evaluate()
-    .setTitle('🎨 Theme Studio')
-    .setWidth(1200)
-    .setHeight(800);
-  SpreadsheetApp.getUi().showModalDialog(html, '🎨 Theme Studio');
+  return Logger.run('SYSTEM', 'Open Theme Dialog', function () {
+    const html = HtmlService.createTemplateFromFile('ThemeEditorSidebar').evaluate()
+      .setTitle('🎨 Theme Studio')
+      .setWidth(1200)
+      .setHeight(800);
+    SpreadsheetApp.getUi().showModalDialog(html, '🎨 Theme Studio');
+  });
 }
 
 function UI_getThemeConfig() {
-  // We send back both the current dynamic theme, and the default theme so the frontend knows what to compare
-  return {
-    current: _UI_themeToClient(_UI_getTheme()),
-    defaults: _UI_themeToClient(DEFAULT_SHEET_THEME)
-  };
+  return Logger.run('SYSTEM', 'Get Theme Config', function () {
+    // We send back both the current dynamic theme, and the default theme so the frontend knows what to compare
+    return {
+      current: _UI_themeToClient(_UI_getTheme()),
+      defaults: _UI_themeToClient(DEFAULT_SHEET_THEME)
+    };
+  });
 }
 
 /**
@@ -72,30 +84,18 @@ function _UI_themeToClient(theme) {
 }
 
 function UI_saveThemeConfig(newThemeConfig) {
-  try {
-    // Validate that modifying basic properties works
+  return Logger.run('SYSTEM', 'Save Theme', function () {
     if (newThemeConfig) {
       _App_setProperty(APP_PROPS.THEME, newThemeConfig);
-      Logger.info("Theme Settings", "Save Theme", "Theme saved successfully");
-      Logger.flushLogs();
       return { success: true, message: 'Theme saved successfully!' };
     }
-  } catch (e) {
-    Logger.error("Theme Settings", "Save Theme", e);
-    Logger.flushLogs();
-    return { success: false, message: 'Failed to save theme: ' + e.toString() };
-  }
+    return { success: false, message: 'No theme data received.' };
+  });
 }
 
 function UI_resetThemeConfig() {
-  try {
+  return Logger.run('SYSTEM', 'Reset Theme', function () {
     _App_deleteProperty(APP_PROPS.THEME);
-    Logger.info("Theme Settings", "Reset Theme", "Reset to default theme");
-    Logger.flushLogs();
     return { success: true, message: 'Reset to default theme!' };
-  } catch (e) {
-    Logger.error("Theme Settings", "Reset Theme", e);
-    Logger.flushLogs();
-    return { success: false, message: 'Failed to reset theme: ' + e.toString() };
-  }
+  });
 }

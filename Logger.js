@@ -37,11 +37,12 @@ BeaverEngine.registerTool('LOGS', {
 
 var Logger = (function () {
     var CACHE_KEY = typeof CACHE_KEYS !== 'undefined' ? CACHE_KEYS.LOGS : 'BEAVER_DEBUG_LOGS';
-    var MAX_CACHE_ITEMS = 50;
+    var MAX_CACHE_ITEMS = 25;
     
     var _state = {
         currentRunId: null,
-        currentSteps: []
+        currentSteps: [],
+        depth: 0
     };
 
     /**
@@ -50,26 +51,43 @@ var Logger = (function () {
     var _transporter = {
         /**
          * Queues a log entry to the document cache.
+         * Uses a lock to prevent race conditions during cache read/write.
          */
         queue: function (entry) {
-            var cache = CacheService.getDocumentCache();
-            var existing = cache.get(CACHE_KEY);
-            var logs = existing ? JSON.parse(existing) : [];
+            var lock = LockService.getDocumentLock();
+            if (!lock.tryLock(10000)) {
+                console.warn("Logger: Queue lock timeout. Log may be lost.");
+                return;
+            }
 
-            logs.push(entry);
+            try {
+                var cache = CacheService.getDocumentCache();
+                var existing = cache.get(CACHE_KEY);
+                var logs = existing ? JSON.parse(existing) : [];
 
-            if (logs.length >= MAX_CACHE_ITEMS) {
-                this.flush(logs);
-                cache.remove(CACHE_KEY); // Clear cache after successful batch flush
-            } else {
-                cache.put(CACHE_KEY, JSON.stringify(logs), 21600); // 6h TTL
+                logs.push(entry);
+
+                var serialized = JSON.stringify(logs);
+                // Flush if batch is full OR if string size approaches 100KB CacheService limit
+                if (logs.length >= MAX_CACHE_ITEMS || serialized.length > 90000) {
+                    this.flush(logs, true); // skipLock = true because we already hold the lock
+                    cache.remove(CACHE_KEY); 
+                } else {
+                    cache.put(CACHE_KEY, serialized, 21600); // 6h TTL
+                }
+            } catch (e) {
+                console.error("Logger Queue Error: " + e.message);
+            } finally {
+                lock.releaseLock();
             }
         },
 
         /**
          * Flushes logs to the spreadsheet with document-level locking.
+         * @param {Array} [manualLogs] Optional logs to flush directly
+         * @param {boolean} [skipLock] If true, bypasses lock acquisition (used when caller already holds it)
          */
-        flush: function (manualLogs) {
+        flush: function (manualLogs, skipLock) {
             var cache = CacheService.getDocumentCache();
             var logs = manualLogs;
 
@@ -81,11 +99,13 @@ var Logger = (function () {
 
             if (!logs || logs.length === 0) return;
 
-            // Prevent write collisions across multiple script instances (e.g. parallel triggers)
-            var lock = LockService.getDocumentLock();
-            if (!lock.tryLock(15000)) {
-                console.warn("Logger: Transport lock timeout. Logs retained in cache.");
-                return; 
+            var lock = null;
+            if (!skipLock) {
+                lock = LockService.getDocumentLock();
+                if (!lock.tryLock(15000)) {
+                    console.warn("Logger: Transport lock timeout. Logs retained in cache.");
+                    return; 
+                }
             }
 
             try {
@@ -114,7 +134,7 @@ var Logger = (function () {
             } catch (err) {
                 console.error("Logger Transporter Error: " + err.message);
             } finally {
-                lock.releaseLock();
+                if (lock) lock.releaseLock();
             }
         },
 
@@ -195,8 +215,13 @@ var Logger = (function () {
         },
 
         setRunId: function (id) {
-            _state.currentRunId = id || Utilities.getUuid();
-            _state.currentSteps = [];
+            if (id && id !== _state.currentRunId) {
+                _state.currentRunId = id;
+                _state.currentSteps = []; // Reset steps if ID is explicitly changed
+            } else if (!_state.currentRunId) {
+                _state.currentRunId = Utilities.getUuid();
+                _state.currentSteps = [];
+            }
             return _state.currentRunId;
         },
 
@@ -236,6 +261,7 @@ var Logger = (function () {
          * High-level orchestrator for tool execution.
          */
         run: function (toolKey, reference, callback) {
+            _state.depth++;
             this.setRunId();
             var cfg = { TITLE: toolKey };
             try { cfg = BeaverEngine.getTool(toolKey); } catch (e) {}
@@ -251,6 +277,12 @@ var Logger = (function () {
                 throw e; 
             } finally {
                 this.flushLogs();
+                _state.depth--;
+                if (_state.depth <= 0) {
+                    _state.currentRunId = null;
+                    _state.currentSteps = [];
+                    _state.depth = 0;
+                }
             }
         },
 
@@ -260,6 +292,7 @@ var Logger = (function () {
         wrap: function (source, reference, func) {
             var self = this;
             return function() {
+                _state.depth++;
                 self.setRunId();
                 try {
                     return func.apply(this, arguments);
@@ -268,6 +301,12 @@ var Logger = (function () {
                     throw e;
                 } finally {
                     self.flushLogs();
+                    _state.depth--;
+                    if (_state.depth <= 0) {
+                        _state.currentRunId = null;
+                        _state.currentSteps = [];
+                        _state.depth = 0;
+                    }
                 }
             };
         }

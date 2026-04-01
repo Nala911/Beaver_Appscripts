@@ -56,10 +56,13 @@ function _ContactsSync_ensureSheetExistsAndActivate() {
     return _App_ensureSheetExists('CONTACTS_SYNC');
 }
 
-/** Opens the Contacts Sync sidebar and ensures the sheet exists. */
+/** Opens the Contacts sidebar and ensures the sheet exists. */
 function Contacts_showSidebar() {
+  return Logger.run('CONTACTS_SYNC', 'Open Sidebar', function () {
     _App_launchTool('CONTACTS_SYNC');
+  });
 }
+
 
 function Contacts_getLoadData() {
     return Logger.run('CONTACTS_SYNC', 'Load Data', function () {

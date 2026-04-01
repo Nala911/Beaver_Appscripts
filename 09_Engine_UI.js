@@ -22,19 +22,21 @@ function _App_openSidebar(toolKey, postCreateCallback) {
 }
 
 function _App_launchTool(toolKey, postCreateCallback) {
-    var cfg = BeaverEngine.getTool(toolKey);
-    var launchMode = cfg.LAUNCH_MODE || TOOL_LAUNCH_MODES.SIDEBAR;
+    return Logger.run(toolKey, 'Launch Tool', function () {
+        var cfg = BeaverEngine.getTool(toolKey);
+        var launchMode = cfg.LAUNCH_MODE || TOOL_LAUNCH_MODES.SIDEBAR;
 
-    if (launchMode === TOOL_LAUNCH_MODES.MODAL) {
-        var html = HtmlService.createTemplateFromFile(cfg.MODAL_HTML || cfg.SIDEBAR_HTML).evaluate()
-            .setTitle(cfg.TITLE)
-            .setWidth(cfg.MODAL_WIDTH || cfg.SIDEBAR_WIDTH || 300)
-            .setHeight(cfg.MODAL_HEIGHT || 600);
-        SpreadsheetApp.getUi().showModalDialog(html, cfg.TITLE);
-        return;
-    }
+        if (launchMode === TOOL_LAUNCH_MODES.MODAL) {
+            var html = HtmlService.createTemplateFromFile(cfg.MODAL_HTML || cfg.SIDEBAR_HTML).evaluate()
+                .setTitle(cfg.TITLE)
+                .setWidth(cfg.MODAL_WIDTH || cfg.SIDEBAR_WIDTH || 300)
+                .setHeight(cfg.MODAL_HEIGHT || 600);
+            SpreadsheetApp.getUi().showModalDialog(html, cfg.TITLE);
+            return;
+        }
 
-    _App_openSidebar(toolKey, postCreateCallback);
+        _App_openSidebar(toolKey, postCreateCallback);
+    });
 }
 
 function _App_getMenuTools() {
@@ -54,40 +56,45 @@ function _App_getMenuTools() {
  * frozen rows/cols, data validations, and buffer body formatting.
  */
 function _App_ensureSheetExists(toolKey, postCreateCallback) {
-    var cfg = BeaverEngine.getTool(toolKey);
-    if (!_App_canScaffoldSheet(cfg)) {
-        throw new Error("Tool '" + toolKey + "' does not define a sheet schema and cannot be scaffolded automatically.");
-    }
+    return Logger.run(toolKey, 'Scaffold Sheet', function () {
+        var cfg = BeaverEngine.getTool(toolKey);
+        if (!_App_canScaffoldSheet(cfg)) {
+            throw new Error("Tool '" + toolKey + "' does not define a sheet schema and cannot be scaffolded automatically.");
+        }
 
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName(cfg.SHEET_NAME);
-    var isNew = !sheet;
+        var ss = SpreadsheetApp.getActiveSpreadsheet();
+        var sheet = ss.getSheetByName(cfg.SHEET_NAME);
+        var isNew = !sheet;
 
-    if (isNew) {
-        sheet = ss.insertSheet(cfg.SHEET_NAME);
-    }
+        if (isNew) {
+            sheet = ss.insertSheet(cfg.SHEET_NAME);
+            Logger.info(cfg.TITLE, 'Scaffold', "Created new sheet: " + cfg.SHEET_NAME);
+        }
 
-    // Always ensure headers and basic sheet setup are correct (idempotent)
-    _App_applyHeaderFormatting(sheet, cfg.HEADERS);
+        // Always ensure headers and basic sheet setup are correct (idempotent)
+        _App_applyHeaderFormatting(sheet, cfg.HEADERS);
 
-    if (cfg.FROZEN_ROWS > 0) sheet.setFrozenRows(cfg.FROZEN_ROWS);
-    if (cfg.FROZEN_COLS > 0) sheet.setFrozenColumns(cfg.FROZEN_COLS);
+        if (cfg.FROZEN_ROWS > 0) sheet.setFrozenRows(cfg.FROZEN_ROWS);
+        if (cfg.FROZEN_COLS > 0) sheet.setFrozenColumns(cfg.FROZEN_COLS);
 
-    if (cfg.COL_WIDTHS) {
-        cfg.COL_WIDTHS.forEach(function (w, i) {
-            if (w !== null && w !== undefined) sheet.setColumnWidth(i + 1, w);
-        });
-    }
+        if (cfg.COL_WIDTHS) {
+            cfg.COL_WIDTHS.forEach(function (w, i) {
+                if (w !== null && w !== undefined) sheet.setColumnWidth(i + 1, w);
+            });
+        }
 
-    if (cfg.FORMAT_CONFIG) {
-        _App_applyBodyFormatting(sheet, sheet.getLastRow() > 1 ? sheet.getLastRow() - 1 : 0, cfg.FORMAT_CONFIG);
-    }
+        if (cfg.FORMAT_CONFIG) {
+            _App_applyBodyFormatting(sheet, sheet.getLastRow() > 1 ? sheet.getLastRow() - 1 : 0, cfg.FORMAT_CONFIG);
+        }
 
-    if (isNew && typeof postCreateCallback === 'function') {
-        try { postCreateCallback(sheet); }
-        catch (e) { console.warn('[_App_ensureSheetExists] Post-create callback failed (' + toolKey + '): ' + e.message); }
-    }
+        if (isNew && typeof postCreateCallback === 'function') {
+            try { postCreateCallback(sheet); }
+            catch (e) { 
+                Logger.warn(cfg.TITLE, 'Post-Scaffold Callback', e.message);
+            }
+        }
 
-    sheet.activate();
-    return sheet;
+        sheet.activate();
+        return sheet;
+    });
 }

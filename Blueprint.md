@@ -65,8 +65,8 @@ Each tool relies on specific Google APIs. Do NOT use an API in a tool that doesn
 | **Task Manager** | `Tasks` (Advanced) | Yes — `Tasks API v1` |
 | **Forms Sync** | `FormApp`, `DriveApp` | No |
 | **Bulk Folder** | `DriveApp` | No |
-| **Drive Sync** | `DriveApp`, `Drive` (Advanced) | Yes — `Drive API v3` |
-| **Pipeline Control** | `PropertiesService`, `SpreadsheetApp` | No |
+| **Pipeline Sync** | `DriveApp`, `Drive` (Advanced) | Yes — `Drive API v3` |
+| **Pipeline Control** | `PropertiesService`, `SpreadsheetApp`, `ScriptApp` | No |
 | **Developer Log** | `CacheService`, `Session`, `Utilities` | No |
 | **Theme Editor** | `PropertiesService` only | No |
 
@@ -122,6 +122,11 @@ function ToolName_showSidebar() {
   _App_openSidebar('TOOL_KEY');
 }
 ```
+
+### 5. Background Automation & Trigger Management
+Tools that require background execution (e.g., Pipeline Control) should manage their own triggers programmatically.
+- **`_ToolName_manageTrigger(isEnabled)`**: An internal helper to create or delete `ScriptApp` triggers based on user settings.
+- **Safety**: Triggers should always be checked for duplicates before creation and cleaned up thoroughly when disabled to minimize unnecessary execution.
 
 ## 🌍 Global Variables & State
 
