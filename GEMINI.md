@@ -31,8 +31,9 @@ This project uses **Clasp** (Command Line Apps Script Projects) for local develo
 ### 2. Implementation Patterns
 - **Tool Registration:** Every new tool must register with `BeaverEngine` at the top of its backend file.
 - **Execution Wrapper:** Primary operations should be wrapped in `Logger.run('TOOL_KEY', 'Context', () => { ... })` for automatic tracking and error handling.
-- **Return Contract:** Public functions called by `google.script.run` MUST return an object: `{ success: boolean, message: string }`.
-- **UI Menu:** Entry points are defined in `UI.js` and dynamically built from `BeaverEngine` metadata.
+- **Return Contract**: Public functions called by `google.script.run` MUST return an object: `{ success: boolean, message: string }`.
+- **Trigger Management**: Background sync tools should manage their own `ScriptApp` triggers. Use an internal `_ToolName_manageTrigger` function called from the setting update handler to ensure triggers are created/removed in sync with user preferences.
+- **UI Menu**: Entry points are defined in `UI.js` and dynamically built from `BeaverEngine` metadata.
 
 ### 3. Storage (`PropertiesService`)
 - Never access `PropertiesService` directly. Use the registry in `00_Config_Constants.js` (`APP_PROPS`) and the wrappers in `02_Config_Storage.js` (`_App_getProperty`, `_App_setProperty`).

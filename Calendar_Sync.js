@@ -50,10 +50,13 @@ function _CalendarSync_ensureSheetExistsAndActivate() {
   return _App_ensureSheetExists('CALENDAR_SYNC');
 }
 
-/** Opens the Calendar Sync sidebar and ensures the sheet exists. */
+/** Opens the Calendar sidebar and ensures the sheet exists. */
 function Calendar_showSidebar() {
-  _App_launchTool('CALENDAR_SYNC');
+  return Logger.run('CALENDAR_SYNC', 'Open Sidebar', function () {
+    _App_launchTool('CALENDAR_SYNC');
+  });
 }
+
 
 // --- API FOR SIDEBAR ---
 

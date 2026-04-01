@@ -108,8 +108,12 @@ var AuditRules = [
                     
                     // Unified Validation via SYSTEM_VALIDATORS
                     if (typeof SYSTEM_VALIDATORS !== 'undefined' && SYSTEM_VALIDATORS[colDef.type]) {
-                        if (!SYSTEM_VALIDATORS[colDef.type](cellValue)) {
-                            warnings.push("Row " + (rowIndex + 2) + ", Col " + (colIndex + 1) + " ('" + colDef.header + "'): Invalid " + colDef.type + " format ('" + String(cellValue) + "').");
+                        try {
+                            if (!SYSTEM_VALIDATORS[colDef.type](cellValue)) {
+                                warnings.push("Row " + (rowIndex + 2) + ", Col " + (colIndex + 1) + " ('" + colDef.header + "'): Invalid " + colDef.type + " format ('" + String(cellValue) + "').");
+                            }
+                        } catch (err) {
+                            warnings.push("Validator crashed for " + colDef.type + " at Row " + (rowIndex + 2) + ": " + err.message);
                         }
                     }
                 });
@@ -220,7 +224,22 @@ var GlobalAuditRules = [
                 }
             } catch (e) {
                 // Ignore API execution errors here gracefully if MailApp is restricted 
-                // _addGlobalResult(summary, results, 'Quota Check', 'WARN', 'Could not fetch MailApp quota: ' + e.message);
+            }
+        }
+    },
+    {
+        name: 'Concurrency & Locking Health',
+        run: function (summary, results) {
+            try {
+                var lock = LockService.getDocumentLock();
+                if (lock.tryLock(500)) {
+                    lock.releaseLock();
+                    _addGlobalResult(summary, results, 'Locking Service', 'SUCCESS', 'Locking service is operational.');
+                } else {
+                    _addGlobalResult(summary, results, 'Locking Service', 'WARN', 'Could not acquire lock quickly. Document may be heavily contested.');
+                }
+            } catch (e) {
+                _addGlobalResult(summary, results, 'Locking Service', 'ERROR', 'Locking service failure: ' + e.message, e);
             }
         }
     },

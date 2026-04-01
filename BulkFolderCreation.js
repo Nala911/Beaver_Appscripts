@@ -49,7 +49,9 @@ function _BulkFolder_ensureSheetExistsAndActivate() {
 
 /** Opens the Bulk Folder sidebar and ensures the sheet exists. */
 function BulkFolder_showSidebar() {
-  _App_launchTool('BULK_FOLDER');
+  return Logger.run('BULK_FOLDER', 'Open Sidebar', function () {
+    _App_launchTool('BULK_FOLDER');
+  });
 }
 
 /** Alias for menu compatibility. */

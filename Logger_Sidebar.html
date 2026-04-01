@@ -477,12 +477,6 @@
       <span>Logs are flushed to the sheet at the end of each tool operation. Newer logs appear at the <strong>BOTTOM</strong> of the sheet.</span>
     </div>
 
-    <!-- Save Button -->
-    <button class="btn btn-primary" id="saveBtn" onclick="saveSettings()">
-      <span class="material-icons-outlined">save</span>
-      Save Preferences
-    </button>
-
   </div>
 
   <!-- Loading Overlay -->
@@ -554,6 +548,7 @@
     function onToggleChange() {
       var isOn = document.getElementById('loggingToggle').checked;
       updateBadge(isOn);
+      saveSettings();
     }
 
     function updateBadge(isOn) {
