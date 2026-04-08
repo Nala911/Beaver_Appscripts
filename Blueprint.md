@@ -1,14 +1,17 @@
-# 🦫 Beaver Appscripts - Blueprint & Architecture Context
+# 🦫 Beaver Appscripts - BLUEPRINT & Architecture Context
 
 ## Overview
-This file serves as a reference guide for AI agents and developers working on the "Beaver Appscripts" workspace. The project is a suite of Google Sheets automation tools with custom HTML sidebars. This blueprint contains details on file connections, architectural patterns, global variables, and module structures to minimize time spent understanding the codebase.
+This file serves as the absolute Architectural Map for AI agents working on the "Beaver Appscripts" workspace. It contains details on file connections, global state management, and module structures.
+
+> [!NOTE]
+> Workflow rules and procedural instructions for agents are strictly located in `AGENTS.md`. Refer to that file before making any changes.
 
 ## 📂 File System Structure
 
 The project consists of `.js` (Google Apps Script server-side code) and `.html` (Sidebar interfaces) pairs for each tool.
 
 ### Core System Files
-The legacy `00_AppConfig.js` monolith has been split into sequential modules evaluated in order:
+The system logic is split into sequential modules evaluated in order:
 - `00_Config_Constants.js`: Global registries, `SHEET_NAMES`, `APP_PROPS`, and enum structures.
 - `01_Config_Theme.js`: Default theme definitions, colors, and `SHEET_THEME` proxy.
 - `02_Config_Storage.js`: Unified properties service wrappers (`setAppProp`, `getAppProp`).
@@ -49,7 +52,6 @@ Each tool has a Backend file, a Frontend sidebar file, and a global Entry Functi
 > **Large File Warning:** The following files are large (25KB+). Use surgical reads.
 > - `DriveFileDetails.gs.js` (~32KB): Complex Drive synchronization logic.
 > - `Contacts_Sync.js` (~27KB): People API integration logic.
-> - *Note: `00_AppConfig.js`, `PipelineSidebar.html`, and `ThemeEditorSidebar.html` have been modularized into smaller files and are no longer monolithic.*
 
 ## 🔑 Google API Scopes & Services Used
 
@@ -98,22 +100,14 @@ The codebase follows a strict and predictable design pattern across all tools:
 ### 1. Decentralized Plugin Architecture (`BeaverEngine`)
 The project uses a decentralized registration pattern to manage tools.
 - **`BeaverEngine`**: A singleton in `08_Engine_Core.js` that handles tool registration (`registerTool`) and retrieval (`getTool`).
-- **Self-Registration**: Each tool module (e.g., `Mail_Sender.js`) registers its own configuration block at the top of its file.
-- **Monolith Removal**: The old `APP_REGISTRY` monolith has been replaced. A backward-compatibility Proxy is maintained in `08_Engine_Core.js` for legacy code.
+- **Self-Registration**: Each tool module registers its own configuration block at the top of its file.
 - **Registry Metadata**: Configuration includes `SHEET_NAME`, `TITLE`, `SIDEBAR_HTML`, `COL_WIDTHS`, and a `COL_SCHEMA` for declarative column validations and types.
 
 ### 2. Unified Utilities (`_App_`)
-Core logic is abstracted into `_App_` prefixed functions spread across `03_Core_Utils.js` to `09_Engine_UI.js`:
-- `_App_openSidebar(toolKey)`: Opens the sidebar and ensures the sheet exists via `BeaverEngine` (`09_Engine_UI.js`).
-- `_App_ensureSheetExists(toolKey)`: Scaffolds the tool sheet based on `BeaverEngine` metadata (`06_Sheets_Helpers.js`).
-- `_App_applyBodyFormatting(sheet, numRows, config)`: Applies consistent styling and conditional rules (`07_Sheets_Formatting.js`).
-- `_App_callWithBackoff(func)`: Standardized exponential backoff for Google API calls (`03_Core_Utils.js`).
-- `_App_throttle(tracker, callsMade)`: Unified rate limiting for API batches (`03_Core_Utils.js`).
+Core logic is abstracted into `_App_` prefixed functions spread across `03_Core_Utils.js` to `09_Engine_UI.js`.
 
 ### 3. Flat Function Prefix Architecture
 To avoid naming collisions and facilitate AI interaction, functions use `ToolName_` prefixes.
-- `ToolName_publicAction()`: Exposed to sidebar.
-- `_ToolName_internalHelper()`: Internal logic.
 
 ### 4. Global Entry Points
 Entry functions for the UI menu generally look like:
@@ -124,15 +118,13 @@ function ToolName_showSidebar() {
 ```
 
 ### 5. Background Automation & Trigger Management
-Tools that require background execution (e.g., Pipeline Control) should manage their own triggers programmatically.
-- **`_ToolName_manageTrigger(isEnabled)`**: An internal helper to create or delete `ScriptApp` triggers based on user settings.
-- **Safety**: Triggers should always be checked for duplicates before creation and cleaned up thoroughly when disabled to minimize unnecessary execution.
+Tools that require background execution should manage their own triggers programmatically.
 
 ## 🌍 Global Variables & State
 
-- **`SHEET_THEME`**: A Proxy object in `01_Config_Theme.js` that provides access to theme colors and styles, lazily loading from `PropertiesService`.
+- **`SHEET_THEME`**: A Proxy object in `01_Config_Theme.js` that provides access to theme colors and styles.
 - **`SHEET_NAMES`**: Centralized mapping of internal keys to actual tab names in `00_Config_Constants.js`.
-- **`APP_PROPS`**: Metadata registry for all `PropertiesService` keys in `00_Config_Constants.js` to ensure type safety (JSON vs String) and store consistency.
+- **`APP_PROPS`**: Metadata registry for all `PropertiesService` keys in `00_Config_Constants.js`.
 
 ## 🔌 Connection Flow (Frontend <-> Backend)
 1. **Trigger**: User clicks menu or sidebar button.
@@ -141,20 +133,7 @@ Tools that require background execution (e.g., Pipeline Control) should manage t
 4. **Response**: Backend returns `{ success: true, message: "..." }`.
 
 ## 🛠️ Developer Logging Architecture
-The project employs a robust, asynchronous-style logging system to minimize the performance impact on tool execution.
-- **Transporter Pattern**: Logs are first queued into an internal buffer (`CacheService`) to avoid frequent, slow spreadsheet writes.
-- **Orchestration**: The `Logger.run()` method serves as an execution supervisor, automatically managing the `Run ID`, recording start/success events, and ensuring all buffered logs are flushed to the sheet in the `finally` block.
-- **Concurrency Safety**: The system uses `LockService.getDocumentLock()` during the "flush" phase to prevent data corruption when multiple script instances (e.g., parallel time-based triggers) attempt to write to the `🛠️ Developer Log` sheet simultaneously.
-- **Deep Context Capture**: Complex objects, Errors, and circular references are safely stringified. When an error occurs, the logger automatically attaches the most recent `executionBreadcrumbs` to provide a clear path to the failure point.
-
-## ⚠️ Standard Return Contract
-All public functions called by sidebars MUST return:
-```javascript
-{ success: true, message: "Success message" } // Or success: false
-```
-
-## 🤖 AI Agent Workflow Rules
-1. **Minimize file reads**: ONLY read the specific tool files needed.
-2. **Consult Core Modules first**: Global configuration and logic are defined in `00_Config_Constants.js` through `09_Engine_UI.js`.
-3. **Use `Logger.run()`**: Wrap primary tool operations in `Logger.run('TOOL_KEY', 'Context', () => { ... })` for consistent logging.
-4. **Follow `BeaverEngine`**: When modifying sheet structure, update the registration metadata in the tool's backend file, which registers with `BeaverEngine`.
+The project employs a robust, asynchronous-style logging system.
+- **Transporter Pattern**: Logs are first queued into `CacheService`.
+- **Orchestration**: `Logger.run()` serves as an execution supervisor.
+- **Concurrency Safety**: Uses `LockService.getDocumentLock()` during the "flush" phase.
