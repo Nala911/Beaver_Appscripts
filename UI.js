@@ -1,9 +1,9 @@
 function onOpen() {
   return Logger.run('SYSTEM', 'Initialize UI', function () {
     const ui = SpreadsheetApp.getUi();
-    const menu = ui.createMenu('🦫 WorkspaceSync Tools');
+    const menu = ui.createMenu('Workspace Sync Tools');
 
-    _App_getMenuTools().forEach(function(cfg) {
+    _App_getMenuTools().forEach(function (cfg) {
       if (cfg.MENU_ENTRYPOINT) {
         menu.addItem(cfg.MENU_LABEL, cfg.MENU_ENTRYPOINT);
       }
