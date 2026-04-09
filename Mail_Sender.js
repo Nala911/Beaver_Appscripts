@@ -1,9 +1,9 @@
 /**
  * Mail_Sender Toolkit
- * Version: 5.0 (Plugin Architecture — registers with BeaverEngine)
+ * Version: 5.0 (Plugin Architecture — registers with SyncEngine)
  */
 
-BeaverEngine.registerTool('MAIL_SENDER', {
+SyncEngine.registerTool('MAIL_SENDER', {
     SHEET_NAME: SHEET_NAMES.MAIL_SENDER,
     TITLE: '📩 Mail Sender Toolkit',
     MENU_LABEL: '📩 Mail Sender',
@@ -33,7 +33,7 @@ BeaverEngine.registerTool('MAIL_SENDER', {
 });
 
 // Column-index aliases kept for backward compatibility within this file.
-// Metadata (title, sidebar, headers, widths) now lives in BeaverEngine.getTool('MAIL_SENDER').
+// Metadata (title, sidebar, headers, widths) now lives in SyncEngine.getTool('MAIL_SENDER').
 var MAIL_SENDER_CFG = {
   COLUMNS: {
     ACTION: 0, EMAIL_TO: 1, CC: 2, BCC: 3, THREAD_ID: 4,
@@ -282,7 +282,7 @@ function Mail_Sender_executeActions() {
 
         var reference = 'Row ' + (index + 2);
         if (emailSubject) reference += ' (' + emailSubject + ')';
-        Logger.info(BeaverEngine.getTool('MAIL_SENDER').TITLE, reference, rowUpdates.status);
+        Logger.info(SyncEngine.getTool('MAIL_SENDER').TITLE, reference, rowUpdates.status);
 
         updatesCount++;
         _App_setProgress('MAIL_SENDER', updatesCount, validRowsCount);
@@ -290,7 +290,7 @@ function Mail_Sender_executeActions() {
       } catch (e) {
         rowUpdates.status = e.message;
         var reference = 'Row ' + (index + 2);
-        Logger.error(BeaverEngine.getTool('MAIL_SENDER').TITLE, reference, e);
+        Logger.error(SyncEngine.getTool('MAIL_SENDER').TITLE, reference, e);
       }
 
       return rowUpdates;
@@ -322,7 +322,7 @@ function Mail_Sender_executeActions() {
       _App_clearProgress('MAIL_SENDER');
 
       var finalResult = updatesCount + " actions processed!";
-      Logger.info(BeaverEngine.getTool('MAIL_SENDER').TITLE, "Execute Actions", finalResult);
+      Logger.info(SyncEngine.getTool('MAIL_SENDER').TITLE, "Execute Actions", finalResult);
     return finalResult;
   });
 }

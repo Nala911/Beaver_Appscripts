@@ -459,13 +459,13 @@
     };
 
     function refreshData() {
-      BeaverSidebar.run('MailMerge_getGmailDrafts', [], {
+      SyncSidebar.run('MailMerge_getGmailDrafts', [], {
         onSuccess: function (data) {
           populateDrafts(data.drafts);
         }
       });
 
-      BeaverSidebar.run('MailMerge_getQuota', [], {
+      SyncSidebar.run('MailMerge_getQuota', [], {
         onSuccess: function (data) {
           updateQuota(data.remaining);
         },
@@ -523,7 +523,7 @@
       setStatus('working', 'Syncing columns...');
       log('Syncing placeholder columns...');
 
-      BeaverSidebar.run('MailMerge_syncPlaceholders', [draftId], {
+      SyncSidebar.run('MailMerge_syncPlaceholders', [draftId], {
         onSuccess: function (res) {
           setStatus('ready');
           log(res.message, "success");
@@ -548,7 +548,7 @@
         setStatus('working', 'Processing Items...');
       }
 
-      BeaverSidebar.run('MailMerge_executeActions', [draftId, start], {
+      SyncSidebar.run('MailMerge_executeActions', [draftId, start], {
         onSuccess: function (response) { showResult(response, draftId); },
         toast: false
       });
@@ -564,7 +564,7 @@
         setStatus('ready');
         log(response.message || "Batch process finished successfully.", "success");
         // Update quota after returning entirely
-        BeaverSidebar.run('MailMerge_getQuota', [], {
+        SyncSidebar.run('MailMerge_getQuota', [], {
           onSuccess: function (data) { updateQuota(data.remaining); },
           toast: false
         });
@@ -608,7 +608,7 @@
     function handleError(err) {
       log(err, 'error');
       setStatus('error');
-      BeaverSidebar.logClientError(err, 'Sidebar Operation');
+      SyncSidebar.logClientError(err, 'Sidebar Operation');
     }
   </script>
 </body>

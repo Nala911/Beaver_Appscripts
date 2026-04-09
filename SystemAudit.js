@@ -10,7 +10,7 @@ var AuditRules = [
     {
         name: 'Registry Metadata Integrity',
         run: function (cfg, sheet, report) {
-            var issues = BeaverEngine.auditTool(cfg.TOOL_KEY || report.key);
+            var issues = SyncEngine.auditTool(cfg.TOOL_KEY || report.key);
             if (issues.length > 0) {
                 report.status = 'ERROR';
                 report.issues.push("Registry issues: " + issues.join(' | '));
@@ -272,7 +272,7 @@ var GlobalAuditRules = [
                     deepMergeTheme_(DEFAULT_SHEET_THEME, JSON.parse(themeStr));
                 }
             } catch (e) {
-                _addGlobalResult(summary, results, 'Storage Health', 'ERROR', 'BEAVER_SHEET_THEME contains malformed JSON. UI layers may crash: ' + e.message, e);
+                _addGlobalResult(summary, results, 'Storage Health', 'ERROR', 'WorkspaceSync_SHEET_THEME contains malformed JSON. UI layers may crash: ' + e.message, e);
             }
         }
     }
@@ -303,8 +303,8 @@ function _addGlobalResult(summary, results, title, status, msg, errorObj) {
  */
 function Logger_runSystemAudit() {
     return Logger.run('LOGS', 'System Audit', function () {
-        var tools = BeaverEngine.getAllTools();
-        var keys = BeaverEngine.getToolKeys();
+        var tools = SyncEngine.getAllTools();
+        var keys = SyncEngine.getToolKeys();
         var results = [];
         var summary = { passed: 0, warnings: 0, errors: 0 };
 

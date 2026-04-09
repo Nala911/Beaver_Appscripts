@@ -54,7 +54,7 @@ function _App_cloneFormatConfig_(config) {
 }
 
 function _App_buildRuntimeToolShape(toolKey, dynamicHeaders, options) {
-    var cfg = BeaverEngine.getTool(toolKey);
+    var cfg = SyncEngine.getTool(toolKey);
     var runtimeHeaders = (cfg.HEADERS || []).slice();
     var runtimeWidths = (cfg.COL_WIDTHS || []).slice();
     var runtimeFormat = _App_cloneFormatConfig_(cfg.FORMAT_CONFIG);
@@ -95,7 +95,7 @@ function _App_buildRuntimeToolShape(toolKey, dynamicHeaders, options) {
 }
 
 function _App_syncDynamicColumns(toolKey, dynamicHeaders, options) {
-    var cfg = BeaverEngine.getTool(toolKey);
+    var cfg = SyncEngine.getTool(toolKey);
     var uniqueDynamicHeaders = [];
     (dynamicHeaders || []).forEach(function(header) {
         var normalized = String(header || '').trim();

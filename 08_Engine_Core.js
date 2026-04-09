@@ -1,8 +1,8 @@
 // ==========================================
-// BeaverEngine — Plugin Registration System
+// SyncEngine — Plugin Registration System
 // ==========================================
 
-var BeaverEngine = (function() {
+var SyncEngine = (function() {
     var registry = {};
 
     function _validateToolConfig(key, config) {
@@ -52,7 +52,7 @@ var BeaverEngine = (function() {
         }
 
         registry[key] = config;
-        // console.log("BeaverEngine: Registered " + key);
+        // console.log("SyncEngine: Registered " + key);
     }
 
     /**
@@ -60,7 +60,7 @@ var BeaverEngine = (function() {
      */
     function getTool(key) {
         var cfg = registry[key];
-        if (!cfg) throw new Error('Unknown tool key: "' + key + '". Ensure the tool is registered via BeaverEngine.registerTool().');
+        if (!cfg) throw new Error('Unknown tool key: "' + key + '". Ensure the tool is registered via SyncEngine.registerTool().');
         return cfg;
     }
 
@@ -94,10 +94,10 @@ var BeaverEngine = (function() {
  */
 var APP_REGISTRY = new Proxy({}, {
     get: function(target, prop) {
-        return BeaverEngine.getTool(prop);
+        return SyncEngine.getTool(prop);
     },
     ownKeys: function() {
-        return Object.keys(BeaverEngine.getAllTools());
+        return Object.keys(SyncEngine.getAllTools());
     },
     getOwnPropertyDescriptor: function(target, prop) {
         return { enumerable: true, configurable: true };

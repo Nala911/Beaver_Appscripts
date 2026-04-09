@@ -1,7 +1,7 @@
-# 🦫 Beaver Appscripts - BLUEPRINT & Architecture Context
+# 🦫 WorkspaceSync Appscripts - BLUEPRINT & Architecture Context
 
 ## Overview
-This file serves as the absolute Architectural Map for AI agents working on the "Beaver Appscripts" workspace. It contains details on file connections, global state management, and module structures.
+This file serves as the absolute Architectural Map for AI agents working on the "WorkspaceSync Appscripts" workspace. It contains details on file connections, global state management, and module structures.
 
 > [!NOTE]
 > Workflow rules and procedural instructions for agents are strictly located in `AGENTS.md`. Refer to that file before making any changes.
@@ -20,12 +20,12 @@ The system logic is split into sequential modules evaluated in order:
 - `05_Core_State.js`: Global application state management.
 - `06_Sheets_Helpers.js`: Low-level spreadsheet operations (`_App_ensureSheetExists`, etc.).
 - `07_Sheets_Formatting.js`: UI/styling application to sheets (`_App_applyBodyFormatting`).
-- `08_Engine_Core.js`: The `BeaverEngine` plugin registration and retrieval system.
+- `08_Engine_Core.js`: The `SyncEngine` plugin registration and retrieval system.
 - `09_Engine_UI.js`: UI abstractions for opening sidebars and dialogs.
-- `UI.js`: The central UI orchestrator. Responsible for creating the custom "🦫 Beaver Tools" menu (`onOpen`), providing the global wrapper for the Theme Editor sidebar, and connecting user actions to the tools.
+- `UI.js`: The central UI orchestrator. Responsible for creating the custom "🦫 WorkspaceSync Tools" menu (`onOpen`), providing the global wrapper for the Theme Editor sidebar, and connecting user actions to the tools.
 - `SidebarShared.html`: Shared HTML, CSS, and JS components to eliminate redundant sidebar code and infinite spinners.
-- `01_SheetManager.js`: Centralized data access object (DAO). Uses `BeaverEngine` configurations to map sheet data to JavaScript objects and vice-versa.
-- `Logger.js`: Unified logging system. Provides `Logger.info`, `Logger.error`, etc., using a buffered transporter architecture with `CacheService` and `LockService` for performant, concurrent-safe logging. Registers itself with `BeaverEngine`.
+- `01_SheetManager.js`: Centralized data access object (DAO). Uses `SyncEngine` configurations to map sheet data to JavaScript objects and vice-versa.
+- `Logger.js`: Unified logging system. Provides `Logger.info`, `Logger.error`, etc., using a buffered transporter architecture with `CacheService` and `LockService` for performant, concurrent-safe logging. Registers itself with `SyncEngine`.
 - `SystemAudit.js`: Runs comprehensive audits across all registered tools, verifying sheet integrity, API access, and schema setup, and generates AI debug output logs.
 - `Logger_SidebarController.js`: Backend controller for the Developer Log sidebar, handling client-to-server interactions like fetching logs and running system audits.
 - `appsscript.json` / `.clasp.json`: Google Apps Script configuration and Clasp deployment environment details.
@@ -78,7 +78,7 @@ All keys used across the codebase. **Do NOT invent new key names** — check her
 
 | Key | File | Store Type | Purpose |
 |---|---|---|---|
-| `BEAVER_SHEET_THEME` | `01_Config_Theme.js` | `DocumentProperties` | Custom theme JSON overrides |
+| `WorkspaceSync_SHEET_THEME` | `01_Config_Theme.js` | `DocumentProperties` | Custom theme JSON overrides |
 | `SYSTEM_ENABLED` | `PipelineControl.js` | `ScriptProperties` | Master on/off toggle for pipeline |
 | `DOCS_MERGE_TEMPLATE_URL` | `Docs_Merge_Code.js` | `DocumentProperties` | Saved template Doc URL |
 | `DOCS_MERGE_FOLDER_URL` | `Docs_Merge_Code.js` | `DocumentProperties` | Saved output folder URL |
@@ -97,9 +97,9 @@ All keys used across the codebase. **Do NOT invent new key names** — check her
 
 The codebase follows a strict and predictable design pattern across all tools:
 
-### 1. Decentralized Plugin Architecture (`BeaverEngine`)
+### 1. Decentralized Plugin Architecture (`SyncEngine`)
 The project uses a decentralized registration pattern to manage tools.
-- **`BeaverEngine`**: A singleton in `08_Engine_Core.js` that handles tool registration (`registerTool`) and retrieval (`getTool`).
+- **`SyncEngine`**: A singleton in `08_Engine_Core.js` that handles tool registration (`registerTool`) and retrieval (`getTool`).
 - **Self-Registration**: Each tool module registers its own configuration block at the top of its file.
 - **Registry Metadata**: Configuration includes `SHEET_NAME`, `TITLE`, `SIDEBAR_HTML`, `COL_WIDTHS`, and a `COL_SCHEMA` for declarative column validations and types.
 

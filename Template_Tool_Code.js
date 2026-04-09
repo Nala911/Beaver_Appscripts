@@ -1,6 +1,6 @@
 /**
  * Template Backend Tool
- * Version: 1.0 (Plugin Architecture — registers with BeaverEngine)
+ * Version: 1.0 (Plugin Architecture — registers with SyncEngine)
  * 
  * Instructions:
  * 1. Duplicate this file and rename it (e.g. `MyNewTool_Code.js`).
@@ -10,7 +10,7 @@
  */
 
 // --- TOOL REGISTRATION ---
-BeaverEngine.registerTool('TEMPLATE_TOOL', {
+SyncEngine.registerTool('TEMPLATE_TOOL', {
     IS_TEMPLATE: true, // Mark as template to skip system audits
     SHEET_NAME: '⚙️ Template Tool', 
     TITLE: '⚙️ Template Tool',

@@ -29,7 +29,7 @@ var STORE_TYPES = {
 
 var APP_PROPS = {
     // UI Theme
-    THEME: { key: 'BEAVER_SHEET_THEME', store: STORE_TYPES.DOCUMENT, isJson: true },
+    THEME: { key: 'WorkspaceSync_SHEET_THEME', store: STORE_TYPES.DOCUMENT, isJson: true },
 
     // Pipeline Control
     SYSTEM_ENABLED: { key: 'SYSTEM_ENABLED', store: STORE_TYPES.SCRIPT, isJson: false },
@@ -58,7 +58,7 @@ var APP_PROPS = {
 };
 
 var CACHE_KEYS = {
-    LOGS: 'BEAVER_DEBUG_LOGS',
+    LOGS: 'WorkspaceSync_DEBUG_LOGS',
     PROGRESS: '_PROGRESS'
 };
 

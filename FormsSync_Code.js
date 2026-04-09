@@ -1,10 +1,10 @@
 /**
  * Forms Sync Tool
- * Version: 5.0 (Plugin Architecture — registers with BeaverEngine)
+ * Version: 5.0 (Plugin Architecture — registers with SyncEngine)
  * Syncs questions and options between Google Sheets and Google Forms
  */
 
-BeaverEngine.registerTool('FORMS_SYNC', {
+SyncEngine.registerTool('FORMS_SYNC', {
     SHEET_NAME: SHEET_NAMES.FORMS_SYNC,
     TITLE: '📝 Forms Sync',
     MENU_LABEL: '📝 Google Forms',
@@ -32,7 +32,7 @@ BeaverEngine.registerTool('FORMS_SYNC', {
 
 // --- CONFIGURATION ---
 // Column-index aliases (1-based) — kept for backward compatibility.
-// Tool metadata now lives in BeaverEngine.getTool('FORMS_SYNC').
+// Tool metadata now lives in SyncEngine.getTool('FORMS_SYNC').
 var FORMSSYNC_CFG = {
     COLUMNS: {
         ACTION: 1, TITLE: 2, TYPE: 3, OPTIONS: 4, HELP_TEXT: 5, REQUIRED: 6, ID: 7
@@ -125,7 +125,7 @@ function _FormsSync_pullForm(formInput) {
                         options = cbGridRows.join("\n") + "\n||\n" + cbGridCols.join("\n");
                     }
                 } catch (propErr) {
-                    Logger.warn(BeaverEngine.getTool('FORMS_SYNC').TITLE, 'Property Error', "Error reading item properties for ID " + id + ": " + propErr);
+                    Logger.warn(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Property Error', "Error reading item properties for ID " + id + ": " + propErr);
                 }
 
                 sheetData.push(["", title, type, options, helpText, required, id]);
@@ -147,7 +147,7 @@ function _FormsSync_pullForm(formInput) {
             }
 
             // Apply body formatting via shared utility
-            _App_applyBodyFormatting(sheet, sheetData.length, BeaverEngine.getTool('FORMS_SYNC').FORMAT_CONFIG);
+            _App_applyBodyFormatting(sheet, sheetData.length, SyncEngine.getTool('FORMS_SYNC').FORMAT_CONFIG);
 
             // Save Form ID to PropertiesService for syncing back
             _App_setProperty(APP_PROPS.FORMS_CURRENT_FORM, formId);
@@ -243,7 +243,7 @@ function _FormsSync_syncToForm() {
                         });
 
                         updateObj.id = targetItem.getId().toString();
-                        Logger.info(BeaverEngine.getTool('FORMS_SYNC').TITLE, 'Item: ' + title, '✅ Created');
+                        Logger.info(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Item: ' + title, '✅ Created');
                         updateObj.action = "";
                     }
                     else if (action === "UPDATE") {
@@ -260,7 +260,7 @@ function _FormsSync_syncToForm() {
                                 updItem.setHelpText(helpText);
                                 _applyItemProperties(updItem, type, required, optionsArr, gridRows, gridCols);
                             });
-                            Logger.info(BeaverEngine.getTool('FORMS_SYNC').TITLE, 'Item: ' + title, '✅ Updated');
+                            Logger.info(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Item: ' + title, '✅ Updated');
                         } else {
                             // Type changed! Google Forms API doesn't allow changing types of existing items.
                             // We must cache the index, delete the old, and create a new item of the target type.
@@ -296,7 +296,7 @@ function _FormsSync_syncToForm() {
                             });
 
                             updateObj.id = newItem.getId().toString();
-                            Logger.info(BeaverEngine.getTool('FORMS_SYNC').TITLE, 'Item: ' + title, '✅ Updated (Type Recreated)');
+                            Logger.info(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Item: ' + title, '✅ Updated (Type Recreated)');
                         }
                         updateObj.action = "";
                     }
@@ -305,14 +305,14 @@ function _FormsSync_syncToForm() {
                         var delItem = _App_callWithBackoff(function () { return form.getItemById(parseInt(id, 10)); });
                         if (delItem) {
                             _App_callWithBackoff(function () { form.deleteItem(delItem); });
-                            Logger.info(BeaverEngine.getTool('FORMS_SYNC').TITLE, 'ID Map: ' + id, '🗑️ Removed');
+                            Logger.info(SyncEngine.getTool('FORMS_SYNC').TITLE, 'ID Map: ' + id, '🗑️ Removed');
                         } else {
-                            Logger.info(BeaverEngine.getTool('FORMS_SYNC').TITLE, 'ID Map: ' + id, '⚠️ Already Deleted');
+                            Logger.info(SyncEngine.getTool('FORMS_SYNC').TITLE, 'ID Map: ' + id, '⚠️ Already Deleted');
                         }
                         updateObj.action = "";
                     }
                 } catch (err) {
-                    Logger.error(BeaverEngine.getTool('FORMS_SYNC').TITLE, 'Row ' + i, err);
+                    Logger.error(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Row ' + i, err);
                 }
 
                 rowUpdates.push(updateObj);
@@ -370,7 +370,7 @@ function _applyItemProperties(targetItem, type, required, optionsArr, gridRows, 
             if (gridCols && gridCols.length > 0) cbGridItem.setColumns(gridCols);
         }
     } catch (e) {
-        Logger.warn(BeaverEngine.getTool('FORMS_SYNC').TITLE, 'Apply Properties', "Failed to apply properties", e);
+        Logger.warn(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Apply Properties', "Failed to apply properties", e);
     }
 }
 
@@ -430,7 +430,7 @@ function _setChoicesSafe(item, optionsArr, type) {
             item.showOtherOption(true);
         }
     } catch (e) {
-        Logger.warn(BeaverEngine.getTool('FORMS_SYNC').TITLE, 'Set Choices', "Failed to set choices", e);
+        Logger.warn(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Set Choices', "Failed to set choices", e);
     }
 }
 // --- PUBLIC ENTRY POINTS ---
@@ -467,7 +467,7 @@ function FormsSync_getForms() {
 
             return { forms: mappedForms, savedFormId: savedFormId };
         } catch (e) {
-            Logger.error(BeaverEngine.getTool('FORMS_SYNC').TITLE, 'Get Forms', e);
+            Logger.error(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Get Forms', e);
             throw new Error("Failed to fetch forms: " + e.toString());
         }
     });

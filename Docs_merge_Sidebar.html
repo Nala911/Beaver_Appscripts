@@ -516,7 +516,7 @@
 
         function loadConfig() {
             setStatus('working', 'Loading settings...');
-            BeaverSidebar.run('DocsMerge_getConfig', [], {
+            SyncSidebar.run('DocsMerge_getConfig', [], {
                 onSuccess: function (config) {
                     if (config.templateUrl) {
                         document.getElementById('template-url').value = config.templateUrl;
@@ -578,7 +578,7 @@
                 resultsBox.innerHTML = '<div class="folder-item">Searching...</div>';
                 resultsBox.classList.add('active');
 
-                BeaverSidebar.run('DocsMerge_searchFolders', [query], {
+                SyncSidebar.run('DocsMerge_searchFolders', [query], {
                     onSuccess: function (data) {
                         showSearchResults(data.results);
                     },
@@ -656,7 +656,7 @@
                 resultsBox.innerHTML = '<div class="folder-item">Searching...</div>';
                 resultsBox.classList.add('active');
 
-                BeaverSidebar.run('DocsMerge_searchDocs', [query], {
+                SyncSidebar.run('DocsMerge_searchDocs', [query], {
                     onSuccess: function (data) {
                         showSearchDocResults(data.results);
                     },
@@ -711,7 +711,7 @@
             setStatus('working', 'Syncing columns...');
             log('Syncing placeholder columns from template...');
 
-            BeaverSidebar.run('DocsMerge_syncPlaceholders', [url], {
+            SyncSidebar.run('DocsMerge_syncPlaceholders', [url], {
                 onSuccess: function (res) {
                     setStatus('ready');
                     log(res.message, "success");
@@ -750,7 +750,7 @@
                 mode: currentMode
             };
 
-            BeaverSidebar.run('DocsMerge_initExport', [config], {
+            SyncSidebar.run('DocsMerge_initExport', [config], {
                 onSuccess: function (exportData) {
                     log("Found " + exportData.rowsToProcess.length + " rows to process.", "success");
                     processNextRow(exportData, 0);
@@ -766,7 +766,7 @@
                 setStatus('working', 'Finalizing...');
 
                 const config = { mode: currentMode };
-                BeaverSidebar.run('DocsMerge_finishExport', [config, exportData.masterDocId, exportData.folderId, exportData.rowsToProcess], {
+                SyncSidebar.run('DocsMerge_finishExport', [config, exportData.masterDocId, exportData.folderId, exportData.rowsToProcess], {
                     onSuccess: function (res) {
                         setStatus('ready');
                         log(res.message, "success");
@@ -785,7 +785,7 @@
 
             const config = { mode: currentMode };
 
-            BeaverSidebar.run('DocsMerge_processRow', [item, config, exportData.masterDocId, exportData.templateId, exportData.folderId, exportData.headers, isFirst, isLast], {
+            SyncSidebar.run('DocsMerge_processRow', [item, config, exportData.masterDocId, exportData.templateId, exportData.folderId, exportData.headers, isFirst, isLast], {
                 unwrap: false,
                 onSuccess: function (res) {
                     if (res.success) {
@@ -834,7 +834,7 @@
     function handleError(err) {
       log(err, 'error');
       setStatus('error');
-      BeaverSidebar.logClientError(err, 'Sidebar Operation');
+      SyncSidebar.logClientError(err, 'Sidebar Operation');
     }
     </script>
 </body>

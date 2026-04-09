@@ -569,16 +569,16 @@
         };
 
         function toggleLoading(show, text) {
-            BeaverSidebar.toggleLoading(show, text);
+            SyncSidebar.toggleLoading(show, text);
         }
 
         function showToast(msg, isError) {
-            BeaverSidebar.showToast(msg, isError, { duration: 3500 });
+            SyncSidebar.showToast(msg, isError, { duration: 3500 });
         }
 
         function refreshGroupsData() {
             toggleLoading(true, 'Loading groups…');
-            BeaverSidebar.run('Contacts_getLoadData', [], {
+            SyncSidebar.run('Contacts_getLoadData', [], {
                 context: 'Refresh Groups',
                 onSuccess: data => {
                     allGroups = data.groups.filter(g => g.id !== 'all');
@@ -635,7 +635,7 @@
         }
 
         function modifyGroup(groupName, action) {
-            BeaverSidebar.run('Contacts_modifyGroupInActiveRow', [groupName, action], {
+            SyncSidebar.run('Contacts_modifyGroupInActiveRow', [groupName, action], {
                 context: 'Modify Group',
                 unwrap: false,
                 onSuccess: res => {
@@ -650,7 +650,7 @@
             if (!name) return;
 
             toggleLoading(true, 'Creating group…');
-            BeaverSidebar.run('Contacts_createContactGroup', [name], {
+            SyncSidebar.run('Contacts_createContactGroup', [name], {
                 context: 'Create Group',
                 onSuccess: newGroup => {
                     input.value = '';
@@ -666,7 +666,7 @@
 
         function pullData() {
             toggleLoading(true, 'Pulling contacts…');
-            BeaverSidebar.run('Contacts_pullContacts', [{ groupIds: ['all'] }], {
+            SyncSidebar.run('Contacts_pullContacts', [{ groupIds: ['all'] }], {
                 context: 'Pull Contacts',
                 onSuccess: res => {
                     toggleLoading(false);
@@ -678,7 +678,7 @@
 
         function pushData() {
             toggleLoading(true, 'Pushing changes…');
-            BeaverSidebar.run('Contacts_pushChanges', [], {
+            SyncSidebar.run('Contacts_pushChanges', [], {
                 context: 'Push Changes',
                 onSuccess: res => {
                     toggleLoading(false);

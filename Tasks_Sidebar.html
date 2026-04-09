@@ -636,7 +636,7 @@
         // ── Init ──
         window.onload = function () {
             lucide.createIcons();
-            BeaverSidebar.run('Tasks_getTaskLists', [], {
+            SyncSidebar.run('Tasks_getTaskLists', [], {
                 onSuccess: function (data) {
                     renderLists(data.lists);
                 },

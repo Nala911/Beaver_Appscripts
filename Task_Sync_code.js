@@ -1,9 +1,9 @@
 /**
  * Google Tasks <-> Sheets Two-Way Sync
- * Version: 5.0 (Plugin Architecture — registers with BeaverEngine)
+ * Version: 5.0 (Plugin Architecture — registers with SyncEngine)
  */
 
-BeaverEngine.registerTool('TASKS', {
+SyncEngine.registerTool('TASKS', {
     REQUIRED_SERVICES: [ { name: 'Tasks API', test: function() { return typeof Tasks !== 'undefined'; } } ],
     SHEET_NAME: SHEET_NAMES.TASKS,
     TITLE: '✅ Task Manager',
@@ -38,7 +38,7 @@ BeaverEngine.registerTool('TASKS', {
 // ==========================================
 
 function _TaskSync_getConfig() {
-  return BeaverEngine.getTool('TASKS');
+  return SyncEngine.getTool('TASKS');
 }
 
 // ==========================================
@@ -95,7 +95,7 @@ function Tasks_getTaskLists() {
         })
       });
     } catch (e) {
-      Logger.error(BeaverEngine.getTool('TASKS').TITLE, 'Get Task Lists', e);
+      Logger.error(SyncEngine.getTool('TASKS').TITLE, 'Get Task Lists', e);
       throw new Error('Failed to fetch lists: ' + e.message);
     }
   });
@@ -425,9 +425,9 @@ function _TaskSync_pushTasks() {
 
     var reference = 'Row ' + rowIndex + ' (' + (row[map['TITLE']] || 'Unknown') + ')';
     if (isError) {
-      Logger.error(BeaverEngine.getTool('TASKS').TITLE, reference, errorObj || logMsg);
+      Logger.error(SyncEngine.getTool('TASKS').TITLE, reference, errorObj || logMsg);
     } else if (logMsg) {
-      Logger.info(BeaverEngine.getTool('TASKS').TITLE, reference, logMsg);
+      Logger.info(SyncEngine.getTool('TASKS').TITLE, reference, logMsg);
     }
 
     if (!isError && map['ACTION'] !== undefined) {

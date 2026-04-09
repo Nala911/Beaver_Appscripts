@@ -5,7 +5,7 @@
  * Opens a tool's sidebar, ensuring the sheet exists first.
  */
 function _App_openSidebar(toolKey, postCreateCallback) {
-    var cfg = BeaverEngine.getTool(toolKey);
+    var cfg = SyncEngine.getTool(toolKey);
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName(cfg.SHEET_NAME);
 
@@ -23,7 +23,7 @@ function _App_openSidebar(toolKey, postCreateCallback) {
 
 function _App_launchTool(toolKey, postCreateCallback) {
     return Logger.run(toolKey, 'Launch Tool', function () {
-        var cfg = BeaverEngine.getTool(toolKey);
+        var cfg = SyncEngine.getTool(toolKey);
         var launchMode = cfg.LAUNCH_MODE || TOOL_LAUNCH_MODES.SIDEBAR;
 
         if (launchMode === TOOL_LAUNCH_MODES.MODAL) {
@@ -40,8 +40,8 @@ function _App_launchTool(toolKey, postCreateCallback) {
 }
 
 function _App_getMenuTools() {
-    return Object.keys(BeaverEngine.getAllTools())
-        .map(function(key) { return BeaverEngine.getTool(key); })
+    return Object.keys(SyncEngine.getAllTools())
+        .map(function(key) { return SyncEngine.getTool(key); })
         .filter(function(cfg) { return !!cfg.MENU_LABEL; })
         .sort(function(a, b) {
             if (a.MENU_ORDER !== b.MENU_ORDER) return a.MENU_ORDER - b.MENU_ORDER;
@@ -57,7 +57,7 @@ function _App_getMenuTools() {
  */
 function _App_ensureSheetExists(toolKey, postCreateCallback) {
     return Logger.run(toolKey, 'Scaffold Sheet', function () {
-        var cfg = BeaverEngine.getTool(toolKey);
+        var cfg = SyncEngine.getTool(toolKey);
         if (!_App_canScaffoldSheet(cfg)) {
             throw new Error("Tool '" + toolKey + "' does not define a sheet schema and cannot be scaffolded automatically.");
         }

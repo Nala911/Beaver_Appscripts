@@ -1,7 +1,7 @@
 function onOpen() {
   return Logger.run('SYSTEM', 'Initialize UI', function () {
     const ui = SpreadsheetApp.getUi();
-    const menu = ui.createMenu('🦫 Beaver Tools');
+    const menu = ui.createMenu('🦫 WorkspaceSync Tools');
 
     _App_getMenuTools().forEach(function(cfg) {
       if (cfg.MENU_ENTRYPOINT) {

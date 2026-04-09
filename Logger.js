@@ -1,9 +1,9 @@
 /**
  * Developer Logging System
- * Version: 6.0 (Modular Transporter Architecture — registers with BeaverEngine)
+ * Version: 6.0 (Modular Transporter Architecture — registers with SyncEngine)
  */
 
-BeaverEngine.registerTool('LOGS', {
+SyncEngine.registerTool('LOGS', {
     SHEET_NAME: SHEET_NAMES.LOGS,
     TITLE: '🛠️ Developer Log',
     MENU_LABEL: '🛠️ Developer Log',
@@ -36,7 +36,7 @@ BeaverEngine.registerTool('LOGS', {
 });
 
 var Logger = (function () {
-    var CACHE_KEY = typeof CACHE_KEYS !== 'undefined' ? CACHE_KEYS.LOGS : 'BEAVER_DEBUG_LOGS';
+    var CACHE_KEY = typeof CACHE_KEYS !== 'undefined' ? CACHE_KEYS.LOGS : 'WorkspaceSync_DEBUG_LOGS';
     var MAX_CACHE_ITEMS = 25;
     
     var _state = {
@@ -125,7 +125,7 @@ var Logger = (function () {
                 }
 
                 // Batch Formatting
-                var logConfig = BeaverEngine.getTool('LOGS');
+                var logConfig = SyncEngine.getTool('LOGS');
                 if (logConfig && logConfig.FORMAT_CONFIG) {
                     _App_applyBodyFormatting(sheet, sheet.getLastRow() - 1, logConfig.FORMAT_CONFIG);
                 }
@@ -149,7 +149,7 @@ var Logger = (function () {
                     var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAMES.LOGS);
                     if (sheet && sheet.getLastRow() > 1) {
                         sheet.deleteRows(2, sheet.getLastRow() - 1);
-                        var logConfig = BeaverEngine.getTool('LOGS');
+                        var logConfig = SyncEngine.getTool('LOGS');
                         if (logConfig) _App_applyBodyFormatting(sheet, 0, logConfig.FORMAT_CONFIG);
                     }
                 } finally {
@@ -264,7 +264,7 @@ var Logger = (function () {
             _state.depth++;
             this.setRunId();
             var cfg = { TITLE: toolKey };
-            try { cfg = BeaverEngine.getTool(toolKey); } catch (e) {}
+            try { cfg = SyncEngine.getTool(toolKey); } catch (e) {}
             var source = cfg.TITLE;
 
             this.info(source, reference, "🚀 Execution started");

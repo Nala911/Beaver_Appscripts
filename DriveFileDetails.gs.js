@@ -1,9 +1,9 @@
 /**
  * DRIVE SYNC MANAGER
- * Server-side Logic — Version 5.0 (Plugin Architecture — registers with BeaverEngine)
+ * Server-side Logic — Version 5.0 (Plugin Architecture — registers with SyncEngine)
  */
 
-BeaverEngine.registerTool('DRIVE_SYNC', {
+SyncEngine.registerTool('DRIVE_SYNC', {
     REQUIRED_SERVICES: [ { name: 'Drive API', test: function() { return typeof Drive !== 'undefined'; } } ],
     SHEET_NAME: SHEET_NAMES.DRIVE_SYNC,
     TITLE: '💾 Drive Sync Manager',
@@ -43,7 +43,7 @@ BeaverEngine.registerTool('DRIVE_SYNC', {
    CONFIGURATION
    ========================================================================== */
 
-// Column-index aliases — kept for backward-compat; metadata now in BeaverEngine.getTool('DRIVE_SYNC').
+// Column-index aliases — kept for backward-compat; metadata now in SyncEngine.getTool('DRIVE_SYNC').
 var DRIVE_SYNC_COL = {
   ACTION: 0, NAME: 1, DESC: 2, STARRED: 3, TYPE: 4,
   EDITORS: 5, VIEWERS: 6, IS_PUBLIC: 7, PATH: 8,
@@ -283,7 +283,7 @@ function Drive_pullFromDrive(targetFolderId, isShallow) {
           });
         } catch (e) {
           if (e.message && e.message.indexOf("Time limit") !== -1) throw e;
-          Logger.warn(BeaverEngine.getTool('DRIVE_SYNC').TITLE, 'recursiveFetch', "Error fetching folder " + parentId + ": " + e.message);
+          Logger.warn(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'recursiveFetch', "Error fetching folder " + parentId + ": " + e.message);
         }
       }
 
@@ -318,7 +318,7 @@ function Drive_pullFromDrive(targetFolderId, isShallow) {
         try {
           var actualRoot = Drive.Files.get("root", { fields: "name", supportsAllDrives: true });
           if (actualRoot && actualRoot.name) rootFolderName = actualRoot.name;
-        } catch (e) { Logger.warn(BeaverEngine.getTool('DRIVE_SYNC').TITLE, 'Path Resolution', "Could not fetch root name, using default."); }
+        } catch (e) { Logger.warn(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'Path Resolution', "Could not fetch root name, using default."); }
       }
 
       if (targetFolderId === "root" || foundSharedDriveRoot) {
@@ -378,7 +378,7 @@ function Drive_pullFromDrive(targetFolderId, isShallow) {
         return getPath(item.parentId, currentPath);
       };
 
-      var headers = BeaverEngine.getTool('DRIVE_SYNC').HEADERS;
+      var headers = SyncEngine.getTool('DRIVE_SYNC').HEADERS;
       for (var i = 0; i < allItems.length; i++) {
         var item = allItems[i];
         var parentId = item._traversalParentId || ((item.parents && item.parents.length > 0) ? item.parents[0] : "");
@@ -413,13 +413,13 @@ function Drive_pullFromDrive(targetFolderId, isShallow) {
         var range = sheet.getRange(rowParams.start, 1, rowParams.total, rows[0].length);
         range.setValues(rows);
 
-        _App_applyBodyFormatting(sheet, rows.length, BeaverEngine.getTool('DRIVE_SYNC').FORMAT_CONFIG);
+        _App_applyBodyFormatting(sheet, rows.length, SyncEngine.getTool('DRIVE_SYNC').FORMAT_CONFIG);
 
         var msg = "Successfully pulled " + rows.length + " items from " + (targetFolderId === "root" ? "Root Drive" : rootObj.name) + ".";
         if (isPartialPull) {
           msg = "⚠️ Partial Pull: " + msg + " (Execution Time Limit Reached. Run again to continue)";
         }
-        Logger.info(BeaverEngine.getTool('DRIVE_SYNC').TITLE, 'Pull Complete', msg);
+        Logger.info(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'Pull Complete', msg);
         return msg;
       } else {
         return "Target folder is empty.";
@@ -506,11 +506,11 @@ function Drive_runPushSequence() {
           if (resultValues.mime) fullSheetData[arrayIndex][DRIVE_SYNC_COL.MIME] = resultValues.mime;
           if (resultValues.size) fullSheetData[arrayIndex][DRIVE_SYNC_COL.SIZE] = resultValues.size;
 
-          Logger.info(BeaverEngine.getTool('DRIVE_SYNC').TITLE, 'Row ' + rowNum + ' (' + item.rowData[DRIVE_SYNC_COL.NAME] + ')', '✅ ' + statusMsg);
+          Logger.info(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'Row ' + rowNum + ' (' + item.rowData[DRIVE_SYNC_COL.NAME] + ')', '✅ ' + statusMsg);
           log("Row " + rowNum + ": " + statusMsg);
 
         } catch (e) {
-          Logger.error(BeaverEngine.getTool('DRIVE_SYNC').TITLE, 'Row ' + rowNum + ' (' + item.rowData[DRIVE_SYNC_COL.NAME] + ')', e);
+          Logger.error(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'Row ' + rowNum + ' (' + item.rowData[DRIVE_SYNC_COL.NAME] + ')', e);
           log("Row " + rowNum + " Error: " + e.message);
         }
       }
@@ -544,7 +544,7 @@ function Drive_setupSheet(sheet) {
 
     _DriveSync_initializeHeaders(sheet);
     
-    var cfg = BeaverEngine.getTool('DRIVE_SYNC');
+    var cfg = SyncEngine.getTool('DRIVE_SYNC');
     if (cfg.COL_WIDTHS) {
       cfg.COL_WIDTHS.forEach(function (w, i) {
         if (w !== null && w !== undefined) sheet.setColumnWidth(i + 1, w);
@@ -561,13 +561,13 @@ function Drive_setupSheet(sheet) {
    ========================================================================== */
 
 function _DriveSync_validateHeaders(sheet) {
-  var headers = BeaverEngine.getTool('DRIVE_SYNC').HEADERS;
+  var headers = SyncEngine.getTool('DRIVE_SYNC').HEADERS;
   var currentHeaders = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
   if (currentHeaders[0] !== headers[0] || currentHeaders[DRIVE_SYNC_COL.ITEM_ID] !== headers[DRIVE_SYNC_COL.ITEM_ID]) {
     // Auto-fix corrupted headers instead of blocking the operation
     console.warn("Sheet headers appear corrupted. Auto-resetting headers...");
     _DriveSync_initializeHeaders(sheet);
-    var cfg = BeaverEngine.getTool('DRIVE_SYNC');
+    var cfg = SyncEngine.getTool('DRIVE_SYNC');
     // Schema-driven validation handles this on sheet load.
   }
 }
@@ -646,7 +646,7 @@ function _DriveSync_getMimeTypeFromFriendly(friendlyType) {
 }
 
 function _DriveSync_initializeHeaders(sheet) {
-  var headers = BeaverEngine.getTool('DRIVE_SYNC').HEADERS;
+  var headers = SyncEngine.getTool('DRIVE_SYNC').HEADERS;
   sheet.getRange(1, 1, 1, headers.length).setValues([headers])
     .setFontWeight(SHEET_THEME.LAYOUT.HEADER_WEIGHT)
     .setBackground(SHEET_THEME.HEADER)

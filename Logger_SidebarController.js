@@ -69,7 +69,7 @@ function Logger_getLastRunSummary() {
             var lastRow = sheet.getLastRow();
             var startRow = Math.max(2, lastRow - 99);
             var numRows = lastRow - startRow + 1;
-            var numCols = BeaverEngine.getTool('LOGS').HEADERS.length;
+            var numCols = SyncEngine.getTool('LOGS').HEADERS.length;
             var data = sheet.getRange(startRow, 1, numRows, numCols).getValues();
 
             var lastRunId = data[data.length - 1][1]; // Col B (Run ID) of bottom row

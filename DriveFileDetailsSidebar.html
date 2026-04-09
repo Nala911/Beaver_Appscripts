@@ -749,7 +749,7 @@
         function checkAndPush() {
             setStatus('working', 'Checking...');
             log("Checking pending changes...");
-            BeaverSidebar.run('Drive_getPendingStats', [], {
+            SyncSidebar.run('Drive_getPendingStats', [], {
                 onSuccess: stats => {
                     if (stats.total === 0) {
                         log("No pending changes found.", 'info');

@@ -1,9 +1,9 @@
 /**
  * Pipeline Control Center
- * Version: 4.0 (Plugin Architecture — registers with BeaverEngine)
+ * Version: 4.0 (Plugin Architecture — registers with SyncEngine)
  */
 
-BeaverEngine.registerTool('PIPELINE', {
+SyncEngine.registerTool('PIPELINE', {
     SHEET_NAME: SHEET_NAMES.PIPELINE,
     TITLE: '⛓ Pipeline Control Center',
     MENU_LABEL: '⛓  Control Center',
@@ -232,7 +232,7 @@ function Pipeline_runSelectedPipelines(rowIndexes) {
     return Logger.run('PIPELINE', 'Run Selected', function () {
         return _App_withDocumentLock('PIPELINE_RUN_SELECTED', function () {
             var sheet = SheetManager.getSheet('PIPELINE');
-            var colCount = BeaverEngine.getTool('PIPELINE').FORMAT_CONFIG.COL_SCHEMA.length;
+            var colCount = SyncEngine.getTool('PIPELINE').FORMAT_CONFIG.COL_SCHEMA.length;
             var results = [];
 
             for (var i = 0; i < rowIndexes.length; i++) {
@@ -369,9 +369,9 @@ function _Pipeline_runPipeline(sheet, rowIdx, rowData) {
 
     var reference = pipelineName ? pipelineName : ('Row ' + rowIdx);
     if (isSuccess) {
-        Logger.info(BeaverEngine.getTool('PIPELINE').TITLE, reference, logMessage);
+        Logger.info(SyncEngine.getTool('PIPELINE').TITLE, reference, logMessage);
     } else {
-        Logger.error(BeaverEngine.getTool('PIPELINE').TITLE, reference, errorObj || logMessage);
+        Logger.error(SyncEngine.getTool('PIPELINE').TITLE, reference, errorObj || logMessage);
     }
 }
 
@@ -382,7 +382,7 @@ function Pipeline_formatControlCenter() {
         // Re-apply standard setup from Registry.
         // Note: _App_applyBodyFormatting already replaces all conditional format rules and
         // data validations via setConditionalFormatRules, so no pre-clear is needed.
-        var cfg = BeaverEngine.getTool('PIPELINE');
+        var cfg = SyncEngine.getTool('PIPELINE');
         _App_applyBodyFormatting(sheet, 0, cfg.FORMAT_CONFIG);
         // Schema-driven validation now handles this within _App_applyBodyFormatting
 

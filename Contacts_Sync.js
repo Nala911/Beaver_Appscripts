@@ -1,9 +1,9 @@
 /**
  * MASTER EDITION: Google Sheets <-> Google Contacts Sync
- * Version: 5.0 (Plugin Architecture — registers with BeaverEngine)
+ * Version: 5.0 (Plugin Architecture — registers with SyncEngine)
  */
 
-BeaverEngine.registerTool('CONTACTS_SYNC', {
+SyncEngine.registerTool('CONTACTS_SYNC', {
     REQUIRED_SERVICES: [ { name: 'People API', test: function() { return typeof People !== 'undefined'; } } ],
     SHEET_NAME: SHEET_NAMES.CONTACTS_SYNC,
     TITLE: '📇 Contacts Sync Master',
@@ -39,7 +39,7 @@ BeaverEngine.registerTool('CONTACTS_SYNC', {
 });
 
 // Column-index aliases — kept for backward compatibility within this file.
-// Metadata (title, sidebar, headers, widths) now lives in BeaverEngine.getTool('CONTACTS_SYNC').
+// Metadata (title, sidebar, headers, widths) now lives in SyncEngine.getTool('CONTACTS_SYNC').
 var CONTACTS_SYNC_CFG = {
     COLUMNS: {
         ACTION: 0, FIRST_NAME: 1, LAST_NAME: 2,
@@ -49,7 +49,7 @@ var CONTACTS_SYNC_CFG = {
     HEADER_ROW: 1
 };
 
-// Declarative format config now lives in BeaverEngine.getTool('CONTACTS_SYNC').FORMAT_CONFIG
+// Declarative format config now lives in SyncEngine.getTool('CONTACTS_SYNC').FORMAT_CONFIG
 
 /** @deprecated — Use _App_ensureSheetExists('CONTACTS_SYNC') instead. */
 function _ContactsSync_ensureSheetExistsAndActivate() {
@@ -214,13 +214,13 @@ function Contacts_pullContacts(request) {
         } while (pageToken);
 
         // Apply body formatting with duplicate highlighting
-        var formatConfig = JSON.parse(JSON.stringify(BeaverEngine.getTool('CONTACTS_SYNC').FORMAT_CONFIG));
+        var formatConfig = JSON.parse(JSON.stringify(SyncEngine.getTool('CONTACTS_SYNC').FORMAT_CONFIG));
         formatConfig.conditionalRules = formatConfig.conditionalRules.concat([
             { type: 'custom', formula: '=AND($F2<>"", COUNTIF($F:$F, $F2)>1)', color: SHEET_THEME.STATUS.WARNING, scope: 'custom_col', col: 6 },
             { type: 'custom', formula: '=AND($G2<>"", COUNTIF($G:$G, $G2)>1)', color: SHEET_THEME.STATUS.WARNING, scope: 'custom_col', col: 7 }
         ]);
         SheetManager.overwriteRows('CONTACTS_SYNC', outputData, {
-            totalCols: BeaverEngine.getTool('CONTACTS_SYNC').HEADERS.length,
+            totalCols: SyncEngine.getTool('CONTACTS_SYNC').HEADERS.length,
             formatConfig: formatConfig
         });
 
@@ -233,7 +233,7 @@ function Contacts_pullContacts(request) {
 function _ContactsSync_highlightDuplicates(sheet) {
     var lastRow = sheet.getLastRow();
     var numDataRows = lastRow > 1 ? lastRow - 1 : 0;
-    var formatConfig = JSON.parse(JSON.stringify(BeaverEngine.getTool('CONTACTS_SYNC').FORMAT_CONFIG));
+    var formatConfig = JSON.parse(JSON.stringify(SyncEngine.getTool('CONTACTS_SYNC').FORMAT_CONFIG));
     formatConfig.conditionalRules = formatConfig.conditionalRules.concat([
         { type: 'custom', formula: '=AND($F2<>"", COUNTIF($F:$F, $F2)>1)', color: SHEET_THEME.STATUS.WARNING, scope: 'custom_col', col: 6 },
         { type: 'custom', formula: '=AND($G2<>"", COUNTIF($G:$G, $G2)>1)', color: SHEET_THEME.STATUS.WARNING, scope: 'custom_col', col: 7 }
@@ -456,9 +456,9 @@ function Contacts_pushChanges() {
 
                 var isError = u.status && (u.status.indexOf('❌') > -1 || u.status.indexOf('⚠️') > -1);
                 if (isError) {
-                    Logger.error(BeaverEngine.getTool('CONTACTS_SYNC').TITLE, 'Row ' + rowNum, u.errorObj || u.status || 'N/A');
+                    Logger.error(SyncEngine.getTool('CONTACTS_SYNC').TITLE, 'Row ' + rowNum, u.errorObj || u.status || 'N/A');
                 } else if (u.status) {
-                    Logger.info(BeaverEngine.getTool('CONTACTS_SYNC').TITLE, 'Row ' + rowNum, u.status || 'N/A');
+                    Logger.info(SyncEngine.getTool('CONTACTS_SYNC').TITLE, 'Row ' + rowNum, u.status || 'N/A');
                 }
             }
         });
@@ -501,7 +501,7 @@ function _ContactsSync_applyGroups(resourceName, groupsStr, groupNameToId) {
 
 // Stage 1: Skeleton — headers, column widths, freeze, data validations only
 function _ContactsSync_setupSheetStructure(sheet) {
-    var headers = BeaverEngine.getTool('CONTACTS_SYNC').HEADERS;
+    var headers = SyncEngine.getTool('CONTACTS_SYNC').HEADERS;
 
     var headerRange = sheet.getRange(1, 1, 1, headers.length);
     headerRange.setValues([headers])

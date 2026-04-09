@@ -1,9 +1,9 @@
 /**
  * Mail Merge Toolkit
- * Version: 5.0 (Plugin Architecture — registers with BeaverEngine)
+ * Version: 5.0 (Plugin Architecture — registers with SyncEngine)
  */
 
-BeaverEngine.registerTool('MAIL_MERGE', {
+SyncEngine.registerTool('MAIL_MERGE', {
     SHEET_NAME: SHEET_NAMES.MAIL_MERGE,
     TITLE: '📧 Mail Merge Toolkit',
     MENU_LABEL: '📧 Mail Merge System',
@@ -34,7 +34,7 @@ BeaverEngine.registerTool('MAIL_MERGE', {
 });
 
 // Column-index aliases kept for backward compatibility within this file.
-// Metadata (title, sidebar, headers, widths) now lives in BeaverEngine.getTool('MAIL_MERGE').
+// Metadata (title, sidebar, headers, widths) now lives in SyncEngine.getTool('MAIL_MERGE').
 var MAILMERGE_CFG = {
   COLUMNS: {
     ACTION: 0, EMAIL_TO: 1, CC: 2, BCC: 3, THREAD_ID: 4, ATTACHMENTS: 5, STATUS: 6
@@ -122,7 +122,7 @@ function MailMerge_syncPlaceholders(draftId) {
         headers: syncResult.headers
       });
     } catch (e) {
-      var toolConfig = BeaverEngine.getTool('MAIL_MERGE') || { TITLE: 'MAIL_MERGE' };
+      var toolConfig = SyncEngine.getTool('MAIL_MERGE') || { TITLE: 'MAIL_MERGE' };
       Logger.error(toolConfig.TITLE, 'Sync Placeholders', e);
       return _App_fail("Sync failed: " + e.message + (e.stack ? "\nTrace:\n" + e.stack : ""));
     }
@@ -389,13 +389,13 @@ function MailMerge_executeActions(draftId, startIndex) {
 
       } catch (e) {
         rowUpdates.status = e.message;
-        Logger.error(BeaverEngine.getTool('MAIL_MERGE').TITLE, 'Row ' + (originalIdx + 2), e);
+        Logger.error(SyncEngine.getTool('MAIL_MERGE').TITLE, 'Row ' + (originalIdx + 2), e);
       }
 
       if (action === "SEND" || action === "DRAFT") {
           var isSuccess = rowUpdates.status.indexOf('✅') > -1 || rowUpdates.status.indexOf('📝') > -1;
           if (isSuccess) {
-              Logger.info(BeaverEngine.getTool('MAIL_MERGE').TITLE, 'Row ' + (originalIdx + 2), rowUpdates.status);
+              Logger.info(SyncEngine.getTool('MAIL_MERGE').TITLE, 'Row ' + (originalIdx + 2), rowUpdates.status);
           }
       }
 

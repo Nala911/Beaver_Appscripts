@@ -1,4 +1,4 @@
-# Beaver Appscripts - AGENTS Guide
+# WorkspaceSync Appscripts - AGENTS Guide
 
 Read this before changing any `.js` or `.html` file in this repository. **This project is maintained 100% by AI agents.** Human coders do not actively edit this codebase. Therefore, all architectural rules, patterns, and conventions must be strictly preserved to maintain systematic scalability.
 
@@ -8,7 +8,7 @@ This project uses **Clasp** (Command Line Apps Script Projects) for local develo
 - **Pull Code:** `clasp pull`
 - **Deploy/Push:** `clasp push`
 - **Open Script Editor:** `clasp open`
-- **Testing:** Since this is a Google Workspace add-on/script, testing is performed by running functions directly from the Apps Script editor or interacting with the "🦫 Beaver Tools" menu in the associated Google Sheet.
+- **Testing:** Since this is a Google Workspace add-on/script, testing is performed by running functions directly from the Apps Script editor or interacting with the "🦫 WorkspaceSync Tools" menu in the associated Google Sheet.
 
 ## 🏛️ Ground Rules & Source Of Truth
 
@@ -36,8 +36,8 @@ If you are just editing or adding a feature (like Mail Merge, Tasks Sync, etc.),
 - **Internal Helper Functions:** `_ToolName_InternalFunction` (e.g., `_MailMerge_validateData`).
 - **Core System Utilities:** `_App_UtilityName` (e.g., `_App_launchTool`).
 
-### 2. The BeaverEngine Contract
-Every tool backend file must register itself with the engine at the very top of the script using `BeaverEngine.registerTool(key, config)`. Do not hardcode columns inside backend logic; rely on the registry's `COL_SCHEMA`.
+### 2. The SyncEngine Contract
+Every tool backend file must register itself with the engine at the very top of the script using `SyncEngine.registerTool(key, config)`. Do not hardcode columns inside backend logic; rely on the registry's `COL_SCHEMA`.
 
 ### 3. The Logger.run Contract
 Every public function called from a sidebar or the Ribbon UI must use the `Logger.run` execution wrapper to ensure errors are caught and recorded. DO NOT manually try/catch to write error strings into cells. 
@@ -69,20 +69,20 @@ Tools must use `_App_launchTool('KEY')` (or `_App_openSidebar`) as their main me
 1. **Minimize file reads**: ONLY read the specific tool files needed.
 2. **Consult Core Modules first**: Global configuration and logic are defined in `00_Config_Constants.js` through `09_Engine_UI.js`.
 3. **Use `Logger.run()`**: Wrap primary tool operations in `Logger.run('TOOL_KEY', 'Context', () => { ... })` for consistent logging.
-4. **Follow `BeaverEngine`**: When modifying sheet structure, update the registration metadata in the tool's backend file, which registers with `BeaverEngine`.
+4. **Follow `SyncEngine`**: When modifying sheet structure, update the registration metadata in the tool's backend file, which registers with `SyncEngine`.
 
 ## 📋 AI Agent Pre-Flight Checklist
 
 Before completing any task, mentally run this checklist. Do not proceed until you have verified all points:
 
-- [ ] Does my backend file register with `BeaverEngine` at the very top?
+- [ ] Does my backend file register with `SyncEngine` at the very top?
 - [ ] Are all public functions prefixed with `ToolName_` (e.g., `MailMerge_doWork`)?
 - [ ] Are all internal helper functions prefixed with `_ToolName_` (e.g., `_MailMerge_validate`)?
 - [ ] Did I wrap my core action inside `Logger.run('KEY', 'Context', function() {...})`?
 - [ ] Does my public function return exactly `{ success: boolean, message: string }`?
 - [ ] Did I use `_App_callWithBackoff` around any external Google API calls?
 - [ ] If I added a new setting, is it declared in `APP_PROPS` in `00_Config_Constants.js`?
-- [ ] Is my sidebar strictly including `<?!= include('SidebarShared'); ?>` to inherit standard Beaver UI libraries?
+- [ ] Is my sidebar strictly including `<?!= include('SidebarShared'); ?>` to inherit standard WorkspaceSync UI libraries?
 
 ## 🚀 Adding a New Tool
 

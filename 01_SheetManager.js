@@ -13,7 +13,7 @@ var SheetManager = (function() {
      * Throws an error if the toolKey or sheet does not exist.
      */
     function getSheet(toolKey) {
-        var cfg = BeaverEngine.getTool(toolKey);
+        var cfg = SyncEngine.getTool(toolKey);
         if (!cfg) throw new Error("SheetManager: Unknown toolKey '" + toolKey + "'");
         var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(cfg.SHEET_NAME);
         if (!sheet) throw new Error("SheetManager: Sheet '" + cfg.SHEET_NAME + "' not found.");
@@ -25,7 +25,7 @@ var SheetManager = (function() {
     }
 
     function getHeaders(toolKey) {
-        return BeaverEngine.getTool(toolKey).HEADERS || [];
+        return SyncEngine.getTool(toolKey).HEADERS || [];
     }
 
     function getHeaderMap(toolKey) {
@@ -66,7 +66,7 @@ var SheetManager = (function() {
         var lastRow = sheet.getLastRow();
         if (lastRow < 2) return [];
 
-        var cfg = BeaverEngine.getTool(toolKey);
+        var cfg = SyncEngine.getTool(toolKey);
         var headers = cfg.HEADERS;
         var dataRange = sheet.getRange(2, 1, lastRow - 1, headers.length);
         var data = dataRange.getValues();
@@ -91,7 +91,7 @@ var SheetManager = (function() {
         if (!objectsArray || objectsArray.length === 0) return;
 
         var sheet = getSheet(toolKey);
-        var cfg = BeaverEngine.getTool(toolKey);
+        var cfg = SyncEngine.getTool(toolKey);
         var headers = cfg.HEADERS;
 
         var data2D = objectsArray.map(function(obj) {
@@ -111,7 +111,7 @@ var SheetManager = (function() {
     function overwriteRows(toolKey, rows, options) {
         var opts = options || {};
         var sheet = getSheet(toolKey);
-        var cfg = BeaverEngine.getTool(toolKey);
+        var cfg = SyncEngine.getTool(toolKey);
         var totalCols = opts.totalCols || (cfg.HEADERS ? cfg.HEADERS.length : sheet.getLastColumn());
         var lastRow = sheet.getLastRow();
 
@@ -134,7 +134,7 @@ var SheetManager = (function() {
         if (objectsArray && objectsArray.length > 0) {
             writeObjects(toolKey, objectsArray, 2);
         }
-        _App_applyBodyFormatting(getSheet(toolKey), objectsArray ? objectsArray.length : 0, BeaverEngine.getTool(toolKey).FORMAT_CONFIG);
+        _App_applyBodyFormatting(getSheet(toolKey), objectsArray ? objectsArray.length : 0, SyncEngine.getTool(toolKey).FORMAT_CONFIG);
     }
 
     /**
@@ -143,7 +143,7 @@ var SheetManager = (function() {
     function clearData(toolKey) {
         var sheet = getSheet(toolKey);
         var lastRow = sheet.getLastRow();
-        var cfg = BeaverEngine.getTool(toolKey);
+        var cfg = SyncEngine.getTool(toolKey);
         var headers = cfg.HEADERS;
         if (lastRow >= 2) {
             sheet.getRange(2, 1, lastRow - 1, headers.length).clearContent();
@@ -256,7 +256,7 @@ var SheetManager = (function() {
     }
 
     function assertActiveSheet(toolKey) {
-        var cfg = BeaverEngine.getTool(toolKey);
+        var cfg = SyncEngine.getTool(toolKey);
         return _App_assertActiveSheet(cfg.SHEET_NAME);
     }
 

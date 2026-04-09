@@ -629,7 +629,7 @@
     };
 
     function loadData() {
-      BeaverSidebar.run('Calendar_getLoadData', [], {
+      SyncSidebar.run('Calendar_getLoadData', [], {
         context: 'Load Data',
         onSuccess: populateUI,
         onError: err => {
@@ -690,15 +690,15 @@
     }
 
     function toggleLoading(show, text) {
-      BeaverSidebar.toggleLoading(show, text);
+      SyncSidebar.toggleLoading(show, text);
     }
 
     function showToast(msg, isError) {
-      BeaverSidebar.showToast(msg, isError, { duration: 3000 });
+      SyncSidebar.showToast(msg, isError, { duration: 3000 });
     }
 
     function runPull() {
-      BeaverSidebar.run('Calendar_checkForUnsavedChanges', [], {
+      SyncSidebar.run('Calendar_checkForUnsavedChanges', [], {
         unwrap: false,
         context: 'Check Changes',
         onSuccess: hasChanges => {
@@ -721,7 +721,7 @@
       if (!startDate || !endDate) return showToast("Select dates", true);
 
       toggleLoading(true, "Importing…");
-      BeaverSidebar.run('Calendar_pullEvents', [{ calIds, startDate, endDate }], {
+      SyncSidebar.run('Calendar_pullEvents', [{ calIds, startDate, endDate }], {
         context: 'Pull Events',
         onSuccess: res => { toggleLoading(false); showToast(res.message, false); },
         onError: () => { toggleLoading(false); }
@@ -744,7 +744,7 @@
 
     function runPush() {
       toggleLoading(true, "Syncing…");
-      BeaverSidebar.run('Calendar_pushChanges', [], {
+      SyncSidebar.run('Calendar_pushChanges', [], {
         context: 'Push Changes',
         onSuccess: res => { toggleLoading(false); showToast(res.message, false); },
         onError: () => { toggleLoading(false); }
