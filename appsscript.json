@@ -21,6 +21,11 @@
         "userSymbol": "Calendar",
         "serviceId": "calendar",
         "version": "v3"
+      },
+      {
+        "userSymbol": "Chat",
+        "serviceId": "chat",
+        "version": "v1"
       }
     ]
   },
@@ -43,7 +48,9 @@
     "https://www.googleapis.com/auth/script.send_mail",
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/contacts",
-    "https://www.googleapis.com/auth/script.scriptapp"
+    "https://www.googleapis.com/auth/script.scriptapp",
+    "https://www.googleapis.com/auth/chat.spaces.readonly",
+    "https://www.googleapis.com/auth/chat.memberships"
   ],
   "runtimeVersion": "V8"
 }

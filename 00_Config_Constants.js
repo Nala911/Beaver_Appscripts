@@ -14,6 +14,7 @@ var SHEET_NAMES = {
     BULK_FOLDER: '📂 Bulk Folder Creation',
     DRIVE_SYNC: '💾 Google Drive',
     PIPELINE: '⛓  Control Center',
+    CHAT_SPACE_SYNC: '💬 Google Chat Spaces',
     LOGS: '🛠️ Developer Log'
 };
 
@@ -44,6 +45,9 @@ var APP_PROPS = {
     CAL_SELECTED_IDS: { key: 'selectedCalIds', store: STORE_TYPES.USER, isJson: true },
     CAL_START_DATE: { key: 'startDate', store: STORE_TYPES.USER, isJson: false },
     CAL_END_DATE: { key: 'endDate', store: STORE_TYPES.USER, isJson: false },
+
+    // Chat Space Sync
+    CHAT_SELECTED_SPACES: { key: 'selectedChatSpaces', store: STORE_TYPES.USER, isJson: true },
 
     // Contacts Sync
     CONTACTS_SELECTED_GROUPS: { key: 'selectedContactGroups', store: STORE_TYPES.USER, isJson: true },
