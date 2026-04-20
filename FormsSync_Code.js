@@ -1,10 +1,10 @@
 /**
  * Forms Sync Tool
- * Version: 5.0 (Plugin Architecture — registers with SyncEngine)
+ * Version: 5.0 (Plugin Architecture — registers with App.Engine)
  * Syncs questions and options between Google Sheets and Google Forms
  */
 
-SyncEngine.registerTool('FORMS_SYNC', {
+App.Engine.registerTool('FORMS_SYNC', {
     SHEET_NAME: SHEET_NAMES.FORMS_SYNC,
     TITLE: '📝 Forms Sync',
     MENU_LABEL: '📝 Google Forms',
@@ -27,18 +27,87 @@ SyncEngine.registerTool('FORMS_SYNC', {
             { header: 'Required', type: 'CHECKBOX' },
             { header: 'Item ID', type: 'ID' }
         ]
+    },
+
+    /**
+     * FORMS SYNC SERVICE ACTIONS
+     */
+    service: {
+        getForms: function() {
+            return Logger.run('FORMS_SYNC', 'Get Forms', function () {
+                try {
+                    var files = DriveApp.searchFiles("mimeType='application/vnd.google-apps.form' and trashed=false");
+                    var forms = [];
+                    var count = 0;
+                    var MAX_FORMS = 10;
+
+                    while (files.hasNext() && count < MAX_FORMS) {
+                        var file = files.next();
+                        forms.push({
+                            id: file.getId(),
+                            title: file.getName() || "Untitled Form",
+                            lastUpdated: file.getLastUpdated().getTime()
+                        });
+                        count++;
+                    }
+
+                    forms.sort(function (a, b) {
+                        return b.lastUpdated - a.lastUpdated;
+                    });
+
+                    var mappedForms = forms.map(function (f) {
+                        return { id: f.id, title: f.title };
+                    });
+
+                    var prefs = App.Engine.getPrefs('FORMS_SYNC');
+
+                    return { success: true, forms: mappedForms, savedFormId: prefs.selectedFormId };
+                } catch (e) {
+                    Logger.error(App.Engine.getTool('FORMS_SYNC').TITLE, 'Get Forms', e);
+                    throw new Error("Failed to fetch forms: " + e.toString());
+                }
+            });
+        },
+
+        pullForm: function(formInput) {
+            return _FormsSync_pullForm(formInput);
+        },
+
+        syncToForm: function() {
+            return _FormsSync_syncToForm();
+        },
+
+        getFormLinks: function() {
+            return Logger.run('FORMS_SYNC', 'Get Form Links', function () {
+                var prefs = App.Engine.getPrefs('FORMS_SYNC');
+                var formId = prefs.currentFormId;
+                if (!formId) return { success: true, data: null };
+                try {
+                    var form = FormApp.openById(formId);
+                    return {
+                        success: true,
+                        data: {
+                            editUrl: form.getEditUrl(),
+                            responsesUrl: form.getSummaryUrl()
+                        }
+                    };
+                } catch (e) {
+                    return {
+                        success: true,
+                        data: {
+                            editUrl: 'https://docs.google.com/forms/d/' + formId + '/edit',
+                            responsesUrl: 'https://docs.google.com/forms/d/' + formId + '/edit#responses'
+                        }
+                    };
+                }
+            });
+        }
     }
 });
 
 // --- CONFIGURATION ---
 // Column-index aliases (1-based) — kept for backward compatibility.
-// Tool metadata now lives in SyncEngine.getTool('FORMS_SYNC').
-var FORMSSYNC_CFG = {
-    COLUMNS: {
-        ACTION: 1, TITLE: 2, TYPE: 3, OPTIONS: 4, HELP_TEXT: 5, REQUIRED: 6, ID: 7
-    },
-    HEADER_ROW: 1
-};
+// Tool metadata now lives in App.Engine.getTool('FORMS_SYNC').
 
 // --- SHEET SETUP LOGIC ---
 /** @deprecated — Use _App_ensureSheetExists('FORMS_SYNC') instead. */
@@ -125,7 +194,7 @@ function _FormsSync_pullForm(formInput) {
                         options = cbGridRows.join("\n") + "\n||\n" + cbGridCols.join("\n");
                     }
                 } catch (propErr) {
-                    Logger.warn(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Property Error', "Error reading item properties for ID " + id + ": " + propErr);
+                    Logger.warn(App.Engine.getTool('FORMS_SYNC').TITLE, 'Property Error', "Error reading item properties for ID " + id + ": " + propErr);
                 }
 
                 sheetData.push(["", title, type, options, helpText, required, id]);
@@ -135,25 +204,27 @@ function _FormsSync_pullForm(formInput) {
 
             // Clear old data
             var lastRow = sheet.getLastRow();
-            if (lastRow > FORMSSYNC_CFG.HEADER_ROW) {
-                sheet.getRange(FORMSSYNC_CFG.HEADER_ROW + 1, 1, lastRow - FORMSSYNC_CFG.HEADER_ROW, sheet.getLastColumn()).clearContent();
-                sheet.getRange(FORMSSYNC_CFG.HEADER_ROW + 1, FORMSSYNC_CFG.COLUMNS.REQUIRED, lastRow - FORMSSYNC_CFG.HEADER_ROW, 1).removeCheckboxes();
+            var headerRow = App.Engine.getTool('FORMS_SYNC').FROZEN_ROWS;
+            var requiredCol = App.Engine.getTool('FORMS_SYNC').HEADERS.indexOf('Required') + 1;
+            if (lastRow > headerRow) {
+                sheet.getRange(headerRow + 1, 1, lastRow - headerRow, sheet.getLastColumn()).clearContent();
+                sheet.getRange(headerRow + 1, requiredCol, lastRow - headerRow, 1).removeCheckboxes();
             }
 
             // Set New Data
             if (sheetData.length > 0) {
-                var targetRange = sheet.getRange(FORMSSYNC_CFG.HEADER_ROW + 1, 1, sheetData.length, sheetData[0].length);
+                var targetRange = sheet.getRange(headerRow + 1, 1, sheetData.length, sheetData[0].length);
                 targetRange.setValues(sheetData);
             }
 
             // Apply body formatting via shared utility
-            _App_applyBodyFormatting(sheet, sheetData.length, SyncEngine.getTool('FORMS_SYNC').FORMAT_CONFIG);
+            _App_applyBodyFormatting(sheet, sheetData.length, App.Engine.getTool('FORMS_SYNC').FORMAT_CONFIG);
 
             // Save Form ID to tool preferences
-            var prefs = SyncEngine.getPrefs('FORMS_SYNC');
+            var prefs = App.Engine.getPrefs('FORMS_SYNC');
             prefs.currentFormId = formId;
             prefs.selectedFormId = formId;
-            SyncEngine.setPrefs('FORMS_SYNC', prefs);
+            App.Engine.setPrefs('FORMS_SYNC', prefs);
 
             return { success: true, message: "Successfully pulled " + sheetData.length + " items." };
         } catch (e) {
@@ -164,7 +235,7 @@ function _FormsSync_pullForm(formInput) {
 
 function _FormsSync_syncToForm() {
     return Logger.run('FORMS_SYNC', 'Sync to Form', function () {
-        var prefs = SyncEngine.getPrefs('FORMS_SYNC');
+        var prefs = App.Engine.getPrefs('FORMS_SYNC');
         var formId = prefs.currentFormId;
         if (!formId) return { success: false, message: "No form connected. Please Pull data first." };
 
@@ -330,7 +401,7 @@ function _applyItemProperties(targetItem, type, required, optionsArr, gridRows, 
             if (gridCols && gridCols.length > 0) cbGridItem.setColumns(gridCols);
         }
     } catch (e) {
-        Logger.warn(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Apply Properties', "Failed to apply properties", e);
+        Logger.warn(App.Engine.getTool('FORMS_SYNC').TITLE, 'Apply Properties', "Failed to apply properties", e);
     }
 }
 
@@ -390,73 +461,7 @@ function _setChoicesSafe(item, optionsArr, type) {
             item.showOtherOption(true);
         }
     } catch (e) {
-        Logger.warn(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Set Choices', "Failed to set choices", e);
+        Logger.warn(App.Engine.getTool('FORMS_SYNC').TITLE, 'Set Choices', "Failed to set choices", e);
     }
 }
 // --- PUBLIC ENTRY POINTS ---
-
-
-
-function FormsSync_getForms() {
-    return Logger.run('FORMS_SYNC', 'Get Forms', function () {
-        try {
-            var files = DriveApp.searchFiles("mimeType='application/vnd.google-apps.form' and trashed=false");
-            var forms = [];
-            var count = 0;
-            var MAX_FORMS = 10;
-
-            while (files.hasNext() && count < MAX_FORMS) {
-                var file = files.next();
-                forms.push({
-                    id: file.getId(),
-                    title: file.getName() || "Untitled Form",
-                    lastUpdated: file.getLastUpdated().getTime()
-                });
-                count++;
-            }
-
-            forms.sort(function (a, b) {
-                return b.lastUpdated - a.lastUpdated;
-            });
-
-            var mappedForms = forms.map(function (f) {
-                return { id: f.id, title: f.title };
-            });
-
-            var prefs = SyncEngine.getPrefs('FORMS_SYNC');
-
-            return { forms: mappedForms, savedFormId: prefs.selectedFormId };
-        } catch (e) {
-            Logger.error(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Get Forms', e);
-            throw new Error("Failed to fetch forms: " + e.toString());
-        }
-    });
-}
-
-function FormsSync_pullForm(formInput) {
-    return _FormsSync_pullForm(formInput);
-}
-
-function FormsSync_syncToForm() {
-    return _FormsSync_syncToForm();
-}
-
-function FormsSync_getFormLinks() {
-    return Logger.run('FORMS_SYNC', 'Get Form Links', function () {
-        var prefs = SyncEngine.getPrefs('FORMS_SYNC');
-        var formId = prefs.currentFormId;
-        if (!formId) return null;
-        try {
-            var form = FormApp.openById(formId);
-            return {
-                editUrl: form.getEditUrl(),
-                responsesUrl: form.getSummaryUrl()
-            };
-        } catch (e) {
-            return {
-                editUrl: 'https://docs.google.com/forms/d/' + formId + '/edit',
-                responsesUrl: 'https://docs.google.com/forms/d/' + formId + '/edit#responses'
-            };
-        }
-    });
-}

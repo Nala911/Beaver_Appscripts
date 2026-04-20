@@ -568,25 +568,14 @@
             refreshGroupsData();
         };
 
-        function toggleLoading(show, text) {
-            SyncSidebar.toggleLoading(show, text);
-        }
-
-        function showToast(msg, isError) {
-            SyncSidebar.showToast(msg, isError, { duration: 3500 });
-        }
-
         function refreshGroupsData() {
-            toggleLoading(true, 'Loading groups…');
-            SyncSidebar.run('Contacts_getLoadData', [], {
-                context: 'Refresh Groups',
+            SyncSidebar.call('CONTACTS_SYNC', 'getLoadData', {}, {
+                loading: 'Loading groups…',
                 onSuccess: data => {
                     allGroups = data.groups.filter(g => g.id !== 'all');
                     renderGroupList();
-                    toggleLoading(false);
                 },
                 onError: () => {
-                    toggleLoading(false);
                     document.getElementById('groupList').innerHTML = '<div class="empty-state"><span class="material-icons-outlined" style="font-size:28px; color:var(--danger);">error_outline</span>Unable to load contact groups.</div>';
                 }
             });
@@ -635,12 +624,8 @@
         }
 
         function modifyGroup(groupName, action) {
-            SyncSidebar.run('Contacts_modifyGroupInActiveRow', [groupName, action], {
-                context: 'Modify Group',
-                unwrap: false,
-                onSuccess: res => {
-                    if (!res.success) showToast(res.message, true);
-                }
+            SyncSidebar.call('CONTACTS_SYNC', 'modifyGroupInActiveRow', { groupName, action }, {
+                loading: 'Updating row…'
             });
         }
 
@@ -649,43 +634,29 @@
             const name = input.value.trim();
             if (!name) return;
 
-            toggleLoading(true, 'Creating group…');
-            SyncSidebar.run('Contacts_createContactGroup', [name], {
-                context: 'Create Group',
+            SyncSidebar.call('CONTACTS_SYNC', 'createContactGroup', name, {
+                loading: 'Creating group…',
                 onSuccess: newGroup => {
                     input.value = '';
                     allGroups.push({ id: newGroup.id, name: newGroup.name });
                     allGroups.sort((a, b) => a.name.localeCompare(b.name));
                     renderGroupList();
-                    toggleLoading(false);
-                    showToast('Created: ' + newGroup.name, false);
-                },
-                onError: () => { toggleLoading(false); }
+                }
             });
         }
 
         function pullData() {
-            toggleLoading(true, 'Pulling contacts…');
-            SyncSidebar.run('Contacts_pullContacts', [{ groupIds: ['all'] }], {
-                context: 'Pull Contacts',
-                onSuccess: res => {
-                    toggleLoading(false);
-                    showToast(res.message, false);
-                },
-                onError: () => { toggleLoading(false); }
+            SyncSidebar.call('CONTACTS_SYNC', 'pullContacts', { groupIds: ['all'] }, {
+                loading: 'Pulling contacts…'
             });
         }
 
         function pushData() {
-            toggleLoading(true, 'Pushing changes…');
-            SyncSidebar.run('Contacts_pushChanges', [], {
-                context: 'Push Changes',
+            SyncSidebar.call('CONTACTS_SYNC', 'pushChanges', {}, {
+                loading: 'Pushing changes…',
                 onSuccess: res => {
-                    toggleLoading(false);
-                    showToast(res.message, false);
                     refreshGroupsData();
-                },
-                onError: () => { toggleLoading(false); }
+                }
             });
         }
     </script>

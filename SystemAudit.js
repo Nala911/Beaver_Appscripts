@@ -10,7 +10,7 @@ var AuditRules = [
     {
         name: 'Registry Metadata Integrity',
         run: function (cfg, sheet, report) {
-            var issues = SyncEngine.auditTool(cfg.TOOL_KEY || report.key);
+            var issues = App.Engine.auditTool(cfg.TOOL_KEY || report.key);
             if (issues.length > 0) {
                 report.status = 'ERROR';
                 report.issues.push("Registry issues: " + issues.join(' | '));
@@ -197,7 +197,7 @@ var GlobalAuditRules = [
         name: 'Environment & Configuration',
         run: function (summary, results) {
             try {
-                var systemPrefs = SyncEngine.getPrefs('SYSTEM');
+                var systemPrefs = App.Engine.getPrefs('SYSTEM');
                 var systemEnabled = systemPrefs.systemEnabled === true;
                 if (!systemEnabled) {
                     _addGlobalResult(summary, results, 'Environment Config', 'INFO', 'SYSTEM_ENABLED script property is missing or false. Pipeline logic is currently suspended.');
@@ -304,8 +304,8 @@ function _addGlobalResult(summary, results, title, status, msg, errorObj) {
  */
 function Logger_runSystemAudit() {
     return Logger.run('LOGS', 'System Audit', function () {
-        var tools = SyncEngine.getAllTools();
-        var keys = SyncEngine.getToolKeys();
+        var tools = App.Engine.getAllTools();
+        var keys = App.Engine.getToolKeys();
         var results = [];
         var summary = { passed: 0, warnings: 0, errors: 0 };
 

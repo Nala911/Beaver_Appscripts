@@ -24,7 +24,7 @@ var SYSTEM_VALIDATORS = {
 var SchemaValidator = (function() {
 
     function validateRow(toolKey, rowObj) {
-        var cfg = SyncEngine.getTool(toolKey);
+        var cfg = App.Engine.getTool(toolKey);
         var schema = (cfg.FORMAT_CONFIG && cfg.FORMAT_CONFIG.COL_SCHEMA) ? cfg.FORMAT_CONFIG.COL_SCHEMA : [];
         var errors = [];
 

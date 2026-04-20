@@ -1,9 +1,9 @@
 /**
  * Pipeline Control Center
- * Version: 4.0 (Plugin Architecture — registers with SyncEngine)
+ * Version: 4.0 (Plugin Architecture — registers with App.Engine)
  */
 
-SyncEngine.registerTool('PIPELINE', {
+App.Engine.registerTool('PIPELINE', {
     SHEET_NAME: SHEET_NAMES.PIPELINE,
     TITLE: '⛓ Pipeline Control Center',
     MENU_LABEL: '⛓  Control Center',
@@ -61,16 +61,16 @@ function Pipeline_showSidebar() {
 
 function Pipeline_getSystemStatus() {
     return Logger.run('PIPELINE', 'Get Status', function () {
-        var prefs = SyncEngine.getPrefs('SYSTEM');
+        var prefs = App.Engine.getPrefs('SYSTEM');
         return prefs.systemEnabled === true ? 'true' : 'false';
     });
 }
 
 function Pipeline_setSystemStatus(isEnabled) {
     return Logger.run('PIPELINE', 'Set Status', function () {
-        var prefs = SyncEngine.getPrefs('SYSTEM');
+        var prefs = App.Engine.getPrefs('SYSTEM');
         prefs.systemEnabled = (String(isEnabled).toLowerCase() === 'true' || isEnabled === true);
-        SyncEngine.setPrefs('SYSTEM', prefs);
+        App.Engine.setPrefs('SYSTEM', prefs);
         _Pipeline_manageTrigger(prefs.systemEnabled);
         return prefs.systemEnabled;
     });
@@ -109,7 +109,7 @@ function _Pipeline_manageTrigger(isEnabled) {
 function Pipeline_processPipelines() {
     return Logger.run('PIPELINE', 'Scheduled Execution', function () {
         return _App_withDocumentLock('PIPELINE_PROCESS', function () {
-            var prefs = SyncEngine.getPrefs('SYSTEM');
+            var prefs = App.Engine.getPrefs('SYSTEM');
             if (prefs.systemEnabled !== true) {
                 Logger.info('PIPELINE', 'Global', "System is globally disabled. Skipping execution.");
                 return;
@@ -235,7 +235,7 @@ function Pipeline_runSelectedPipelines(rowIndexes) {
     return Logger.run('PIPELINE', 'Run Selected', function () {
         return _App_withDocumentLock('PIPELINE_RUN_SELECTED', function () {
             var sheet = SheetManager.getSheet('PIPELINE');
-            var colCount = SyncEngine.getTool('PIPELINE').FORMAT_CONFIG.COL_SCHEMA.length;
+            var colCount = App.Engine.getTool('PIPELINE').FORMAT_CONFIG.COL_SCHEMA.length;
             var results = [];
 
             for (var i = 0; i < rowIndexes.length; i++) {
@@ -372,9 +372,9 @@ function _Pipeline_runPipeline(sheet, rowIdx, rowData) {
 
     var reference = pipelineName ? pipelineName : ('Row ' + rowIdx);
     if (isSuccess) {
-        Logger.info(SyncEngine.getTool('PIPELINE').TITLE, reference, logMessage);
+        Logger.info(App.Engine.getTool('PIPELINE').TITLE, reference, logMessage);
     } else {
-        Logger.error(SyncEngine.getTool('PIPELINE').TITLE, reference, errorObj || logMessage);
+        Logger.error(App.Engine.getTool('PIPELINE').TITLE, reference, errorObj || logMessage);
     }
 }
 
@@ -385,7 +385,7 @@ function Pipeline_formatControlCenter() {
         // Re-apply standard setup from Registry.
         // Note: _App_applyBodyFormatting already replaces all conditional format rules and
         // data validations via setConditionalFormatRules, so no pre-clear is needed.
-        var cfg = SyncEngine.getTool('PIPELINE');
+        var cfg = App.Engine.getTool('PIPELINE');
         _App_applyBodyFormatting(sheet, 0, cfg.FORMAT_CONFIG);
         // Schema-driven validation now handles this within _App_applyBodyFormatting
 

@@ -1,9 +1,9 @@
 /**
  * Bulk Drive Automator
- * Version: 5.0 (Plugin Architecture — registers with SyncEngine)
+ * Version: 5.0 (Plugin Architecture — registers with App.Engine)
  */
 
-SyncEngine.registerTool('BULK_FOLDER', {
+App.Engine.registerTool('BULK_FOLDER', {
     SHEET_NAME: SHEET_NAMES.BULK_FOLDER,
     TITLE: '📂 Bulk Drive Automator',
     MENU_LABEL: '📂 Bulk Folder Creation',
@@ -23,14 +23,29 @@ SyncEngine.registerTool('BULK_FOLDER', {
             { header: 'Level 2', type: 'TEXT' },
             { header: 'Level 3', type: 'TEXT' }
         ]
+    },
+
+    /**
+     * BULK FOLDER SERVICE ACTIONS
+     */
+    service: {
+        getDriveNavData: function(folderId) {
+            return _BulkFolder_getDriveNavData(folderId);
+        },
+
+        getProgress: function() {
+            return _App_getProgress('BULK_FOLDER');
+        },
+
+        runBulkCreationSequence: function(params) {
+            return _BulkFolder_runBulkCreationSequence(params);
+        },
+
+        setupSheet_bulkcreation: function() {
+            return _BulkFolder_setupSheet_bulkcreation();
+        }
     }
 });
-
-// Column-index aliases — kept for backward compatibility.
-// Metadata (title, sidebar, headers, widths) now lives in SyncEngine.getTool('BULK_FOLDER').
-var BULKFOLDER_COL = {
-  ACTION: 0
-};
 
 // Global Time Limit (Google Apps Script has 6 min limit, we stop at 5.5 min)
 var BULKFOLDER_START_TIME = 0;
@@ -61,7 +76,7 @@ function BulkFolder_showSidebarbulkcreation() {
 
 // --- EXPLORER LOGIC ---
 
-function BulkFolder_getDriveNavData(folderId) {
+function _BulkFolder_getDriveNavData(folderId) {
   return Logger.run('BULK_FOLDER', 'Fetch Nav Data', function () {
     try {
       var folder;
@@ -118,18 +133,14 @@ function BulkFolder_getDriveNavData(folderId) {
 
 // --- BATCH CREATION LOGIC ---
 
-function BulkFolder_getProgress() {
-  return _App_getProgress('BULK_FOLDER');
-}
-
-function BulkFolder_runBulkCreationSequence(targetFolderId) {
+function _BulkFolder_runBulkCreationSequence(targetFolderId) {
   return Logger.run('BULK_FOLDER', 'Batch Creation', function () {
     return _App_withDocumentLock('Bulk Creation', function() {
       BULKFOLDER_START_TIME = Date.now();
       var folderCache = {};
       
       // Identify Level columns from the tool's schema
-      var toolCfg = SyncEngine.getTool('BULK_FOLDER');
+      var toolCfg = App.Engine.getTool('BULK_FOLDER');
       var levelHeaders = toolCfg.HEADERS.filter(function(h) { 
           return String(h).toLowerCase().indexOf('level') !== -1; 
       });
@@ -155,13 +166,13 @@ function BulkFolder_runBulkCreationSequence(targetFolderId) {
       });
 
       if (stats.processed === 0 && stats.errors === 0) {
-        return "No pending 'Create' actions found.";
+        return _App_ok("No pending 'Create' actions found.");
       }
 
       var finalMsg = "Successfully processed " + stats.processed + " folders.";
       if (stats.errors > 0) finalMsg += " (" + stats.errors + " errors)";
       
-      return finalMsg;
+      return _App_ok(finalMsg);
     });
   });
 }
@@ -209,40 +220,7 @@ function _BulkFolder_createFolderPath(baseFolderId, folderNamesArr, folderCache)
 
 
 
-/** @deprecated — Use _App_ensureSheetExists('BULK_FOLDER') instead; it now handles setup. */
-function BulkFolder_setupSheet_bulkcreation(sheet) {
-  if (!sheet) {
-    return _App_ensureSheetExists('BULK_FOLDER');
-  }
-  // For direct calls with an existing sheet (e.g., resetting), delegate setup manually
-  _App_applyBodyFormatting(sheet, 0, SyncEngine.getTool('BULK_FOLDER').FORMAT_CONFIG);
-  return "Sheet has been setup successfully for Bulk Folder Creation.";
-}
-
-function _BulkFolder_initializeHeaders(sheet) {
-  var allHeaders = SyncEngine.getTool('BULK_FOLDER').HEADERS;
-  sheet.getRange(1, 1, 1, allHeaders.length).setValues([allHeaders])
-    .setFontWeight(SHEET_THEME.LAYOUT.HEADER_WEIGHT)
-    .setBackground(SHEET_THEME.HEADER)
-    .setFontColor(SHEET_THEME.TEXT)
-    .setBorder(true, true, true, true, true, true, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
-
-  sheet.setFrozenRows(1);
-  sheet.setFrozenColumns(1); // freeze system columns (Action)
-
-  // Set widths
-  if (SyncEngine.getTool('BULK_FOLDER').COL_WIDTHS) {
-    SyncEngine.getTool('BULK_FOLDER').COL_WIDTHS.forEach(function (w, i) {
-      if (w !== null) sheet.setColumnWidth(i + 1, w);
-    });
-  }
-}
-
-// Stage 1: Data validations only (body formatting handled by _App_applyBodyFormatting)
-function _BulkFolder_applyDataValidations(sheet) {
-  var maxRows = sheet.getMaxRows();
-  if (maxRows < 2) return;
-
-  var actionRule = SpreadsheetApp.newDataValidation().requireValueInList(['Create'], true).setAllowInvalid(false).build();
-  sheet.getRange(2, BULKFOLDER_COL.ACTION + 1, maxRows - 1, 1).setDataValidation(actionRule);
+/** @deprecated — Use _App_ensureSheetExists('BULK_FOLDER') instead. */
+function _BulkFolder_setupSheet_bulkcreation() {
+  return _App_ensureSheetExists('BULK_FOLDER');
 }

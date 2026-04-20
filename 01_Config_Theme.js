@@ -72,51 +72,64 @@ function isObject_(item) {
 }
 
 function _UI_getTheme() {
-    var systemPrefs = SyncEngine.getPrefs('SYSTEM');
-    const savedTheme = systemPrefs.theme;
-    if (savedTheme) {
-        try {
-            const merged = deepMergeTheme_(DEFAULT_SHEET_THEME, savedTheme);
-
-            // Restore Enum properties that get converted to strings or empty objects during JSON serialization
-            const bw = merged.LAYOUT.BODY_WRAP;
-            if (typeof bw === 'string') {
-                merged.LAYOUT.BODY_WRAP = SpreadsheetApp.WrapStrategy[bw] || SpreadsheetApp.WrapStrategy.CLIP;
-            } else if (bw !== SpreadsheetApp.WrapStrategy.CLIP && bw !== SpreadsheetApp.WrapStrategy.WRAP && bw !== SpreadsheetApp.WrapStrategy.OVERFLOW) {
-                merged.LAYOUT.BODY_WRAP = SpreadsheetApp.WrapStrategy.CLIP;
-            }
-
-            const bs = merged.BORDER_STYLE;
-            if (typeof bs === 'string') {
-                merged.BORDER_STYLE = SpreadsheetApp.BorderStyle[bs] || SpreadsheetApp.BorderStyle.SOLID;
-            } else if (bs !== SpreadsheetApp.BorderStyle.SOLID && bs !== SpreadsheetApp.BorderStyle.SOLID_MEDIUM && bs !== SpreadsheetApp.BorderStyle.SOLID_THICK && bs !== SpreadsheetApp.BorderStyle.DASHED && bs !== SpreadsheetApp.BorderStyle.DOTTED && bs !== SpreadsheetApp.BorderStyle.DOUBLE) {
-                merged.BORDER_STYLE = SpreadsheetApp.BorderStyle.SOLID;
-            }
-
-            return merged;
-        } catch (e) {
-            console.error('Failed to parse saved theme, falling back to defaults:', e);
+    try {
+        // Defensive check: App.Engine.getPrefs might not be defined if called extremely early
+        if (typeof App === 'undefined' || !App.Engine || typeof App.Engine.getPrefs !== 'function') {
+            return DEFAULT_SHEET_THEME;
         }
+
+        var systemPrefs = App.Engine.getPrefs('SYSTEM');
+        const savedTheme = systemPrefs.theme;
+        if (savedTheme) {
+            try {
+                const merged = deepMergeTheme_(DEFAULT_SHEET_THEME, savedTheme);
+
+                // Restore Enum properties that get converted to strings or empty objects during JSON serialization
+                if (merged.LAYOUT) {
+                    const bw = merged.LAYOUT.BODY_WRAP;
+                    if (typeof bw === 'string') {
+                        merged.LAYOUT.BODY_WRAP = SpreadsheetApp.WrapStrategy[bw] || SpreadsheetApp.WrapStrategy.CLIP;
+                    } else if (bw !== SpreadsheetApp.WrapStrategy.CLIP && bw !== SpreadsheetApp.WrapStrategy.WRAP && bw !== SpreadsheetApp.WrapStrategy.OVERFLOW) {
+                        merged.LAYOUT.BODY_WRAP = SpreadsheetApp.WrapStrategy.CLIP;
+                    }
+                }
+
+                const bs = merged.BORDER_STYLE;
+                if (typeof bs === 'string') {
+                    merged.BORDER_STYLE = SpreadsheetApp.BorderStyle[bs] || SpreadsheetApp.BorderStyle.SOLID;
+                } else if (bs !== SpreadsheetApp.BorderStyle.SOLID && bs !== SpreadsheetApp.BorderStyle.SOLID_MEDIUM && bs !== SpreadsheetApp.BorderStyle.SOLID_THICK && bs !== SpreadsheetApp.BorderStyle.DASHED && bs !== SpreadsheetApp.BorderStyle.DOTTED && bs !== SpreadsheetApp.BorderStyle.DOUBLE) {
+                    merged.BORDER_STYLE = SpreadsheetApp.BorderStyle.SOLID;
+                }
+
+                return merged;
+            } catch (e) {
+                console.error('Failed to parse saved theme, falling back to defaults:', e);
+            }
+        }
+    } catch (err) {
+        console.error('Critical Error in _UI_getTheme:', err);
     }
     return DEFAULT_SHEET_THEME;
 }
+
 // Global Export! Scripts using SHEET_THEME will get the dynamic version lazily.
-// We use a Proxy here so that PropertiesService (a slow API call) is only invoked
-// when a script actively accesses the theme, preventing execution delays on all triggers.
+// We use a getter on the global scope to ensure it's always up-to-date and robust.
 var __ui_sheetThemeCache = null;
-var SHEET_THEME = new Proxy({}, {
-    get: function (target, prop) {
+
+Object.defineProperty(globalThis, 'SHEET_THEME', {
+    get: function() {
         if (!__ui_sheetThemeCache) {
-            __ui_sheetThemeCache = _UI_getTheme(); // Load from PropertiesService only on access
+            __ui_sheetThemeCache = _UI_getTheme();
         }
-        return Reflect.get(__ui_sheetThemeCache, prop);
+        return __ui_sheetThemeCache;
     },
-    ownKeys: function () {
-        if (!__ui_sheetThemeCache) __ui_sheetThemeCache = _UI_getTheme();
-        return Reflect.ownKeys(__ui_sheetThemeCache);
-    },
-    getOwnPropertyDescriptor: function (target, prop) {
-        if (!__ui_sheetThemeCache) __ui_sheetThemeCache = _UI_getTheme();
-        return Reflect.getOwnPropertyDescriptor(__ui_sheetThemeCache, prop);
-    }
+    configurable: true,
+    enumerable: true
 });
+
+/**
+ * Force-reloads the theme from storage (used when settings change).
+ */
+function _UI_refreshThemeCache() {
+    __ui_sheetThemeCache = _UI_getTheme();
+}

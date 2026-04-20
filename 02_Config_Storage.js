@@ -44,6 +44,19 @@ Object.assign(App.Storage, (function() {
             return res;
         },
 
+        getRaw: function(prop) {
+            var key = prop.key;
+            var cache = _getCache(prop.store);
+            var val = cache ? cache.get(key) : null;
+
+            if (val === null) {
+                val = _getStore(prop.store).getProperty(key);
+                if (val && cache) cache.put(key, val, 21600);
+            }
+
+            return val;
+        },
+
         set: function(prop, value) {
             var str = prop.isJson ? JSON.stringify(value) : String(value);
             _getStore(prop.store).setProperty(prop.key, str);
@@ -63,5 +76,6 @@ Object.assign(App.Storage, (function() {
 
 // Backward Compatibility Aliases
 function _App_getProperty(p) { return App.Storage.get(p); }
+function _App_getRawProperty(p) { return App.Storage.getRaw(p); }
 function _App_setProperty(p, v) { return App.Storage.set(p, v); }
 function _App_deleteProperty(p) { return App.Storage.delete(p); }

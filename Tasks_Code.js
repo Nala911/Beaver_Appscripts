@@ -1,9 +1,9 @@
 /**
  * Google Tasks <-> Sheets Two-Way Sync
- * Version: 5.0 (Plugin Architecture — registers with SyncEngine)
+ * Version: 5.0 (Plugin Architecture — registers with App.Engine)
  */
 
-SyncEngine.registerTool('TASKS', {
+App.Engine.registerTool('TASKS', {
     REQUIRED_SERVICES: [ { name: 'Tasks API', test: function() { return typeof Tasks !== 'undefined'; } } ],
     SHEET_NAME: SHEET_NAMES.TASKS,
     TITLE: '✅ Task Manager',
@@ -30,6 +30,41 @@ SyncEngine.registerTool('TASKS', {
             { header: 'Version Token', type: 'ID' },
             { header: 'Last Sync', type: 'TEXT' }
         ]
+    },
+
+    /**
+     * TASKS SYNC SERVICE ACTIONS
+     */
+    service: {
+        getTaskLists: function() {
+            return Logger.run('TASKS', 'Get Task Lists', function () {
+                try {
+                    var items = Tasks.Tasklists.list().items || [];
+                    return _App_ok('Task lists loaded.', {
+                        lists: items.map(function (i) {
+                            return { id: i.id, title: i.title };
+                        })
+                    });
+                } catch (e) {
+                    Logger.error(App.Engine.getTool('TASKS').TITLE, 'Get Task Lists', e);
+                    throw new Error('Failed to fetch lists: ' + e.message);
+                }
+            });
+        },
+
+        pullRPC: function(selectedListIds, includeCompleted) {
+            return Logger.run('TASKS', 'Pull Tasks', function () {
+                _TaskSync_pullTasks(selectedListIds, includeCompleted);
+                return _App_ok('Tasks pulled successfully!');
+            });
+        },
+
+        pushRPC: function() {
+            return Logger.run('TASKS', 'Push Changes', function () {
+                _TaskSync_pushTasks();
+                return _App_ok('Changes pushed successfully!');
+            });
+        }
     }
 });
 
@@ -38,7 +73,7 @@ SyncEngine.registerTool('TASKS', {
 // ==========================================
 
 function _TaskSync_getConfig() {
-  return SyncEngine.getTool('TASKS');
+  return App.Engine.getTool('TASKS');
 }
 
 // ==========================================
@@ -82,36 +117,6 @@ function _TaskSync_ensureSheetExistsAndActivate() {
 function Tasks_showSidebar() {
   return Logger.run('TASKS', 'Open Sidebar', function () {
     _App_launchTool('TASKS');
-  });
-}
-
-function Tasks_getTaskLists() {
-  return Logger.run('TASKS', 'Get Task Lists', function () {
-    try {
-      var items = Tasks.Tasklists.list().items || [];
-      return _App_ok('Task lists loaded.', {
-        lists: items.map(function (i) {
-          return { id: i.id, title: i.title };
-        })
-      });
-    } catch (e) {
-      Logger.error(SyncEngine.getTool('TASKS').TITLE, 'Get Task Lists', e);
-      throw new Error('Failed to fetch lists: ' + e.message);
-    }
-  });
-}
-
-function Tasks_pullRPC(selectedListIds, includeCompleted) {
-  return Logger.run('TASKS', 'Pull Tasks', function () {
-    _TaskSync_pullTasks(selectedListIds, includeCompleted);
-    return _App_ok('Tasks pulled successfully!');
-  });
-}
-
-function Tasks_pushRPC() {
-  return Logger.run('TASKS', 'Push Changes', function () {
-    _TaskSync_pushTasks();
-    return _App_ok('Changes pushed successfully!');
   });
 }
 
@@ -425,9 +430,9 @@ function _TaskSync_pushTasks() {
 
     var reference = 'Row ' + rowIndex + ' (' + (row[map['TITLE']] || 'Unknown') + ')';
     if (isError) {
-      Logger.error(SyncEngine.getTool('TASKS').TITLE, reference, errorObj || logMsg);
+      Logger.error(App.Engine.getTool('TASKS').TITLE, reference, errorObj || logMsg);
     } else if (logMsg) {
-      Logger.info(SyncEngine.getTool('TASKS').TITLE, reference, logMsg);
+      Logger.info(App.Engine.getTool('TASKS').TITLE, reference, logMsg);
     }
 
     if (!isError && map['ACTION'] !== undefined) {

@@ -72,7 +72,7 @@ function _App_getMenuTools() { return App.UI.getMenuTools(); }
  */
 function _App_ensureSheetExists(toolKey, postCreateCallback) {
     return Logger.run(toolKey, 'Scaffold Sheet', function () {
-        var cfg = SyncEngine.getTool(toolKey);
+        var cfg = App.Engine.getTool(toolKey);
         if (!_App_canScaffoldSheet(cfg)) {
             throw new Error("Tool '" + toolKey + "' does not define a sheet schema and cannot be scaffolded automatically.");
         }

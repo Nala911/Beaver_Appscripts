@@ -20,14 +20,13 @@ The system logic is split into sequential modules evaluated in order:
 - `05_Core_State.js`: Global application state management.
 - `06_Sheets_Helpers.js`: Low-level spreadsheet operations (`_App_ensureSheetExists`, etc.).
 - `07_Sheets_Formatting.js`: UI/styling application to sheets (`_App_applyBodyFormatting`).
-- `08_Engine_Core.js`: The `SyncEngine` plugin registration and retrieval system.
+- `08_Engine_Core.js`: The `App.Engine` plugin registration and retrieval system.
 - `09_Engine_UI.js`: UI abstractions for opening sidebars and dialogs.
 - `10_ExecutionService.js`: Row-level execution service managing automated retries, schema validation, and exponential backoff.
-- `11_DataMapper.js`: Schema validation and automated object mapping based on SyncEngine configurations.
+- `11_SheetManager.js`: Centralized data access object (DAO) and Data Mapper. Uses `App.Engine` configurations to map sheet data to JavaScript objects and vice-versa, handling schema validation.
 - `UI.js`: The central UI orchestrator. Responsible for creating the custom "🦫 WorkspaceSync Tools" menu (`onOpen`), providing the global wrapper for the Theme Editor sidebar, and connecting user actions to the tools.
 - `SidebarShared.html`: Shared HTML, CSS, and JS components to eliminate redundant sidebar code and infinite spinners.
-- `01_SheetManager.js`: Centralized data access object (DAO). Uses `SyncEngine` configurations to map sheet data to JavaScript objects and vice-versa.
-- `Logger.js`: Unified logging system. Provides `Logger.info`, `Logger.error`, etc., using a buffered transporter architecture with `CacheService` and `LockService` for performant, concurrent-safe logging. Registers itself with `SyncEngine`.
+- `Logger.js`: Unified logging system. Provides `Logger.info`, `Logger.error`, etc., using a buffered transporter architecture with `CacheService` and `LockService` for performant, concurrent-safe logging. Registers itself with `App.Engine`.
 - `SystemAudit.js`: Runs comprehensive audits across all registered tools, verifying sheet integrity, API access, and schema setup, and generates AI debug output logs.
 - `Logger_SidebarController.js`: Backend controller for the Developer Log sidebar, handling client-to-server interactions like fetching logs and running system audits.
 - `appsscript.json` / `.clasp.json`: Google Apps Script configuration and Clasp deployment environment details.
@@ -101,9 +100,9 @@ All keys used across the codebase. **Do NOT invent new key names** — check her
 
 The codebase follows a strict and predictable design pattern across all tools:
 
-### 1. Decentralized Plugin Architecture (`SyncEngine`)
+### 1. Decentralized Plugin Architecture (`App.Engine`)
 The project uses a decentralized registration pattern to manage tools.
-- **`SyncEngine`**: A singleton in `08_Engine_Core.js` that handles tool registration (`registerTool`) and retrieval (`getTool`).
+- **`App.Engine`**: A singleton in `08_Engine_Core.js` that handles tool registration (`registerTool`) and retrieval (`getTool`).
 - **Self-Registration**: Each tool module registers its own configuration block at the top of its file.
 - **Registry Metadata**: Configuration includes `SHEET_NAME`, `TITLE`, `SIDEBAR_HTML`, `COL_WIDTHS`, and a `COL_SCHEMA` for declarative column validations and types.
 

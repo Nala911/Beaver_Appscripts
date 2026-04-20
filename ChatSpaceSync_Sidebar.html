@@ -559,8 +559,8 @@
     };
 
     function loadData() {
-      SyncSidebar.run('ChatSync_getLoadData', [], {
-        context: 'Load Data',
+      SyncSidebar.call('CHAT_SYNC', 'getLoadData', {}, {
+        loading: 'Loading data…',
         onSuccess: populateUI,
         onError: err => {
           document.getElementById('spaceList').innerHTML = `<div class="error-text">${err.message}</div>`;
@@ -616,18 +616,9 @@
       updateSelectAllButton();
     }
 
-    function toggleLoading(show, text) {
-      SyncSidebar.toggleLoading(show, text);
-    }
-
-    function showToast(msg, isError) {
-      SyncSidebar.showToast(msg, isError, { duration: 3000 });
-    }
-
     function runPull() {
-      SyncSidebar.run('ChatSync_checkForUnsavedChanges', [], {
-        unwrap: false,
-        context: 'Check Changes',
+      SyncSidebar.call('CHAT_SYNC', 'checkForUnsavedChanges', {}, {
+        loading: 'Checking changes…',
         onSuccess: hasChanges => {
           if (hasChanges) {
             const confirmPull = confirm("⚠️ WARNING: Unsaved changes detected in the 'Action' column.\n\nRunning 'Pull' will overwrite these changes and they will be LOST.\n\nDo you want to continue?");
@@ -642,13 +633,13 @@
       const checkboxes = document.querySelectorAll('.cal-checkbox:checked');
       const spaceIds = Array.from(checkboxes).map(c => c.value);
 
-      if (spaceIds.length === 0) return showToast("Select at least one space", true);
+      if (spaceIds.length === 0) {
+          SyncSidebar.showToast("Select at least one space", true);
+          return;
+      }
 
-      toggleLoading(true, "Importing…");
-      SyncSidebar.run('ChatSync_pullMembers', [{ spaceIds }], {
-        context: 'Pull Members',
-        onSuccess: res => { toggleLoading(false); showToast(res.message, false); },
-        onError: () => { toggleLoading(false); }
+      SyncSidebar.call('CHAT_SYNC', 'pullMembers', { spaceIds }, {
+        loading: 'Importing members…'
       });
     }
 
@@ -667,11 +658,8 @@
     }
 
     function runPush() {
-      toggleLoading(true, "Syncing…");
-      SyncSidebar.run('ChatSync_pushChanges', [], {
-        context: 'Push Changes',
-        onSuccess: res => { toggleLoading(false); showToast(res.message, false); },
-        onError: () => { toggleLoading(false); }
+      SyncSidebar.call('CHAT_SYNC', 'pushChanges', {}, {
+        loading: 'Syncing changes…'
       });
     }
   </script>

@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <!-- 
   Template Frontend Tool
-  Version: 1.1 (Plugin Architecture — Aligned with SyncSidebar)
+  Version: 1.2 (Plugin Architecture — Aligned with SyncSidebar.call)
 
   Instructions:
   1. This file relies heavily on `SidebarShared.html`. 
-  2. The backend function must be wrapped in Logger.run and return { success, message, data }.
-  3. Ensure the backend function name in executeBackendAction() matches your code.
+  2. The backend actions should be defined in the tool's 'service' object in the .js file.
+  3. Use SyncSidebar.call('TOOL_KEY', 'methodName', params, options) to communicate with the backend.
 -->
 <html>
 <head>
@@ -165,7 +165,7 @@
     <div class="template-body">
         
         <p class="section-description">
-            This scaffolded tool uses <code>SyncSidebar.run()</code> to securely communicate with the backend.
+            This scaffolded tool uses <code>SyncSidebar.call()</code> to securely communicate with the backend via the central <code>App_exec</code> dispatcher.
         </p>
 
         <!-- Form Elements -->
@@ -195,14 +195,12 @@
         function executeBackendAction() {
             var inputVal = document.getElementById('sampleInput').value;
             
-            // SyncSidebar.run(methodName, argsArray, options)
-            // options: { context, timeoutMs, unwrap, onSuccess, onError }
-            // It handles toggleLoading(true/false) and showToast(error) automatically.
-            SyncSidebar.run('TemplateTool_processAction', [{ input: inputVal }], {
-                context: 'Process Action',
+            // SyncSidebar.call(toolKey, actionName, params, options)
+            // It routes through the central App_exec dispatcher for better logging and error handling.
+            SyncSidebar.call('TEMPLATE_TOOL', 'processAction', { input: inputVal }, {
+                loading: 'Processing template action...',
                 onSuccess: function(data) {
-                    // SyncSidebar.run automatically shows a success toast if 'message' is present in unwrapped data
-                    // If you need custom post-run logic, add it here.
+                    // SyncSidebar.call automatically handles the success/error toasts and loading overlay.
                     console.log('Action successful', data);
                 }
             });

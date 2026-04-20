@@ -1,6 +1,6 @@
 /**
  * Template Backend Tool
- * Version: 1.0 (Plugin Architecture — registers with SyncEngine)
+ * Version: 1.0 (Plugin Architecture — registers with App.Engine)
  * 
  * Instructions:
  * 1. Duplicate this file and rename it (e.g. `MyNewTool_Code.js`).
@@ -10,7 +10,7 @@
  */
 
 // --- TOOL REGISTRATION ---
-SyncEngine.registerTool('TEMPLATE_TOOL', {
+App.Engine.registerTool('TEMPLATE_TOOL', {
     IS_TEMPLATE: true, // Mark as template to skip system audits
     SHEET_NAME: '⚙️ Template Tool', 
     TITLE: '⚙️ Template Tool',
@@ -30,6 +30,50 @@ SyncEngine.registerTool('TEMPLATE_TOOL', {
             { header: 'Item Name', type: 'TEXT' },
             { header: 'Status', type: 'TEXT' }
         ]
+    },
+
+    /**
+     * TOOL SERVICE ACTIONS
+     * These methods are called from the Sidebar via SyncSidebar.call('TEMPLATE_TOOL', 'methodName')
+     */
+    service: {
+        /**
+         * Triggered from the Sidebar. Must return { success: boolean, message: string }
+         */
+        processAction: function(payload) {
+            // Example: access tool-specific persistent preferences
+            var prefs = App.Engine.getPrefs('TEMPLATE_TOOL');
+            var mySavedOption = prefs.myOption || "Default Value";
+
+            // To save:
+            // prefs.myOption = "New Value";
+            // App.Engine.setPrefs('TEMPLATE_TOOL', prefs);
+
+            // Try extracting spreadsheet data
+            // Instead of manually reading ranges, use the ExecutionService for automatic progress tracking, backoff, and logging
+            var stats = ExecutionService.processPendingRows('TEMPLATE_TOOL', function(rowObj) {
+                
+                // Example: External App call with exponential backoff if doing raw API requests
+                /*
+                _App_callWithBackoff(function() {
+                    DriveApp.getFilesByName(rowObj['Item Name']);
+                });
+                */
+                
+                // Return an object containing updates for the row
+                // The system will automatically mark it as success or failure
+                return {
+                    'Action': "",
+                    'Status': "✅ Processed " + rowObj['Item Name']
+                };
+            });
+
+            if (stats.total === 0) {
+                return _App_ok("No pending actions to process.");
+            }
+
+            return _App_ok("Successfully processed " + stats.success + " out of " + stats.total + " actions!");
+        }
     }
 });
 
@@ -46,41 +90,11 @@ function TemplateTool_openSidebar() {
 }
 
 /**
- * Triggered from the Sidebar. Must return { success: boolean, message: string }
+ * @deprecated Use SyncSidebar.call('TEMPLATE_TOOL', 'processAction') from frontend.
+ * Keeping for backward compatibility during migration if needed, but should be removed eventually.
  */
 function TemplateTool_processAction(payload) {
-    return Logger.run('TEMPLATE_TOOL', 'Process Action', function () {
-        
-        // Example: access tool-specific persistent preferences
-        var prefs = SyncEngine.getPrefs('TEMPLATE_TOOL');
-        var mySavedOption = prefs.myOption || "Default Value";
-
-        // To save:
-        // prefs.myOption = "New Value";
-        // SyncEngine.setPrefs('TEMPLATE_TOOL', prefs);
-
-
-        // Try extracting spreadsheet data
-        var sheetObj = _App_ensureSheetExists('TEMPLATE_TOOL');
-        var dataRange = sheetObj.getDataRange();
-        var data = dataRange.getValues();
-
-        if (data.length <= 1) {
-            return { success: true, message: "No data to process." };
-        }
-
-        // Example: External App call with exponential backoff
-        /*
-        _App_callWithBackoff(function() {
-            DriveApp.getFilesByName('some name');
-        });
-        */
-
-        return { 
-            success: true, 
-            message: "Successfully executed the template action!" 
-        };
-    });
+    return App_exec('TEMPLATE_TOOL', 'processAction', payload);
 }
 
 // --- INTERNAL HELPERS ---

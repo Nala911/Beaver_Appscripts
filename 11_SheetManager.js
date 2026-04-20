@@ -146,6 +146,31 @@ Object.assign(App.Data, (function() {
             }
         },
 
+        overwriteRows: function(toolKey, rawRowsArray, options) {
+            var sheet = getSheet(toolKey);
+            var lastRow = sheet.getLastRow();
+            var totalCols = (options && options.totalCols) ? options.totalCols : sheet.getLastColumn();
+            
+            if (lastRow >= 2) {
+                sheet.getRange(2, 1, lastRow - 1, Math.max(totalCols, sheet.getLastColumn())).clearContent();
+            }
+            
+            if (rawRowsArray && rawRowsArray.length > 0) {
+                var targetRow = 2;
+                var dataCols = rawRowsArray[0].length;
+                sheet.getRange(targetRow, 1, rawRowsArray.length, dataCols).setValues(rawRowsArray);
+            }
+            
+            if (options && options.formatConfig) {
+                var numDataRows = rawRowsArray ? rawRowsArray.length : 0;
+                if (App.UI && App.UI.Formatting) {
+                    App.UI.Formatting.applyBody(sheet, numDataRows, options.formatConfig);
+                } else if (typeof _App_applyBodyFormatting === 'function') {
+                    _App_applyBodyFormatting(sheet, numDataRows, options.formatConfig);
+                }
+            }
+        },
+
         clearData: function(toolKey) {
             var sheet = getSheet(toolKey);
             var lastRow = sheet.getLastRow();
@@ -181,3 +206,5 @@ Object.assign(App.Data, (function() {
 
 // Backward Compatibility Layer
 var SheetManager = App.Data;
+var DataMapper = App.Data.Mapper;
+

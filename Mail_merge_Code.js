@@ -1,9 +1,9 @@
 /**
  * Mail Merge Toolkit
- * Version: 5.0 (Plugin Architecture — registers with SyncEngine)
+ * Version: 5.0 (Plugin Architecture — registers with App.Engine)
  */
 
-SyncEngine.registerTool('MAIL_MERGE', {
+App.Engine.registerTool('MAIL_MERGE', {
     SHEET_NAME: SHEET_NAMES.MAIL_MERGE,
     TITLE: '📧 Mail Merge Toolkit',
     MENU_LABEL: '📧 Mail Merge System',
@@ -30,11 +30,114 @@ SyncEngine.registerTool('MAIL_MERGE', {
             { header: 'Attachments', type: 'LIST' },
             { header: 'Status', type: 'TEXT' }
         ]
+    },
+
+    /**
+     * MAIL MERGE SERVICE ACTIONS
+     */
+    service: {
+        getQuota: function() {
+            return Logger.run('MAIL_MERGE', 'Get Quota', function () {
+                return _App_ok('Quota loaded.', { remaining: MailApp.getRemainingDailyQuota() });
+            });
+        },
+
+        getGmailDrafts: function() {
+            return Logger.run('MAIL_MERGE', 'Get Gmail Drafts', function () {
+                try {
+                    var drafts = GmailApp.getDrafts();
+                    var validDrafts = [];
+                    var regex = /\{\{[^{}]+\}\}/;
+
+                    for (var i = 0; i < drafts.length; i++) {
+                        var msg = drafts[i].getMessage();
+                        var subject = msg.getSubject() || "";
+                        var body = msg.getBody() || "";
+
+                        if (regex.test(subject) || regex.test(body)) {
+                            validDrafts.push({
+                                id: drafts[i].getId(),
+                                subject: subject || "(No Subject)"
+                            });
+
+                            if (validDrafts.length >= 10) {
+                                break;
+                            }
+                        }
+                    }
+                    return _App_ok('Drafts loaded.', { drafts: validDrafts });
+                } catch (e) {
+                    return _App_ok('No drafts available.', { drafts: [] });
+                }
+            });
+        },
+
+        syncPlaceholders: function(draftId) {
+            return Logger.run('MAIL_MERGE', 'Sync Placeholders', function () {
+                if (!draftId) return _App_fail("No draft selected.");
+                try {
+                    var draft = GmailApp.getDraft(draftId);
+                    if (!draft) throw new Error("Draft not found.");
+                    var msg = draft.getMessage();
+                    var subject = msg.getSubject() || "";
+                    var body = msg.getBody() || "";
+
+                    var placeholders = [];
+                    var regex = /\{\{([^{}]+)\}\}/g;
+
+                    var match;
+                    while ((match = regex.exec(subject)) !== null) {
+                        if (placeholders.indexOf(match[1]) === -1) placeholders.push(match[1]);
+                    }
+                    while ((match = regex.exec(body)) !== null) {
+                        if (placeholders.indexOf(match[1]) === -1) placeholders.push(match[1]);
+                    }
+
+                    var syncResult = SheetManager.syncDynamicColumns('MAIL_MERGE', placeholders, {
+                        anchorHeader: 'Status',
+                        dynamicColWidth: 150
+                    });
+
+                    return _App_ok('Synced ' + placeholders.length + ' placeholders.', {
+                        placeholders: placeholders,
+                        headers: syncResult.headers
+                    });
+                } catch (e) {
+                    var toolConfig = App.Engine.getTool('MAIL_MERGE') || { TITLE: 'MAIL_MERGE' };
+                    Logger.error(toolConfig.TITLE, 'Sync Placeholders', e);
+                    return _App_fail("Sync failed: " + e.message + (e.stack ? "\nTrace:\n" + e.stack : ""));
+                }
+            });
+        },
+
+        executeActions: function(draftId, startIndex) {
+            return MailMerge_executeActions(draftId, startIndex);
+        },
+
+        getRemainingPendingCount: function() {
+            return Logger.run('MAIL_MERGE', 'Get Pending Count', function () {
+                var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAMES.MAIL_MERGE);
+                if (!sheet) return 0;
+                var maxRows = sheet.getMaxRows();
+                if (maxRows < 2) return 0;
+                var headers = App.Engine.getTool('MAIL_MERGE').HEADERS;
+                var actionRange = sheet.getRange(2, headers.indexOf('Action') + 1, maxRows - 1);
+                var values = actionRange.getValues();
+                var count = 0;
+                for (var i = 0; i < values.length; i++) {
+                    var act = String(values[i][0]).toUpperCase();
+                    if (act === "SEND" || act === "DRAFT") {
+                        count++;
+                    }
+                }
+                return count;
+            });
+        }
     }
 });
 
 // Column-index aliases kept for backward compatibility within this file.
-// Metadata (title, sidebar, headers, widths) now lives in SyncEngine.getTool('MAIL_MERGE').
+// Metadata (title, sidebar, headers, widths) now lives in App.Engine.getTool('MAIL_MERGE').
 var MAILMERGE_CFG = {
   COLUMNS: {
     ACTION: 0, EMAIL_TO: 1, CC: 2, BCC: 3, THREAD_ID: 4, ATTACHMENTS: 5, STATUS: 6
@@ -54,80 +157,6 @@ function MailMerge_openSidebar() {
   });
 }
 
-
-function MailMerge_getQuota() {
-  return Logger.run('MAIL_MERGE', 'Get Quota', function () {
-    return _App_ok('Quota loaded.', { remaining: MailApp.getRemainingDailyQuota() });
-  });
-}
-
-function MailMerge_getGmailDrafts() {
-  return Logger.run('MAIL_MERGE', 'Get Gmail Drafts', function () {
-    try {
-      var drafts = GmailApp.getDrafts();
-      var validDrafts = [];
-      var regex = /\{\{[^{}]+\}\}/;
-
-      for (var i = 0; i < drafts.length; i++) {
-        var msg = drafts[i].getMessage();
-        var subject = msg.getSubject() || "";
-        var body = msg.getBody() || "";
-
-        if (regex.test(subject) || regex.test(body)) {
-          validDrafts.push({
-            id: drafts[i].getId(),
-            subject: subject || "(No Subject)"
-          });
-
-          if (validDrafts.length >= 10) {
-            break;
-          }
-        }
-      }
-      return _App_ok('Drafts loaded.', { drafts: validDrafts });
-    } catch (e) {
-      return _App_ok('No drafts available.', { drafts: [] });
-    }
-  });
-}
-
-function MailMerge_syncPlaceholders(draftId) {
-  return Logger.run('MAIL_MERGE', 'Sync Placeholders', function () {
-    if (!draftId) return _App_fail("No draft selected.");
-    try {
-      var draft = GmailApp.getDraft(draftId);
-      if (!draft) throw new Error("Draft not found.");
-      var msg = draft.getMessage();
-      var subject = msg.getSubject() || "";
-      var body = msg.getBody() || "";
-
-      var placeholders = [];
-      var regex = /\{\{([^{}]+)\}\}/g;
-
-      var match;
-      while ((match = regex.exec(subject)) !== null) {
-        if (placeholders.indexOf(match[1]) === -1) placeholders.push(match[1]);
-      }
-      while ((match = regex.exec(body)) !== null) {
-        if (placeholders.indexOf(match[1]) === -1) placeholders.push(match[1]);
-      }
-
-      var syncResult = SheetManager.syncDynamicColumns('MAIL_MERGE', placeholders, {
-        anchorHeader: 'Status',
-        dynamicColWidth: 150
-      });
-
-      return _App_ok('Synced ' + placeholders.length + ' placeholders.', {
-        placeholders: placeholders,
-        headers: syncResult.headers
-      });
-    } catch (e) {
-      var toolConfig = SyncEngine.getTool('MAIL_MERGE') || { TITLE: 'MAIL_MERGE' };
-      Logger.error(toolConfig.TITLE, 'Sync Placeholders', e);
-      return _App_fail("Sync failed: " + e.message + (e.stack ? "\nTrace:\n" + e.stack : ""));
-    }
-  });
-}
 
 function _MailMerge_escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -185,7 +214,7 @@ function MailMerge_executeActions(draftId, startIndex) {
     var startTime = Date.now();
     var maxExecutionTime = 300 * 1000; // 5 minutes limit per batch execution
 
-    var toolCfg = SyncEngine.getTool('MAIL_MERGE');
+    var toolCfg = App.Engine.getTool('MAIL_MERGE');
     var headers = toolCfg.HEADERS;
 
     // Use ExecutionService for robust row processing

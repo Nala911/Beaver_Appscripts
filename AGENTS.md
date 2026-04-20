@@ -22,7 +22,7 @@ This project uses **Clasp** (Command Line Apps Script Projects) for local develo
 The system is split into two halves: the Core Engine and the Tool Modules. Agents maintaining specific features should treat the **Core Engine** files as immutable unless explicitly tasked to refactor the framework itself.
 
 **Core Engine Files (Do Not Modify for Feature Work):**
-- `00_Config_Constants.js` through `11_DataMapper.js` (including `01_SheetManager.js`)
+- `00_Config_Constants.js` through `11_SheetManager.js`
 - `UI.js`
 - `SidebarShared.html`
 - `Logger.js` and `SystemAudit.js`
@@ -36,8 +36,8 @@ If you are just editing or adding a feature (like Mail Merge, Tasks Sync, etc.),
 - **Internal Helper Functions:** `_ToolName_InternalFunction` (e.g., `_MailMerge_validateData`).
 - **Core System Utilities:** `_App_UtilityName` (e.g., `_App_launchTool`).
 
-### 2. The SyncEngine Contract
-Every tool backend file must register itself with the engine at the very top of the script using `SyncEngine.registerTool(key, config)`. Do not hardcode columns inside backend logic; rely on the registry's `COL_SCHEMA`.
+### 2. The App.Engine Contract
+Every tool backend file must register itself with the engine at the very top of the script using `App.Engine.registerTool(key, config)`. Do not hardcode columns inside backend logic; rely on the registry's `COL_SCHEMA`.
 
 ### 3. The Logger.run Contract
 Every public function called from a sidebar or the Ribbon UI must use the `Logger.run` execution wrapper to ensure errors are caught and recorded. DO NOT manually try/catch to write error strings into cells. 
@@ -58,7 +58,7 @@ Background sync tools should manage their own `ScriptApp` triggers. Use an inter
 
 ### 6. The Preferences Contract
 Never use `PropertiesService.getDocumentProperties()` directly in a tool.
-- **Mandatory Pattern**: Use `SyncEngine.getPrefs(toolKey)` and `SyncEngine.setPrefs(toolKey, prefsObject)`.
+- **Mandatory Pattern**: Use `App.Engine.getPrefs(toolKey)` and `App.Engine.setPrefs(toolKey, prefsObject)`.
 - Tools should store all their configuration (selected IDs, dates, flags) within this JSON-serialized namespace.
 - Legacy `_App_getProperty` from `02_Config_Storage.js` should only be used for core system-wide constants.
 
@@ -72,7 +72,7 @@ All row-level sync operations MUST use `ExecutionService.processPendingRows(tool
 1. **Minimize file reads**: ONLY read the specific tool files needed.
 2. **Consult Core Modules first**: Global configuration and logic are defined in `00_Config_Constants.js` through `09_Engine_UI.js`.
 3. **Use `Logger.run()`**: Wrap primary tool operations in `Logger.run('TOOL_KEY', 'Context', () => { ... })` for consistent logging.
-4. **Follow `SyncEngine`**: When modifying sheet structure, update the registration metadata in the tool's backend file, which registers with `SyncEngine`.
+4. **Follow `App.Engine`**: When modifying sheet structure, update the registration metadata in the tool's backend file, which registers with `App.Engine`.
 5. **Consult Templates First**: BEFORE creating a new tool or refactoring an old one, you MUST read `Template_Tool_Code.js` and `Template_Tool_Sidebar.html` to ensure you are following the latest "Golden" architectural patterns.
 
 
@@ -80,7 +80,7 @@ All row-level sync operations MUST use `ExecutionService.processPendingRows(tool
 
 Before completing any task, mentally run this checklist. Do not proceed until you have verified all points:
 
-- [ ] Does my backend file register with `SyncEngine` at the very top?
+- [ ] Does my backend file register with `App.Engine` at the very top?
 - [ ] Are all public functions prefixed with `ToolName_` (e.g., `MailMerge_doWork`)?
 - [ ] Are all internal helper functions prefixed with `_ToolName_` (e.g., `_MailMerge_validate`)?
 - [ ] Did I wrap my core action inside `Logger.run('KEY', 'Context', function() {...})`?

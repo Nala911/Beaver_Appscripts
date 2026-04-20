@@ -86,9 +86,9 @@ function _UI_themeToClient(theme) {
 function UI_saveThemeConfig(newThemeConfig) {
   return Logger.run('SYSTEM', 'Save Theme', function () {
     if (newThemeConfig) {
-      var prefs = SyncEngine.getPrefs('SYSTEM');
+      var prefs = App.Engine.getPrefs('SYSTEM');
       prefs.theme = newThemeConfig;
-      SyncEngine.setPrefs('SYSTEM', prefs);
+      App.Engine.setPrefs('SYSTEM', prefs);
       return { success: true, message: 'Theme saved successfully!' };
     }
     return { success: false, message: 'No theme data received.' };
@@ -97,9 +97,9 @@ function UI_saveThemeConfig(newThemeConfig) {
 
 function UI_resetThemeConfig() {
   return Logger.run('SYSTEM', 'Reset Theme', function () {
-    var prefs = SyncEngine.getPrefs('SYSTEM');
+    var prefs = App.Engine.getPrefs('SYSTEM');
     delete prefs.theme;
-    SyncEngine.setPrefs('SYSTEM', prefs);
+    App.Engine.setPrefs('SYSTEM', prefs);
     return { success: true, message: 'Reset to default theme!' };
   });
 }

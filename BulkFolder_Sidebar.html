@@ -39,6 +39,7 @@
       pointer-events: none;
     }
   </style>
+  <?!= include('SidebarShared'); ?>
 </head>
 
 <body class="bg-white text-gray-800 h-screen flex flex-col overflow-hidden">
@@ -96,13 +97,6 @@
   </div>
 
   <script>
-    // Global Error Catcher
-    window.onerror = function (msg, url, line, col, error) {
-      const detail = `Error: ${msg}\nURL: ${url}\nLine: ${line}, Col: ${col}${error ? '\nStack: ' + error.stack : ''}`;
-      google.script.run._App_logClientError(detail, 'Global Error');
-      return false;
-    };
-
     let currentFolderId = "root";
     let isProcessing = false;
     let progressInterval = null;
@@ -123,10 +117,10 @@
       document.getElementById('btn-run').disabled = true;
       document.getElementById('btn-back').disabled = true;
 
-      google.script.run
-        .withSuccessHandler(renderExplorer)
-        .withFailureHandler(showError)
-        .BulkFolder_getDriveNavData(id);
+      SyncSidebar.call('BULK_FOLDER', 'getDriveNavData', id, {
+        onSuccess: renderExplorer,
+        onError: showError
+      });
     }
 
     function renderExplorer(data) {
@@ -182,15 +176,12 @@
 
       // Back Button Logic
       const backBtn = document.getElementById('btn-back');
-      // If we are at root (or the first item in breadcrumb is root-ish), handle check logic
-      // Using breadcrumb length is a simpler proxy for "Can I go back?"
       backBtn.disabled = data.breadcrumbs.length <= 1;
     }
 
     function goUp() {
       const bcs = document.querySelectorAll('.breadcrumb-item');
       if (bcs.length >= 2) {
-        // Click the second to last breadcrumb
         bcs[bcs.length - 2].click();
       }
     }
@@ -215,24 +206,26 @@
       // Start Polling
       progressInterval = setInterval(pollProgress, 2000);
 
-      google.script.run
-        .withSuccessHandler(finishProcess)
-        .withFailureHandler(showError)
-        .BulkFolder_runBulkCreationSequence(currentFolderId);
+      SyncSidebar.call('BULK_FOLDER', 'runBulkCreationSequence', currentFolderId, {
+        onSuccess: finishProcess,
+        onError: showError
+      });
     }
 
     function pollProgress() {
       if (!isProcessing) return;
-      google.script.run
-        .withSuccessHandler(function (progress) {
+      SyncSidebar.call('BULK_FOLDER', 'getProgress', null, {
+        unwrap: false,
+        toast: false,
+        onSuccess: function (progress) {
           if (progress && progress.total > 0) {
             let percent = Math.round((progress.current / progress.total) * 100);
             document.getElementById('progress-bar').style.width = percent + "%";
             document.getElementById('progress-percent').innerText = percent + "%";
             document.getElementById('progress-text').innerText = "Processed " + progress.current + " of " + progress.total + " rows...";
           }
-        })
-        .BulkFolder_getProgress();
+        }
+      });
     }
 
     function finishProcess(responseMsg) {
@@ -271,14 +264,13 @@
 
     function showError(e) {
       if (progressInterval) clearInterval(progressInterval);
-      alert("Error: " + e.message);
+      alert("Error: " + (e.message || e));
       resetUI();
-      google.script.run._App_logClientError(e, 'Sidebar Operation');
     }
 
     function resetUI() {
       isProcessing = false;
-      document.getElementById('btn-run').innerText = "Create Folders inside Selected Folder";
+      document.getElementById('btn-run').innerText = "Select & Create Folders";
       document.getElementById('btn-run').disabled = false;
       document.getElementById('btn-run').classList.remove('bg-green-600', 'hover:bg-green-700', 'bg-red-600', 'hover:bg-red-700', 'bg-yellow-600', 'hover:bg-yellow-700');
       document.getElementById('btn-run').classList.add('bg-blue-600', 'hover:bg-blue-700');

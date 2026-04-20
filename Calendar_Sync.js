@@ -82,56 +82,57 @@ App.Engine.registerTool('CALENDAR_SYNC', {
         pushChanges: function() {
             var allCals = CalendarApp.getAllCalendars();
             var calMap = {};
-            allCals.forEach(function(c) { calMap[c.getName()] = c; calMap[c.getId()] = c; });
-
-            var pending = App.Data.readPendingActions('CALENDAR_SYNC');
-            var processed = 0, errors = 0;
-
-            pending.forEach(function(row) {
-                try {
-                    var action = String(row['Action']).toUpperCase();
-                    var targetCal = calMap[row['Target Calendar Name']];
-                    var originalCal = calMap[row['Original Calendar ID']];
-                    var eventId = row['Event ID'];
-
-                    var updates = { 'Action': '', 'Log': '✅ Success' };
-
-                    switch (action) {
-                        case 'CREATE':
-                            if (!targetCal) throw new Error("Target calendar not found");
-                            var ev = targetCal.createEvent(row['Event Title'], row['Start Time'], row['End Time'], {
-                                description: row['Description'],
-                                location: row['Location'],
-                                guests: (row['Guests'] || []).join(',')
-                            });
-                            updates['Event ID'] = ev.getId();
-                            updates['Original Calendar ID'] = targetCal.getId();
-                            break;
-
-                        case 'UPDATE':
-                            var evToUpdate = _CalendarSync_findEvent(originalCal, true, eventId, row);
-                            if (!evToUpdate) throw new Error("Event not found");
-                            evToUpdate.setTitle(row['Event Title']);
-                            evToUpdate.setTime(row['Start Time'], row['End Time']);
-                            evToUpdate.setDescription(row['Description']);
-                            evToUpdate.setLocation(row['Location']);
-                            break;
-
-                        case 'REMOVE':
-                            var evToDel = _CalendarSync_findEvent(originalCal, false, eventId, row);
-                            if (evToDel) evToDel.deleteEvent();
-                            updates['Log'] = '🗑️ Removed';
-                            break;
-                    }
-                    App.Data.patchRow('CALENDAR_SYNC', row._rowNumber, updates);
-                    processed++;
-                } catch (e) {
-                    App.Data.patchRow('CALENDAR_SYNC', row._rowNumber, { 'Log': '❌ ' + e.message });
-                    errors++;
-                }
+            allCals.forEach(function(c) { 
+                calMap[c.getName()] = c; 
+                calMap[c.getId()] = c; 
             });
 
-            return _App_ok("Sync complete. Success: " + processed + ", Errors: " + errors);
+            var stats = ExecutionService.processPendingRows('CALENDAR_SYNC', function(row) {
+                var action = String(row['Action'] || '').toUpperCase();
+                var targetCal = calMap[row['Target Calendar Name']];
+                var originalCal = calMap[row['Original Calendar ID']];
+                var eventId = row['Event ID'];
+
+                var updates = { 'Action': '', 'Log': '✅ Success' };
+
+                switch (action) {
+                    case 'CREATE':
+                        if (!targetCal) throw new Error("Target calendar not found");
+                        var ev = targetCal.createEvent(row['Event Title'], row['Start Time'], row['End Time'], {
+                            description: row['Description'],
+                            location: row['Location'],
+                            guests: (row['Guests'] || []).join(',')
+                        });
+                        updates['Event ID'] = ev.getId();
+                        updates['Original Calendar ID'] = targetCal.getId();
+                        break;
+
+                    case 'UPDATE':
+                        var evToUpdate = _CalendarSync_findEvent(originalCal, true, eventId, row);
+                        if (!evToUpdate) throw new Error("Event not found");
+                        evToUpdate.setTitle(row['Event Title']);
+                        evToUpdate.setTime(row['Start Time'], row['End Time']);
+                        evToUpdate.setDescription(row['Description']);
+                        evToUpdate.setLocation(row['Location']);
+                        break;
+
+                    case 'REMOVE':
+                        var evToDel = _CalendarSync_findEvent(originalCal, false, eventId, row);
+                        if (evToDel) evToDel.deleteEvent();
+                        updates['Log'] = '🗑️ Removed';
+                        break;
+                    
+                    default:
+                        return; // Skip if no recognized action
+                }
+                SheetManager.patchRow('CALENDAR_SYNC', row._rowNumber, updates);
+            });
+
+            if (stats.processed === 0 && stats.errors === 0) {
+                return _App_ok("No data to sync.");
+            }
+
+            return _App_ok("Sync complete. Success: " + stats.processed + ", Errors: " + stats.errors);
         }
     }
 });
@@ -140,7 +141,9 @@ App.Engine.registerTool('CALENDAR_SYNC', {
  * Entry point for menu (idempotent setup)
  */
 function Calendar_showSidebar() {
-    App.UI.launchTool('CALENDAR_SYNC');
+    return Logger.run('CALENDAR_SYNC', 'Open Sidebar', function () {
+        _App_launchTool('CALENDAR_SYNC');
+    });
 }
 
 /**

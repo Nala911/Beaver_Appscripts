@@ -22,6 +22,13 @@ Object.assign(App.Utils, (function() {
         include: function(filename) {
             return HtmlService.createHtmlOutputFromFile(filename).getContent();
         },
+        throttle: function(tracker, increment, limit, delayMs) {
+            tracker.apiCalls = (tracker.apiCalls || 0) + (increment || 1);
+            if (tracker.apiCalls >= (limit || 10)) {
+                Utilities.sleep(delayMs || 1000);
+                tracker.apiCalls = 0;
+            }
+        },
         callWithBackoff: function(func, retries) {
             var max = (retries !== undefined) ? retries : 5;
             for (var n = 0; n <= max; n++) {
@@ -42,4 +49,5 @@ function _App_ok(m, d, mt) { return App.Utils.ok(m, d, mt); }
 function _App_fail(m, d, mt) { return App.Utils.fail(m, d, mt); }
 function _App_withDocumentLock(l, c, t) { return App.Utils.withLock(l, c, t); }
 function _App_include(f) { return App.Utils.include(f); }
+function _App_throttle(tr, i, l, d) { return App.Utils.throttle(tr, i, l, d); }
 function _App_callWithBackoff(f, r) { return App.Utils.callWithBackoff(f, r); }

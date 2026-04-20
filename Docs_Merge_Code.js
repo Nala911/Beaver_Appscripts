@@ -1,9 +1,9 @@
 /**
  * Docs Merge Toolkit
- * Version: 6.0 (Plugin Architecture — registers with SyncEngine)
+ * Version: 6.0 (Plugin Architecture — registers with App.Engine)
  */
 
-SyncEngine.registerTool('DOCS_MERGE', {
+App.Engine.registerTool('DOCS_MERGE', {
     SHEET_NAME: SHEET_NAMES.DOCS_MERGE,
     TITLE: '📄 Docs Merge Toolkit',
     MENU_LABEL: '📄 Start Docs Merge',
@@ -22,17 +22,40 @@ SyncEngine.registerTool('DOCS_MERGE', {
             { header: 'Document Name', type: 'TEXT' },
             { header: 'Merged File Link', type: 'URL' }
         ]
+    },
+
+    /**
+     * DOCS MERGE SERVICE ACTIONS
+     */
+    service: {
+        getConfig: function() {
+            return _DocsMerge_getConfig();
+        },
+
+        saveConfig: function(config) {
+            return _DocsMerge_saveConfig(config);
+        },
+
+        searchFolders: function(query) {
+            return _DocsMerge_searchFolders(query);
+        },
+
+        searchDocs: function(query) {
+            return _DocsMerge_searchDocs(query);
+        },
+
+        syncPlaceholders: function(docId) {
+            return _DocsMerge_syncPlaceholders(docId);
+        },
+
+        runSync: function() {
+            return _DocsMerge_runSync();
+        }
     }
 });
 
 // Column-index aliases — kept for backward compatibility within this file.
-// Metadata (title, sidebar, headers, widths) now lives in SyncEngine.getTool('DOCS_MERGE').
-var DOCS_MERGE_CFG = {
-  COLUMNS: {
-    ACTION: 0, DOC_NAME: 1
-  },
-  HEADER_ROW: 1
-};
+// Metadata (title, sidebar, headers, widths) now lives in App.Engine.getTool('DOCS_MERGE').
 
 /** @deprecated — Use _App_ensureSheetExists('DOCS_MERGE') instead. */
 function _DocsMerge_ensureSheetExistsAndActivate() {
@@ -46,9 +69,9 @@ function DocsMerge_openSidebar() {
   });
 }
 
-function DocsMerge_getConfig() {
+function _DocsMerge_getConfig() {
   return Logger.run('DOCS_MERGE', 'Get Config', function () {
-    var prefs = SyncEngine.getPrefs('DOCS_MERGE');
+    var prefs = App.Engine.getPrefs('DOCS_MERGE');
     var templateUrl = prefs.templateUrl || "";
     var folderUrl = prefs.folderUrl || "";
 
@@ -57,7 +80,7 @@ function DocsMerge_getConfig() {
       try {
         templateName = DriveApp.getFileById(_DocsMerge_extractIdFromUrl(templateUrl)).getName();
         prefs.templateName = templateName;
-        SyncEngine.setPrefs('DOCS_MERGE', prefs);
+        App.Engine.setPrefs('DOCS_MERGE', prefs);
       } catch (e) { }
     }
 
@@ -66,7 +89,7 @@ function DocsMerge_getConfig() {
       try {
         folderName = DriveApp.getFolderById(_DocsMerge_extractIdFromUrl(folderUrl)).getName();
         prefs.folderName = folderName;
-        SyncEngine.setPrefs('DOCS_MERGE', prefs);
+        App.Engine.setPrefs('DOCS_MERGE', prefs);
       } catch (e) { }
     }
 
@@ -79,19 +102,19 @@ function DocsMerge_getConfig() {
   });
 }
 
-function DocsMerge_saveConfig(config) {
+function _DocsMerge_saveConfig(config) {
   return Logger.run('DOCS_MERGE', 'Save Config', function () {
-    var prefs = SyncEngine.getPrefs('DOCS_MERGE');
+    var prefs = App.Engine.getPrefs('DOCS_MERGE');
     if (config.templateUrl !== undefined) prefs.templateUrl = config.templateUrl;
     if (config.folderUrl !== undefined) prefs.folderUrl = config.folderUrl;
     if (config.templateName !== undefined) prefs.templateName = config.templateName;
     if (config.folderName !== undefined) prefs.folderName = config.folderName;
-    SyncEngine.setPrefs('DOCS_MERGE', prefs);
+    App.Engine.setPrefs('DOCS_MERGE', prefs);
     return _App_ok('Config saved.');
   });
 }
 
-function DocsMerge_searchFolders(query) {
+function _DocsMerge_searchFolders(query) {
   return Logger.run('DOCS_MERGE', 'Search Folders', function () {
     if (!query || query.length < 2) return _App_ok('Folder search skipped.', { results: [] });
     var results = [];
@@ -115,7 +138,7 @@ function DocsMerge_searchFolders(query) {
   });
 }
 
-function DocsMerge_searchDocs(query) {
+function _DocsMerge_searchDocs(query) {
   return Logger.run('DOCS_MERGE', 'Search Docs', function () {
     if (!query || query.length < 2) return _App_ok('Document search skipped.', { results: [] });
     var results = [];
@@ -145,7 +168,7 @@ function _DocsMerge_extractIdFromUrl(url) {
   return match ? match[0] : null;
 }
 
-function DocsMerge_syncPlaceholders(templateUrl) {
+function _DocsMerge_syncPlaceholders(templateUrl) {
   return Logger.run('DOCS_MERGE', 'Sync Placeholders', function () {
     var templateId = _DocsMerge_extractIdFromUrl(templateUrl);
     if (!templateId) throw new Error("Could not extract Template ID. Paste the full Doc URL.");
@@ -170,7 +193,7 @@ function DocsMerge_syncPlaceholders(templateUrl) {
         headers: syncResult.headers
       });
     } catch (e) {
-      var toolConfig = SyncEngine.getTool('DOCS_MERGE') || { TITLE: 'DOCS_MERGE' };
+      var toolConfig = App.Engine.getTool('DOCS_MERGE') || { TITLE: 'DOCS_MERGE' };
       Logger.error(toolConfig.TITLE, 'Sync Placeholders', e);
       return _App_fail("Sync failed: " + e.message + (e.stack ? "\nTrace:\n" + e.stack : "") + ". Ensure you have editor access to the Doc.");
     }
@@ -192,7 +215,7 @@ function _DocsMerge_escapeRegExp(string) {
 
 // execution context - no longer a single monolith function
 
-function DocsMerge_runSync(config) {
+function _DocsMerge_runSync(config) {
   return Logger.run('DOCS_MERGE', 'Run Docs Merge', function () {
     var templateUrl = config.templateUrl;
     var folderUrl = config.folderUrl;
@@ -215,7 +238,7 @@ function DocsMerge_runSync(config) {
 
     var templateFile = DriveApp.getFileById(templateId);
     var targetFolder = DriveApp.getFolderById(folderId);
-    var toolCfg = SyncEngine.getTool('DOCS_MERGE');
+    var toolCfg = App.Engine.getTool('DOCS_MERGE');
     var headers = toolCfg.HEADERS;
     
     // 1. Initialization for SINGLE mode

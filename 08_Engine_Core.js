@@ -116,7 +116,6 @@ Object.assign(App.Engine, (function(global) {
 })(this));
 
 // Backward Compatibility Layer
-var SyncEngine = App.Engine;
 var APP_REGISTRY = new Proxy({}, {
     get: function(target, prop) { return App.Engine.getTool(prop); },
     ownKeys: function() { return App.Engine.getToolKeys(); },

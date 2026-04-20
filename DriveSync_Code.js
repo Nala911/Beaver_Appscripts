@@ -1,9 +1,9 @@
 /**
  * DRIVE SYNC MANAGER
- * Server-side Logic — Version 5.0 (Plugin Architecture — registers with SyncEngine)
+ * Server-side Logic — Version 5.0 (Plugin Architecture — registers with App.Engine)
  */
 
-SyncEngine.registerTool('DRIVE_SYNC', {
+App.Engine.registerTool('DRIVE_SYNC', {
     REQUIRED_SERVICES: [ { name: 'Drive API', test: function() { return typeof Drive !== 'undefined'; } } ],
     SHEET_NAME: SHEET_NAMES.DRIVE_SYNC,
     TITLE: '💾 Drive Sync Manager',
@@ -36,19 +36,49 @@ SyncEngine.registerTool('DRIVE_SYNC', {
             { header: 'Parent ID', type: 'ID' },
             { header: 'URL', type: 'URL' }
         ]
+    },
+
+    /**
+     * DRIVE SYNC SERVICE ACTIONS
+     */
+    service: {
+        getFolderContent: function(folderId) {
+            return Drive_getFolderContent(folderId);
+        },
+
+        getDrivesList: function() {
+            return Drive_getDrivesList();
+        },
+
+        getFolderHierarchy: function(folderId) {
+            return Drive_getFolderHierarchy(folderId);
+        },
+
+        getPendingStats: function() {
+            return Drive_getPendingStats();
+        },
+
+        pullFromDrive: function(params) {
+            return Drive_pullFromDrive(params);
+        },
+
+        runPushSequence: function() {
+            return Drive_runPushSequence();
+        },
+
+        setupSheet: function() {
+            return Drive_setupSheet();
+        },
+
+        fillActivePath: function() {
+            return Drive_fillActivePath();
+        }
     }
 });
 
 /* ==========================================================================
    CONFIGURATION
    ========================================================================== */
-
-// Column-index aliases — kept for backward-compat; metadata now in SyncEngine.getTool('DRIVE_SYNC').
-var DRIVE_SYNC_COL = {
-  ACTION: 0, NAME: 1, DESC: 2, STARRED: 3, TYPE: 4,
-  EDITORS: 5, VIEWERS: 6, IS_PUBLIC: 7, PATH: 8,
-  SIZE: 9, OWNER: 10, MIME: 11, MODIFIED: 12, ITEM_ID: 13, PARENT_ID: 14, URL: 15
-};
 
 // Global Time Limit (Google Apps Script has 6 min limit, we stop at 5.5 min)
 var DRIVE_SYNC_START_TIME = 0;
@@ -67,19 +97,16 @@ function _DriveSync_ensureSheetExistsAndActivate() {
   return _App_ensureSheetExists('DRIVE_SYNC');
 }
 
+/* ==========================================================================
+   CORE LOGIC
+   ========================================================================== */
+
 /** Opens the Drive Sync sidebar and ensures the sheet exists. */
 function Drive_showSidebar() {
   return Logger.run('DRIVE_SYNC', 'Open Sidebar', function () {
     _App_launchTool('DRIVE_SYNC');
   });
 }
-
-
-
-
-/* ==========================================================================
-   CORE LOGIC
-   ========================================================================== */
 
 function Drive_getFolderContent(folderId) {
   return Logger.run('DRIVE_SYNC', 'Get Folder Content', function () {
@@ -283,7 +310,7 @@ function Drive_pullFromDrive(targetFolderId, isShallow) {
           });
         } catch (e) {
           if (e.message && e.message.indexOf("Time limit") !== -1) throw e;
-          Logger.warn(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'recursiveFetch', "Error fetching folder " + parentId + ": " + e.message);
+          Logger.warn(App.Engine.getTool('DRIVE_SYNC').TITLE, 'recursiveFetch', "Error fetching folder " + parentId + ": " + e.message);
         }
       }
 
@@ -318,7 +345,7 @@ function Drive_pullFromDrive(targetFolderId, isShallow) {
         try {
           var actualRoot = Drive.Files.get("root", { fields: "name", supportsAllDrives: true });
           if (actualRoot && actualRoot.name) rootFolderName = actualRoot.name;
-        } catch (e) { Logger.warn(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'Path Resolution', "Could not fetch root name, using default."); }
+        } catch (e) { Logger.warn(App.Engine.getTool('DRIVE_SYNC').TITLE, 'Path Resolution', "Could not fetch root name, using default."); }
       }
 
       if (targetFolderId === "root" || foundSharedDriveRoot) {
@@ -378,7 +405,10 @@ function Drive_pullFromDrive(targetFolderId, isShallow) {
         return getPath(item.parentId, currentPath);
       };
 
-      var headers = SyncEngine.getTool('DRIVE_SYNC').HEADERS;
+      var headers = App.Engine.getTool('DRIVE_SYNC').HEADERS;
+      var col = {};
+      headers.forEach(function(h, idx) { col[h] = idx; });
+
       for (var i = 0; i < allItems.length; i++) {
         var item = allItems[i];
         var parentId = item._traversalParentId || ((item.parents && item.parents.length > 0) ? item.parents[0] : "");
@@ -387,24 +417,24 @@ function Drive_pullFromDrive(targetFolderId, isShallow) {
         var perms = _DriveSync_parsePermissions(item.permissions);
 
         var row = new Array(headers.length);
-        row[DRIVE_SYNC_COL.ACTION] = "";
-        row[DRIVE_SYNC_COL.NAME] = item.name;
-        row[DRIVE_SYNC_COL.DESC] = item.description || "";
-        row[DRIVE_SYNC_COL.STARRED] = item.starred || false;
-        row[DRIVE_SYNC_COL.TYPE] = _DriveSync_getFriendlyType(item.mimeType);
+        row[col['Action']] = "";
+        row[col['Item Name']] = item.name;
+        row[col['Description']] = item.description || "";
+        row[col['Starred']] = item.starred || false;
+        row[col['Type']] = _DriveSync_getFriendlyType(item.mimeType);
 
-        row[DRIVE_SYNC_COL.SIZE] = _DriveSync_formatBytes(item.size);
-        row[DRIVE_SYNC_COL.OWNER] = perms.owners.join(", ");
-        row[DRIVE_SYNC_COL.EDITORS] = perms.editors.join(", ");
-        row[DRIVE_SYNC_COL.VIEWERS] = perms.viewers.join(", ");
-        row[DRIVE_SYNC_COL.IS_PUBLIC] = perms.isPublic;
+        row[col['Size']] = _DriveSync_formatBytes(item.size);
+        row[col['Owner']] = perms.owners.join(", ");
+        row[col['Editors']] = perms.editors.join(", ");
+        row[col['Viewers']] = perms.viewers.join(", ");
+        row[col['Is Public?']] = perms.isPublic;
 
-        row[DRIVE_SYNC_COL.PATH] = path;
-        row[DRIVE_SYNC_COL.MIME] = item.mimeType;
-        row[DRIVE_SYNC_COL.MODIFIED] = item.modifiedTime;
-        row[DRIVE_SYNC_COL.ITEM_ID] = item.id;
-        row[DRIVE_SYNC_COL.PARENT_ID] = parentId;
-        row[DRIVE_SYNC_COL.URL] = item.webViewLink;
+        row[col['Folder Path']] = path;
+        row[col['Mime Type']] = item.mimeType;
+        row[col['Last Modified']] = item.modifiedTime;
+        row[col['Item ID']] = item.id;
+        row[col['Parent ID']] = parentId;
+        row[col['URL']] = item.webViewLink;
         rows.push(row);
       }
 
@@ -413,13 +443,13 @@ function Drive_pullFromDrive(targetFolderId, isShallow) {
         var range = sheet.getRange(rowParams.start, 1, rowParams.total, rows[0].length);
         range.setValues(rows);
 
-        _App_applyBodyFormatting(sheet, rows.length, SyncEngine.getTool('DRIVE_SYNC').FORMAT_CONFIG);
+        _App_applyBodyFormatting(sheet, rows.length, App.Engine.getTool('DRIVE_SYNC').FORMAT_CONFIG);
 
         var msg = "Successfully pulled " + rows.length + " items from " + (targetFolderId === "root" ? "Root Drive" : rootObj.name) + ".";
         if (isPartialPull) {
           msg = "⚠️ Partial Pull: " + msg + " (Execution Time Limit Reached. Run again to continue)";
         }
-        Logger.info(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'Pull Complete', msg);
+        Logger.info(App.Engine.getTool('DRIVE_SYNC').TITLE, 'Pull Complete', msg);
         return msg;
       } else {
         return "Target folder is empty.";
@@ -500,7 +530,7 @@ function Drive_setupSheet(sheet) {
 
     _DriveSync_initializeHeaders(sheet);
     
-    var cfg = SyncEngine.getTool('DRIVE_SYNC');
+    var cfg = App.Engine.getTool('DRIVE_SYNC');
     if (cfg.COL_WIDTHS) {
       cfg.COL_WIDTHS.forEach(function (w, i) {
         if (w !== null && w !== undefined) sheet.setColumnWidth(i + 1, w);
@@ -517,14 +547,12 @@ function Drive_setupSheet(sheet) {
    ========================================================================== */
 
 function _DriveSync_validateHeaders(sheet) {
-  var headers = SyncEngine.getTool('DRIVE_SYNC').HEADERS;
+  var headers = App.Engine.getTool('DRIVE_SYNC').HEADERS;
   var currentHeaders = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
-  if (currentHeaders[0] !== headers[0] || currentHeaders[DRIVE_SYNC_COL.ITEM_ID] !== headers[DRIVE_SYNC_COL.ITEM_ID]) {
+  if (currentHeaders[0] !== headers[0] || currentHeaders[headers.indexOf('Item ID')] !== headers[headers.indexOf('Item ID')]) {
     // Auto-fix corrupted headers instead of blocking the operation
     console.warn("Sheet headers appear corrupted. Auto-resetting headers...");
     _DriveSync_initializeHeaders(sheet);
-    var cfg = SyncEngine.getTool('DRIVE_SYNC');
-    // Schema-driven validation handles this on sheet load.
   }
 }
 
@@ -602,7 +630,7 @@ function _DriveSync_getMimeTypeFromFriendly(friendlyType) {
 }
 
 function _DriveSync_initializeHeaders(sheet) {
-  var headers = SyncEngine.getTool('DRIVE_SYNC').HEADERS;
+  var headers = App.Engine.getTool('DRIVE_SYNC').HEADERS;
   sheet.getRange(1, 1, 1, headers.length).setValues([headers])
     .setFontWeight(SHEET_THEME.LAYOUT.HEADER_WEIGHT)
     .setBackground(SHEET_THEME.HEADER)
@@ -844,17 +872,15 @@ function _DriveSync_handleDelete(rowObj) {
 function Drive_fillActivePath(folderId, pathString) {
   return Logger.run('DRIVE_SYNC', 'Fill Active Path', function () {
     var sheet = _App_assertActiveSheet(SHEET_NAMES.DRIVE_SYNC);
+    var headers = App.Engine.getTool('DRIVE_SYNC').HEADERS;
 
     var cell = sheet.getActiveCell();
     var row = cell.getRow();
 
     if (row < 2) throw new Error("Please select a row in the data area (Row 2 or below).");
 
-    // Col.PATH is 10 (index), so column is 11
-    // Col.PARENT_ID is 14 (index), so column is 15
-
-    sheet.getRange(row, DRIVE_SYNC_COL.PATH + 1).setValue(pathString);
-    sheet.getRange(row, DRIVE_SYNC_COL.PARENT_ID + 1).setValue(folderId);
+    sheet.getRange(row, headers.indexOf('Folder Path') + 1).setValue(pathString);
+    sheet.getRange(row, headers.indexOf('Parent ID') + 1).setValue(folderId);
 
     return "Updated Row " + row + " with path: " + pathString;
   });
