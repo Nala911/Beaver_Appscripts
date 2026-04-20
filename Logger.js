@@ -42,7 +42,8 @@ var Logger = (function () {
     var _state = {
         currentRunId: null,
         currentSteps: [],
-        depth: 0
+        depth: 0,
+        forceLog: false
     };
 
     /**
@@ -181,6 +182,7 @@ var Logger = (function () {
     }
 
     function isEnabled() {
+        if (_state.forceLog) return true;
         return _App_getProperty(APP_PROPS.ENABLE_DEBUG_LOGGING) === 'true';
     }
 
@@ -260,8 +262,9 @@ var Logger = (function () {
         /**
          * High-level orchestrator for tool execution.
          */
-        run: function (toolKey, reference, callback) {
+        run: function (toolKey, reference, callback, forceLog) {
             _state.depth++;
+            if (forceLog === true) _state.forceLog = true;
             this.setRunId();
             var cfg = { TITLE: toolKey };
             try { cfg = SyncEngine.getTool(toolKey); } catch (e) {}
@@ -282,6 +285,7 @@ var Logger = (function () {
                     _state.currentRunId = null;
                     _state.currentSteps = [];
                     _state.depth = 0;
+                    _state.forceLog = false;
                 }
             }
         },

@@ -360,6 +360,6 @@ function Logger_runSystemAudit() {
             summary: summary,
             details: results
         };
-    });
+    }, true);
 }
 
