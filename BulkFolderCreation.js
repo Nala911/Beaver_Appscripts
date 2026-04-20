@@ -124,152 +124,45 @@ function BulkFolder_getProgress() {
 
 function BulkFolder_runBulkCreationSequence(targetFolderId) {
   return Logger.run('BULK_FOLDER', 'Batch Creation', function () {
-    var lock = LockService.getScriptLock();
-    if (!lock.tryLock(5000)) throw new Error("⚠️ System is busy. Please try again.");
-
-    try {
+    return _App_withDocumentLock('Bulk Creation', function() {
       BULKFOLDER_START_TIME = Date.now();
-      var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+      var folderCache = {};
+      
+      // Identify Level columns from the tool's schema
+      var toolCfg = SyncEngine.getTool('BULK_FOLDER');
+      var levelHeaders = toolCfg.HEADERS.filter(function(h) { 
+          return String(h).toLowerCase().indexOf('level') !== -1; 
+      });
 
-      var maxRows = sheet.getMaxRows();
-      if (maxRows < 2) return "No data rows found.";
+      var stats = ExecutionService.processPendingRows('BULK_FOLDER', function(rowObj) {
+          if (_BulkFolder_isTimeLimitReached()) throw new Error("⏳ Time limit reached.");
 
-      var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-      var actionColIdx = headers.indexOf("Action");
+          var folderNames = [];
+          levelHeaders.forEach(function(h) {
+              var fName = String(rowObj[h] || "").trim();
+              if (fName) folderNames.push(fName.replace(/[\\/?*]/g, "_"));
+          });
 
-      if (actionColIdx === -1) {
-        throw new Error("Missing System Columns: 'Action'");
-      }
+          if (folderNames.length === 0) throw new Error("No folder names specified.");
 
-      // Find all dynamic Level columns
-      var levelCols = [];
-      for (var i = 0; i < headers.length; i++) {
-        var headerName = String(headers[i] || "").trim().toLowerCase();
-        if (headerName.startsWith("level")) {
-          levelCols.push(i);
-        }
-      }
+          _BulkFolder_createFolderPath(targetFolderId, folderNames, folderCache);
 
-      var dataRange = sheet.getDataRange();
-      var data = dataRange.getValues();
-      var pendingRows = [];
+          // Update success
+          SheetManager.patchRow('BULK_FOLDER', rowObj._rowNumber, {
+              'Action': '',
+              'Log': '✅ Created: ' + folderNames.join('/')
+          });
+      });
 
-      for (var i = 1; i < data.length; i++) {
-        if (data[i][actionColIdx] === "Create") {
-          pendingRows.push({ rowData: data[i], rowIndex: i + 1 });
-        }
-      }
-
-      if (pendingRows.length === 0) {
-        Logger.warn(SyncEngine.getTool('BULK_FOLDER').TITLE, 'Global', "No pending 'Create' actions found.");
+      if (stats.processed === 0 && stats.errors === 0) {
         return "No pending 'Create' actions found.";
       }
 
-      // --- PRE-VALIDATION START ---
-      var gapErrors = [];
-      var emptyErrors = [];
-      for (var k = 0; k < pendingRows.length; k++) {
-        var item = pendingRows[k];
-        var rowNum = item.rowIndex;
-        var hasEmptyLevel = false;
-        var hasDataAfterEmpty = false;
-        var hasAnyData = false;
-
-        for (var c = 0; c < levelCols.length; c++) {
-          var colIndex = levelCols[c];
-          var fName = String(item.rowData[colIndex] || "").trim();
-
-          if (fName === "") {
-            hasEmptyLevel = true;
-          } else {
-            hasAnyData = true;
-            if (hasEmptyLevel) {
-              hasDataAfterEmpty = true;
-              break;
-            }
-          }
-        }
-
-        if (!hasAnyData) {
-          emptyErrors.push("Row " + rowNum);
-        } else if (hasDataAfterEmpty) {
-          gapErrors.push("Row " + rowNum);
-        }
-      }
-
-      if (gapErrors.length > 0 || emptyErrors.length > 0) {
-        var errMsgs = [];
-        if (gapErrors.length > 0) {
-          errMsgs.push("Missing intermediate folder names in rows: " + gapErrors.join(", ") + " (e.g., Level 1 is empty, but Level 2 has data)");
-        }
-        if (emptyErrors.length > 0) {
-          errMsgs.push("No folder names specified in rows: " + emptyErrors.join(", "));
-        }
-        var fullError = "⚠️ Validation Error:\n" + errMsgs.join("\n");
-        Logger.warn(SyncEngine.getTool('BULK_FOLDER').TITLE, 'Pre-Validation', fullError);
-        return fullError + "\nPlease fix and try again.";
-      }
-      // --- PRE-VALIDATION END ---
-
-      _App_setProgress('BULK_FOLDER', 0, pendingRows.length);
-
-      var processedCount = 0;
-      var errorCount = 0;
-      var folderCache = {};
-      var timeLimitReached = false;
-
-      for (var k = 0; k < pendingRows.length; k++) {
-        if (_BulkFolder_isTimeLimitReached()) {
-          timeLimitReached = true;
-          break;
-        }
-
-        var item = pendingRows[k];
-        var rowNum = item.rowIndex;
-        var rowStartTime = new Date();
-
-        try {
-          var folderNames = [];
-          for (var c = 0; c < levelCols.length; c++) {
-            var colIndex = levelCols[c];
-            var fName = String(item.rowData[colIndex] || "").trim();
-            if (fName) {
-              folderNames.push(fName.replace(/[\\/?*]/g, "_"));
-            }
-          }
-
-          if (folderNames.length === 0) {
-            throw new Error("No folder names specified in Level columns.");
-          }
-
-          var resultId = _BulkFolder_createFolderPath(targetFolderId, folderNames, folderCache);
-
-          // Update data matrix successfully
-          data[rowNum - 1][actionColIdx] = "";
-          Logger.success(SyncEngine.getTool('BULK_FOLDER').TITLE, 'Row ' + rowNum, '✅ Created: ' + folderNames.join('/'));
-          processedCount++;
-
-        } catch (e) {
-          errorCount++;
-          Logger.error(SyncEngine.getTool('BULK_FOLDER').TITLE, 'Row ' + rowNum, e);
-        }
-
-        _App_setProgress('BULK_FOLDER', k + 1, pendingRows.length);
-      }
-
-      // Write ALL modified data back to the sheet in a single batch call
-      dataRange.setValues(data);
-      _App_clearProgress('BULK_FOLDER');
-
-      var finalMsg = "Successfully processed " + processedCount + " folders.";
-      if (errorCount > 0) finalMsg += " (" + errorCount + " errors)";
-      if (timeLimitReached) finalMsg = "⏳ Time limit reached. " + finalMsg;
-
+      var finalMsg = "Successfully processed " + stats.processed + " folders.";
+      if (stats.errors > 0) finalMsg += " (" + stats.errors + " errors)";
+      
       return finalMsg;
-
-    } finally {
-      lock.releaseLock();
-    }
+    });
   });
 }
 

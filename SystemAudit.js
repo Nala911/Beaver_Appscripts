@@ -197,13 +197,14 @@ var GlobalAuditRules = [
         name: 'Environment & Configuration',
         run: function (summary, results) {
             try {
-                var systemEnabled = _App_getProperty(APP_PROPS.SYSTEM_ENABLED);
-                if (!systemEnabled || systemEnabled !== 'true') {
+                var systemPrefs = SyncEngine.getPrefs('SYSTEM');
+                var systemEnabled = systemPrefs.systemEnabled === true;
+                if (!systemEnabled) {
                     _addGlobalResult(summary, results, 'Environment Config', 'INFO', 'SYSTEM_ENABLED script property is missing or false. Pipeline logic is currently suspended.');
                 }
                 
-                var debugEnabled = _App_getProperty(APP_PROPS.ENABLE_DEBUG_LOGGING);
-                if (!debugEnabled || debugEnabled !== 'true') {
+                var debugEnabled = systemPrefs.enableDebugLogging === true;
+                if (!debugEnabled) {
                     _addGlobalResult(summary, results, 'Environment Config', 'INFO', 'ENABLE_DEBUG_LOGGING is unset or false. Some developer logs will not be recorded.');
                 }
                 

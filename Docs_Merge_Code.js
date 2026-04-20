@@ -48,22 +48,25 @@ function DocsMerge_openSidebar() {
 
 function DocsMerge_getConfig() {
   return Logger.run('DOCS_MERGE', 'Get Config', function () {
-    var templateUrl = _App_getProperty(APP_PROPS.DOCS_MERGE_TEMPLATE_URL) || "";
-    var folderUrl = _App_getProperty(APP_PROPS.DOCS_MERGE_FOLDER_URL) || "";
+    var prefs = SyncEngine.getPrefs('DOCS_MERGE');
+    var templateUrl = prefs.templateUrl || "";
+    var folderUrl = prefs.folderUrl || "";
 
-    var templateName = _App_getProperty(APP_PROPS.DOCS_MERGE_TEMPLATE_NAME) || "";
+    var templateName = prefs.templateName || "";
     if (templateUrl && !templateName) {
       try {
         templateName = DriveApp.getFileById(_DocsMerge_extractIdFromUrl(templateUrl)).getName();
-        _App_setProperty(APP_PROPS.DOCS_MERGE_TEMPLATE_NAME, templateName);
+        prefs.templateName = templateName;
+        SyncEngine.setPrefs('DOCS_MERGE', prefs);
       } catch (e) { }
     }
 
-    var folderName = _App_getProperty(APP_PROPS.DOCS_MERGE_FOLDER_NAME) || "";
+    var folderName = prefs.folderName || "";
     if (folderUrl && !folderName) {
       try {
         folderName = DriveApp.getFolderById(_DocsMerge_extractIdFromUrl(folderUrl)).getName();
-        _App_setProperty(APP_PROPS.DOCS_MERGE_FOLDER_NAME, folderName);
+        prefs.folderName = folderName;
+        SyncEngine.setPrefs('DOCS_MERGE', prefs);
       } catch (e) { }
     }
 
@@ -78,10 +81,12 @@ function DocsMerge_getConfig() {
 
 function DocsMerge_saveConfig(config) {
   return Logger.run('DOCS_MERGE', 'Save Config', function () {
-    if (config.templateUrl !== undefined) _App_setProperty(APP_PROPS.DOCS_MERGE_TEMPLATE_URL, config.templateUrl);
-    if (config.folderUrl !== undefined) _App_setProperty(APP_PROPS.DOCS_MERGE_FOLDER_URL, config.folderUrl);
-    if (config.templateName !== undefined) _App_setProperty(APP_PROPS.DOCS_MERGE_TEMPLATE_NAME, config.templateName);
-    if (config.folderName !== undefined) _App_setProperty(APP_PROPS.DOCS_MERGE_FOLDER_NAME, config.folderName);
+    var prefs = SyncEngine.getPrefs('DOCS_MERGE');
+    if (config.templateUrl !== undefined) prefs.templateUrl = config.templateUrl;
+    if (config.folderUrl !== undefined) prefs.folderUrl = config.folderUrl;
+    if (config.templateName !== undefined) prefs.templateName = config.templateName;
+    if (config.folderName !== undefined) prefs.folderName = config.folderName;
+    SyncEngine.setPrefs('DOCS_MERGE', prefs);
     return _App_ok('Config saved.');
   });
 }

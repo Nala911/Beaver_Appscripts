@@ -56,20 +56,25 @@ Public functions called by `google.script.run` MUST return an object: `{ success
 ### 5. Trigger Management
 Background sync tools should manage their own `ScriptApp` triggers. Use an internal `_ToolName_manageTrigger` function called from the setting update handler to ensure triggers are created/removed in sync with user preferences.
 
-### 6. The PropertiesService Contract
-Never use `PropertiesService.getDocumentProperties()` directly in a tool. 
-- Define your new key strictly in `APP_PROPS` inside `00_Config_Constants.js`.
-- Use `_App_getProperty` and `_App_setProperty` from `02_Config_Storage.js`.
+### 6. The Preferences Contract
+Never use `PropertiesService.getDocumentProperties()` directly in a tool.
+- **Mandatory Pattern**: Use `SyncEngine.getPrefs(toolKey)` and `SyncEngine.setPrefs(toolKey, prefsObject)`.
+- Tools should store all their configuration (selected IDs, dates, flags) within this JSON-serialized namespace.
+- Legacy `_App_getProperty` from `02_Config_Storage.js` should only be used for core system-wide constants.
 
-### 7. Tool Launch Restrictions
-Tools must use `_App_launchTool('KEY')` (or `_App_openSidebar`) as their main menu entrypoint. Do not write custom `HtmlService.createHtmlOutput` code in your public showSidebar function unless it's a completely bespoke dialog exception.
-
+### 7. Execution & Throttling
+All row-level sync operations MUST use `ExecutionService.processPendingRows(toolKey, rowProcessor)`.
+- This ensures automated schema validation via `DataMapper`.
+- This ensures automated exponential backoff and UI progress tracking.
+- Avoid writing manual `for` loops with `_App_callWithBackoff` inside tool scripts.
 ## 🤖 AI Agent Workflow Rules
 
 1. **Minimize file reads**: ONLY read the specific tool files needed.
 2. **Consult Core Modules first**: Global configuration and logic are defined in `00_Config_Constants.js` through `09_Engine_UI.js`.
 3. **Use `Logger.run()`**: Wrap primary tool operations in `Logger.run('TOOL_KEY', 'Context', () => { ... })` for consistent logging.
 4. **Follow `SyncEngine`**: When modifying sheet structure, update the registration metadata in the tool's backend file, which registers with `SyncEngine`.
+5. **Consult Templates First**: BEFORE creating a new tool or refactoring an old one, you MUST read `Template_Tool_Code.js` and `Template_Tool_Sidebar.html` to ensure you are following the latest "Golden" architectural patterns.
+
 
 ## 📋 AI Agent Pre-Flight Checklist
 

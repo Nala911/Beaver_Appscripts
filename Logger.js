@@ -116,7 +116,8 @@ var Logger = (function () {
                 sheet.getRange(startRow, 1, logs.length, logs[0].length).setValues(logs);
 
                 // Auto-Pruning (keep sheet size manageable)
-                var maxRows = parseInt(_App_getProperty(APP_PROPS.LOGGER_MAX_ROWS) || "0", 10);
+                var systemPrefs = SyncEngine.getPrefs('SYSTEM');
+                var maxRows = parseInt(systemPrefs.loggerMaxRows || "0", 10);
                 if (maxRows > 0) {
                     var currentDataRows = sheet.getLastRow() - 1;
                     if (currentDataRows > maxRows) {
@@ -181,7 +182,8 @@ var Logger = (function () {
     }
 
     function isEnabled() {
-        return _App_getProperty(APP_PROPS.ENABLE_DEBUG_LOGGING) === 'true';
+        var prefs = SyncEngine.getPrefs('SYSTEM');
+        return prefs.enableDebugLogging === true;
     }
 
     /**
@@ -205,7 +207,10 @@ var Logger = (function () {
          * Global toggle for the logging system.
          */
         setLoggingState: function (enabled) {
-            _App_setProperty(APP_PROPS.ENABLE_DEBUG_LOGGING, enabled ? 'true' : 'false');
+            var prefs = SyncEngine.getPrefs('SYSTEM');
+            prefs.enableDebugLogging = enabled;
+            SyncEngine.setPrefs('SYSTEM', prefs);
+
             if (enabled) {
                 var sheet = _App_ensureSheetExists('LOGS');
                 if (sheet.isSheetHidden()) sheet.showSheet();

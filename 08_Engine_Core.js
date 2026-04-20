@@ -80,12 +80,35 @@ var SyncEngine = (function() {
         return _validateToolConfig(key, cfg);
     }
 
+    /**
+     * Retrieves tool-specific preferences.
+     */
+    function getPrefs(toolKey) {
+        var key = "WorkspaceSync_Prefs_" + toolKey;
+        var val = PropertiesService.getUserProperties().getProperty(key);
+        try {
+            return val ? JSON.parse(val) : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    /**
+     * Persists tool-specific preferences.
+     */
+    function setPrefs(toolKey, prefs) {
+        var key = "WorkspaceSync_Prefs_" + toolKey;
+        PropertiesService.getUserProperties().setProperty(key, JSON.stringify(prefs || {}));
+    }
+
     return {
         registerTool: registerTool,
         getTool: getTool,
         getAllTools: getAllTools,
         getToolKeys: getToolKeys,
-        auditTool: auditTool
+        auditTool: auditTool,
+        getPrefs: getPrefs,
+        setPrefs: setPrefs
     };
 })();
 

@@ -14,7 +14,6 @@ SyncEngine.registerTool('TEMPLATE_TOOL', {
     IS_TEMPLATE: true, // Mark as template to skip system audits
     SHEET_NAME: '⚙️ Template Tool', 
     TITLE: '⚙️ Template Tool',
-    // MENU_LABEL removed to keep custom menu clean
     MENU_ENTRYPOINT: 'TemplateTool_openSidebar', 
     MENU_ORDER: 90, 
     SIDEBAR_HTML: 'Template_Tool_Sidebar', // Name of the .html file
@@ -52,8 +51,14 @@ function TemplateTool_openSidebar() {
 function TemplateTool_processAction(payload) {
     return Logger.run('TEMPLATE_TOOL', 'Process Action', function () {
         
-        // Example: access user properties
-        // var mySavedKey = _App_getProperty(APP_PROPS.SOME_KEY);
+        // Example: access tool-specific persistent preferences
+        var prefs = SyncEngine.getPrefs('TEMPLATE_TOOL');
+        var mySavedOption = prefs.myOption || "Default Value";
+
+        // To save:
+        // prefs.myOption = "New Value";
+        // SyncEngine.setPrefs('TEMPLATE_TOOL', prefs);
+
 
         // Try extracting spreadsheet data
         var sheetObj = _App_ensureSheetExists('TEMPLATE_TOOL');

@@ -4,8 +4,76 @@
 var SYSTEM_VALIDATORS = {
     EMAIL: function(val) { return typeof val === 'string' && val.indexOf('@') !== -1; },
     DATE: function(val) { return (val instanceof Date) || !isNaN(Date.parse(val)); },
-    DATETIME: function(val) { return (val instanceof Date) || !isNaN(Date.parse(val)); }
+    DATETIME: function(val) { return (val instanceof Date) || !isNaN(Date.parse(val)); },
+    NUMBER: function(val) { return typeof val === 'number' || (!isNaN(parseFloat(val)) && isFinite(val)); },
+    TEXT: function(val) { return typeof val === 'string' && val.trim().length > 0; },
+    EMAIL_LIST: function(val) {
+        if (!val) return true;
+        var emails = typeof val === 'string' ? val.split(',') : (Array.isArray(val) ? val : []);
+        return emails.every(function(e) { 
+            var trimmed = String(e).trim();
+            return trimmed === "" || (trimmed.indexOf('@') !== -1 && trimmed.indexOf('.') !== -1);
+        });
+    },
+    ACTION: function(val) { return typeof val === 'string' && val.trim().length > 0; }
 };
+
+/**
+ * SchemaValidator — Validates row objects against the tool's COL_SCHEMA.
+ */
+var SchemaValidator = (function() {
+
+    function validateRow(toolKey, rowObj) {
+        var cfg = SyncEngine.getTool(toolKey);
+        var schema = (cfg.FORMAT_CONFIG && cfg.FORMAT_CONFIG.COL_SCHEMA) ? cfg.FORMAT_CONFIG.COL_SCHEMA : [];
+        var errors = [];
+
+        schema.forEach(function(col) {
+            var val = rowObj[col.header];
+            var isMissing = (val === undefined || val === null || (typeof val === 'string' && val.trim() === ''));
+
+            // Check Required
+            if (col.required && isMissing) {
+                errors.push("Column '" + col.header + "' is required.");
+                return;
+            }
+
+            // Skip further checks if empty and not required
+            if (isMissing) return;
+
+            // Type Validation
+            if (col.type && SYSTEM_VALIDATORS[col.type]) {
+                if (!SYSTEM_VALIDATORS[col.type](val)) {
+                    errors.push("Column '" + col.header + "' must be of type " + col.type + ".");
+                }
+            }
+
+            // Regex Validation
+            if (col.regex) {
+                var re = new RegExp(col.regex);
+                if (!re.test(String(val))) {
+                    errors.push("Column '" + col.header + "' does not match required pattern.");
+                }
+            }
+
+            // Numeric Range
+            if (col.type === 'NUMBER') {
+                var num = parseFloat(val);
+                if (col.min !== undefined && num < col.min) errors.push("Column '" + col.header + "' must be at least " + col.min + ".");
+                if (col.max !== undefined && num > col.max) errors.push("Column '" + col.header + "' must be at most " + col.max + ".");
+            }
+        });
+
+        return {
+            isValid: errors.length === 0,
+            errors: errors
+        };
+    }
+
+    return {
+        validateRow: validateRow
+    };
+})();
 // ==========================================
 // _App_logClientError / _App_logClientInfo
 // ==========================================

@@ -68,12 +68,11 @@ function ChatSync_getLoadData() {
         };
       });
 
-      var savedSpaceIds = _App_getProperty(APP_PROPS.CHAT_SELECTED_SPACES);
-      if (!Array.isArray(savedSpaceIds)) savedSpaceIds = [];
+      var prefs = SyncEngine.getPrefs('CHAT_SYNC');
 
       return _App_ok('Spaces loaded.', {
         spaces: uniqueSpaces,
-        savedSpaceIds: savedSpaceIds
+        savedSpaceIds: prefs.selectedSpaceIds || []
       });
     } catch (err) {
       throw new Error('Unable to load spaces. ' + err.message);
@@ -82,7 +81,9 @@ function ChatSync_getLoadData() {
 }
 
 function ChatSync_savePreferences(spaceIds) {
-  if (spaceIds) _App_setProperty(APP_PROPS.CHAT_SELECTED_SPACES, spaceIds);
+  var prefs = SyncEngine.getPrefs('CHAT_SYNC');
+  if (spaceIds) prefs.selectedSpaceIds = spaceIds;
+  SyncEngine.setPrefs('CHAT_SYNC', prefs);
 }
 
 // --- THE "PULL" WORKFLOW ---
@@ -165,34 +166,20 @@ function ChatSync_checkForUnsavedChanges() {
 
 function ChatSync_pushChanges() {
   return Logger.run('CHAT_SYNC', 'Push Changes', function () {
-    var dataObjects = SheetManager.readObjects('CHAT_SYNC');
     
-    if (dataObjects.length === 0) {
-      return "No data to sync.";
-    }
-
-    Logger.info(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Global', 'Push started — processing ' + dataObjects.length + ' row(s)');
-
-    var hasChanges = false;
-
-    var updates = dataObjects.map(function (rowObj, index) {
-      var caughtRowError = null;
-      var rowUpdates = {
-        action: rowObj['Action'],
-        spaceId: rowObj['Space ID'] ? String(rowObj['Space ID']) : null,
-        membershipId: rowObj['Membership ID'] ? String(rowObj['Membership ID']) : null,
-        status: ""
-      };
-
-      if (!rowUpdates.action) return rowObj;
-
-      try {
-        var action = rowUpdates.action.toString().toUpperCase();
+    var stats = ExecutionService.processPendingRows('CHAT_SYNC', function(rowObj) {
+        var action = String(rowObj['Action'] || '').toUpperCase();
         var targetEmail = rowObj['Member Email'];
         var targetRole = rowObj['Role'] || 'ROLE_MEMBER';
-        var spaceId = rowUpdates.spaceId;
+        var spaceId = rowObj['Space ID'];
+        var membershipId = rowObj['Membership ID'];
 
         if (!spaceId) throw new Error("⚠️ Data Error: Missing Space ID");
+
+        var updates = {
+            'Action': '',
+            'Log': ''
+        };
 
         switch (action) {
           case "ADD_MEMBER":
@@ -200,60 +187,37 @@ function ChatSync_pushChanges() {
             
             var membership = {
               member: {
-                name: "users/" + targetEmail, // 'users/email@example.com' or 'users/12345'
+                name: "users/" + targetEmail, 
                 type: "HUMAN"
               },
               role: targetRole
             };
 
-            var newMembership = _App_callWithBackoff(function () {
-              return Chat.Spaces.Members.create(membership, spaceId);
-            });
+            var newMembership = Chat.Spaces.Members.create(membership, spaceId);
 
-            rowUpdates.membershipId = newMembership.name;
-            rowUpdates.status = "✅ Added";
-            rowUpdates.action = "";
+            updates['Membership ID'] = newMembership.name;
+            updates['Log'] = "✅ Added";
             break;
 
           case "REMOVE_MEMBER":
-            if (!rowUpdates.membershipId) throw new Error("⚠️ Data Error: Missing Membership ID for REMOVE");
+            if (!membershipId) throw new Error("⚠️ Data Error: Missing Membership ID for REMOVE");
             
-            _App_callWithBackoff(function () {
-               Chat.Spaces.Members.remove(rowUpdates.membershipId);
-            });
-            
-            rowUpdates.status = "🗑️ Removed";
-            rowUpdates.action = "";
+            Chat.Spaces.Members.remove(membershipId);
+            updates['Log'] = "🗑️ Removed";
             break;
 
           default:
-            rowUpdates.status = "❓ Unknown Action '" + action + "'";
+            updates['Log'] = "❓ Unknown Action '" + action + "'";
+            updates['Action'] = rowObj['Action']; // Keep action if unknown
         }
 
-      } catch (e) {
-        rowUpdates.status = e.message;
-        caughtRowError = e;
-      }
-
-      rowObj['Action'] = rowUpdates.action;
-      if (rowUpdates.membershipId) rowObj['Membership ID'] = rowUpdates.membershipId;
-
-      var isError = rowUpdates.status && (rowUpdates.status.indexOf('❌') > -1 || rowUpdates.status.indexOf('⚠️') > -1);
-      var rowNum = index + 2;
-      if (isError) {
-        Logger.error(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Row ' + rowNum, caughtRowError || rowUpdates.status, { rowData: rowObj, updates: rowUpdates });
-      } else if (rowUpdates.status) {
-        Logger.info(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Row ' + rowNum, rowUpdates.status || 'N/A', { rowData: rowObj });
-      }
-      
-      hasChanges = true;
-      return rowObj;
+        SheetManager.patchRow('CHAT_SYNC', rowObj._rowNumber, updates);
     });
 
-    if (hasChanges) {
-       SheetManager.writeObjects('CHAT_SYNC', updates, 2);
+    if (stats.processed === 0 && stats.errors === 0) {
+        return _App_ok("No data to sync.");
     }
 
-    return _App_ok("Sync Complete.");
+    return _App_ok("Sync Complete. Success: " + stats.processed + ", Errors: " + stats.errors);
   });
 }

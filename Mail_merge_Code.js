@@ -23,11 +23,11 @@ SyncEngine.registerTool('MAIL_MERGE', {
         ],
         COL_SCHEMA: [
             { header: 'Action', type: 'ACTION', options: ['SEND', 'DRAFT'] },
-            { header: 'To', type: 'TEXT' },
+            { header: 'To', type: 'EMAIL_LIST' },
             { header: 'CC', type: 'EMAIL_LIST' },
             { header: 'BCC', type: 'EMAIL_LIST' },
             { header: 'Thread ID or Subject', type: 'TEXT' },
-            { header: 'Attachments', type: 'TEXT' },
+            { header: 'Attachments', type: 'LIST' },
             { header: 'Status', type: 'TEXT' }
         ]
     }
@@ -175,105 +175,60 @@ function _MailMerge_mergeEmails(existingStr, newStr) {
 
 function MailMerge_executeActions(draftId, startIndex) {
   return Logger.run('MAIL_MERGE', 'Execute Actions', function () {
-    var sheet = _App_assertActiveSheet(SHEET_NAMES.MAIL_MERGE);
+    var draft = GmailApp.getDraft(draftId);
+    if (!draft) throw new Error("Draft not found.");
+    var templateMsg = draft.getMessage();
+    var templateSubject = templateMsg.getSubject();
+    var templateBody = templateMsg.getBody();
+    var templateAttachments = templateMsg.getAttachments();
 
-    var start = startIndex || 0;
-    var batchSize = 10; 
+    var startTime = Date.now();
+    var maxExecutionTime = 300 * 1000; // 5 minutes limit per batch execution
 
-    var dataRange = sheet.getDataRange();
-    var data = dataRange.getDisplayValues();
+    var toolCfg = SyncEngine.getTool('MAIL_MERGE');
+    var headers = toolCfg.HEADERS;
 
-    if (data.length < 2) return _App_ok("Sheet is empty.", { completed: true, message: "Sheet is empty." });
+    // Use ExecutionService for robust row processing
+    var stats = ExecutionService.processPendingRows('MAIL_MERGE', function(rowObj) {
+        if (Date.now() - startTime > maxExecutionTime) throw new Error("⏳ Time limit reached.");
 
-    var headers = data[0];
-    var allRows = data.slice(1);
+        var action = String(rowObj['Action'] || '').toUpperCase();
+        if (action !== "SEND" && action !== "DRAFT") return;
 
-    var pendingRows = [];
-    allRows.forEach(function (row, idx) {
-      if (row[MAILMERGE_CFG.COLUMNS.ACTION] === "SEND" || row[MAILMERGE_CFG.COLUMNS.ACTION] === "DRAFT") {
-        pendingRows.push({ data: row, originalIndex: idx });
-      }
-    });
-
-    if (pendingRows.length === 0) return _App_ok(start > 0 ? "Batch finished!" : "Nothing to do! No 'SEND' or 'DRAFT' actions pending.", { completed: true, message: start > 0 ? "Batch finished!" : "Nothing to do! No 'SEND' or 'DRAFT' actions pending." });
-    if (start >= pendingRows.length) return _App_ok("Batch complete!", { completed: true, message: "Batch complete!" });
-
-    var batch = pendingRows.slice(start, start + batchSize);
-    var remainingPending = pendingRows.length - (start + batch.length);
-
-    var templateMsg, templateSubject, templateBody, templateAttachments = [];
-
-    try {
-      var draft = GmailApp.getDraft(draftId);
-      if (!draft) throw new Error("Draft not found.");
-      templateMsg = draft.getMessage();
-      templateSubject = templateMsg.getSubject();
-      templateBody = templateMsg.getBody();
-      templateAttachments = templateMsg.getAttachments();
-    } catch (e) {
-      throw new Error("⚠️ Failed to load Draft: " + e.message);
-    }
-
-    var updatesCount = 0;
-
-    var updatesOriginalIndices = [];
-    var batchUpdates = batch.map(function (item) {
-      var row = item.data;
-      var originalIdx = item.originalIndex;
-      updatesOriginalIndices.push(originalIdx);
-
-      var rowUpdates = {
-        action: row[MAILMERGE_CFG.COLUMNS.ACTION],
-        status: ""
-      };
-
-      if (!rowUpdates.action) return null;
-
-      var action = rowUpdates.action.toString().trim().toUpperCase();
-      if (action !== "SEND" && action !== "DRAFT") return null;
-
-      try {
-        var targetTo = row[MAILMERGE_CFG.COLUMNS.EMAIL_TO];
-        var targetCc = row[MAILMERGE_CFG.COLUMNS.CC];
-        var targetBcc = row[MAILMERGE_CFG.COLUMNS.BCC];
-        var targetThreadId = row[MAILMERGE_CFG.COLUMNS.THREAD_ID];
-        var targetAttachments = row[MAILMERGE_CFG.COLUMNS.ATTACHMENTS];
+        var targetTo = rowObj['To'];
+        var targetCc = rowObj['CC'];
+        var targetBcc = rowObj['BCC'];
+        var targetThreadId = rowObj['Thread ID or Subject'];
+        var targetAttachments = rowObj['Attachments'];
 
         if (!targetTo && !targetThreadId) throw new Error("Missing Email To");
-        if (targetTo && !_MailMerge_validateEmails(targetTo)) throw new Error("Invalid Email To address");
-        if (!_MailMerge_validateEmails(targetCc)) throw new Error("Invalid CC address");
-        if (!_MailMerge_validateEmails(targetBcc)) throw new Error("Invalid BCC address");
 
+        // Merge logic
         var emailBody = templateBody;
         var emailSubject = templateSubject;
 
-        for (var colIndex = 6; colIndex < headers.length; colIndex++) {
-          var header = headers[colIndex];
-          if (!header) continue;
+        headers.forEach(function(header) {
+          if (!header) return;
           var safeHeader = _MailMerge_escapeRegExp(header);
           var placeholder = new RegExp('{{' + safeHeader + '}}', 'g');
-          var value = row[colIndex];
+          var value = rowObj[header];
           var valStr = (value === undefined || value === null || value === "") ? "" : String(value);
-          var bodyVal = valStr.replace(/\r?\n/g, '<br>');
+          
+          emailSubject = emailSubject.replace(placeholder, valStr);
+          emailBody = emailBody.replace(placeholder, valStr.replace(/\r?\n/g, '<br>'));
+        });
 
-          emailBody = emailBody.replace(placeholder, () => bodyVal);
-          emailSubject = emailSubject.replace(placeholder, () => valStr);
-        }
-
+        // Placeholder validation
         var remainingPlaceholders = [];
         var unmatched;
         var regexExtract = /\{\{([^{}]+)\}\}/g;
-        while ((unmatched = regexExtract.exec(emailBody)) !== null) {
-          remainingPlaceholders.push(unmatched[1]);
-        }
-        while ((unmatched = regexExtract.exec(emailSubject)) !== null) {
-          remainingPlaceholders.push(unmatched[1]);
-        }
+        while ((unmatched = regexExtract.exec(emailBody)) !== null) remainingPlaceholders.push(unmatched[1]);
+        while ((unmatched = regexExtract.exec(emailSubject)) !== null) remainingPlaceholders.push(unmatched[1]);
+        
         var allRemaining = [...new Set(remainingPlaceholders)];
-        if (allRemaining.length > 0) {
-          throw new Error("Missing columns for: " + allRemaining.join(', '));
-        }
+        if (allRemaining.length > 0) throw new Error("Missing columns for: " + allRemaining.join(', '));
 
+        // Attachments
         var finalAttachments = [...templateAttachments];
         if (targetAttachments) {
           var files = targetAttachments.split(',');
@@ -284,45 +239,29 @@ function MailMerge_executeActions(draftId, startIndex) {
         }
 
         if (action === "SEND") {
-          var options = {
-            htmlBody: emailBody,
-            attachments: finalAttachments
-          };
-
+          var options = { htmlBody: emailBody, attachments: finalAttachments };
           if (targetThreadId) {
             var thread = null;
-            try {
-              thread = GmailApp.getThreadById(targetThreadId);
-            } catch (ignore) { }
-
+            try { thread = GmailApp.getThreadById(targetThreadId); } catch (e) {}
             if (!thread) {
-              var safeSubject = targetThreadId.toString().replace(/['"]/g, '');
-              var query = 'subject:("' + safeSubject + '")';
+              var query = 'subject:("' + targetThreadId.toString().replace(/['"]/g, '') + '")';
               var threads = GmailApp.search(query, 0, 1);
-              if (threads && threads.length > 0) {
-                thread = threads[0];
-              }
+              if (threads && threads.length > 0) thread = threads[0];
             }
             if (!thread) throw new Error("Thread not found for ID or Subject");
 
             var messages = thread.getMessages();
             var lastMessage = messages[messages.length - 1];
 
-            var existingTo = lastMessage.getTo();
-            var existingCc = lastMessage.getCc();
-
-            var newTo = _MailMerge_mergeEmails(existingTo, targetTo);
-            var newCc = _MailMerge_mergeEmails(existingCc, targetCc);
-
             var replyOptions = {
               htmlBody: emailBody,
               attachments: finalAttachments,
-              cc: newCc || "",
+              cc: _MailMerge_mergeEmails(lastMessage.getCc(), targetCc) || "",
               bcc: targetBcc || ""
             };
 
             var draftReply = lastMessage.createDraftReplyAll("", replyOptions);
-            draftReply.update(newTo || "", emailSubject, "", replyOptions);
+            draftReply.update(_MailMerge_mergeEmails(lastMessage.getTo(), targetTo) || "", emailSubject, "", replyOptions);
             draftReply.send();
 
           } else {
@@ -331,90 +270,56 @@ function MailMerge_executeActions(draftId, startIndex) {
             GmailApp.sendEmail(targetTo, emailSubject, "", options);
           }
 
-          rowUpdates.status = "✅ Sent (" + new Date().toLocaleString() + ")";
-          rowUpdates.action = "";
+          SheetManager.patchRow('MAIL_MERGE', rowObj._rowNumber, {
+              'Action': '',
+              'Status': "✅ Sent (" + new Date().toLocaleString() + ")"
+          });
+
         } else if (action === "DRAFT") {
-          var options = {
-            htmlBody: emailBody,
-            attachments: finalAttachments
-          };
-
+          var draftOptions = { htmlBody: emailBody, attachments: finalAttachments };
           if (targetThreadId) {
-            var thread = null;
-            try {
-              thread = GmailApp.getThreadById(targetThreadId);
-            } catch (ignore) { }
-
-            if (!thread) {
-              var safeSubject = targetThreadId.toString().replace(/['"]/g, '');
-              var query = 'subject:("' + safeSubject + '")';
-              var threads = GmailApp.search(query, 0, 1);
-              if (threads && threads.length > 0) {
-                thread = threads[0];
-              }
+            var threadD = null;
+            try { threadD = GmailApp.getThreadById(targetThreadId); } catch (e) {}
+            if (!threadD) {
+                var queryD = 'subject:("' + targetThreadId.toString().replace(/['"]/g, '') + '")';
+                var threadsD = GmailApp.search(queryD, 0, 1);
+                if (threadsD && threadsD.length > 0) threadD = threadsD[0];
             }
-            if (!thread) throw new Error("Thread not found for ID or Subject");
+            if (!threadD) throw new Error("Thread not found for ID or Subject");
 
-            var threadMessages = thread.getMessages();
-            var lastMessage = threadMessages[threadMessages.length - 1];
+            var tMsgs = threadD.getMessages();
+            var lMsg = tMsgs[tMsgs.length - 1];
 
-            var existingTo = lastMessage.getTo();
-            var existingCc = lastMessage.getCc();
-
-            var newTo = _MailMerge_mergeEmails(existingTo, targetTo);
-            var newCc = _MailMerge_mergeEmails(existingCc, targetCc);
-
-            var replyOptions = {
+            var rOptions = {
               htmlBody: emailBody,
               attachments: finalAttachments,
-              cc: newCc || "",
+              cc: _MailMerge_mergeEmails(lMsg.getCc(), targetCc) || "",
               bcc: targetBcc || ""
             };
 
-            var draftReply = lastMessage.createDraftReplyAll("", replyOptions);
-            draftReply.update(newTo || "", emailSubject, "", replyOptions);
+            var dReply = lMsg.createDraftReplyAll("", rOptions);
+            dReply.update(_MailMerge_mergeEmails(lMsg.getTo(), targetTo) || "", emailSubject, "", rOptions);
 
-            rowUpdates.status = "📝 Reply Draft Created";
-            rowUpdates.action = "";
+            SheetManager.patchRow('MAIL_MERGE', rowObj._rowNumber, {
+              'Action': '',
+              'Status': "📝 Reply Draft Created"
+            });
           } else {
-            options.cc = targetCc;
-            options.bcc = targetBcc;
-            GmailApp.createDraft(targetTo, emailSubject, "", options);
-            rowUpdates.status = "📝 Draft Created";
-            rowUpdates.action = "";
+            draftOptions.cc = targetCc;
+            draftOptions.bcc = targetBcc;
+            GmailApp.createDraft(targetTo, emailSubject, "", draftOptions);
+            SheetManager.patchRow('MAIL_MERGE', rowObj._rowNumber, {
+              'Action': '',
+              'Status': "📝 Draft Created"
+            });
           }
         }
-
-        updatesCount++;
-
-      } catch (e) {
-        rowUpdates.status = e.message;
-        Logger.error(SyncEngine.getTool('MAIL_MERGE').TITLE, 'Row ' + (originalIdx + 2), e);
-      }
-
-      if (action === "SEND" || action === "DRAFT") {
-          var isSuccess = rowUpdates.status.indexOf('✅') > -1 || rowUpdates.status.indexOf('📝') > -1;
-          if (isSuccess) {
-              Logger.info(SyncEngine.getTool('MAIL_MERGE').TITLE, 'Row ' + (originalIdx + 2), rowUpdates.status);
-          }
-      }
-
-      return rowUpdates;
-    });
-
-    batchUpdates.forEach(function (u, i) {
-      if (u) {
-        var rowNum = updatesOriginalIndices[i] + 2;
-        sheet.getRange(rowNum, MAILMERGE_CFG.COLUMNS.ACTION + 1).setValue(u.action);
-        sheet.getRange(rowNum, MAILMERGE_CFG.COLUMNS.STATUS + 1).setValue(u.status);
-      }
-    });
+    }, { limit: 10 }); // Keep UI responsiveness by processing in small chunks
 
     return _App_ok('Processed mail merge batch.', {
-      completed: false,
-      nextIndex: start + batchUpdates.length,
-      remainingPending: remainingPending,
-      processed: batchUpdates.length
+      completed: stats.processed === 0 && stats.errors === 0,
+      processed: stats.processed,
+      errors: stats.errors
     });
   });
 }

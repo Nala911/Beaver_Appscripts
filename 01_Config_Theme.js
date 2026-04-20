@@ -72,7 +72,8 @@ function isObject_(item) {
 }
 
 function _UI_getTheme() {
-    const savedTheme = _App_getProperty(APP_PROPS.THEME);
+    var systemPrefs = SyncEngine.getPrefs('SYSTEM');
+    const savedTheme = systemPrefs.theme;
     if (savedTheme) {
         try {
             const merged = deepMergeTheme_(DEFAULT_SHEET_THEME, savedTheme);

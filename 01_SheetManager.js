@@ -81,6 +81,50 @@ var SheetManager = (function() {
     }
 
     /**
+     * Reads only rows with a pending 'Action' in Column A.
+     * Memory-efficient alternative to readObjects for large sheets.
+     * @returns {Object[]} Array of row objects with an additional '_rowNumber' property.
+     */
+    function readPendingActions(toolKey) {
+        var sheet = getSheet(toolKey);
+        var lastRow = sheet.getLastRow();
+        if (lastRow < 2) return [];
+
+        var cfg = SyncEngine.getTool(toolKey);
+        var headers = cfg.HEADERS;
+        
+        // Step 1: Read ONLY the Action column (Column A)
+        var actionValues = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+        var rowsToRead = [];
+        for (var i = 0; i < actionValues.length; i++) {
+            if (actionValues[i][0] && actionValues[i][0] !== "") {
+                rowsToRead.push(i + 2); // 1-based index, row 2 is index 0
+            }
+        }
+        
+        if (rowsToRead.length === 0) return [];
+
+        // Step 2: For efficiency, read full range and filter in memory if row count is small,
+        // or fetch specific rows if the list is sparse. 
+        // For Google Sheets, reading a single block is usually faster than many getRange calls.
+        var dataRange = sheet.getRange(2, 1, lastRow - 1, headers.length);
+        var allData = dataRange.getValues();
+        
+        var filteredData = [];
+        for (var j = 0; j < rowsToRead.length; j++) {
+            var rowIdx = rowsToRead[j] - 2;
+            var row = allData[rowIdx];
+            var obj = { _rowNumber: rowsToRead[j] };
+            for (var k = 0; k < headers.length; k++) {
+                obj[headers[k]] = row[k];
+            }
+            filteredData.push(obj);
+        }
+        
+        return filteredData;
+    }
+
+    /**
      * Writes an array of objects back to the sheet.
      * Automatically maps object keys to the correct columns based on tool headers.
      * @param {string} toolKey - Tool key (e.g., 'MAIL_SENDER')
@@ -272,6 +316,7 @@ var SheetManager = (function() {
         getNormalizedHeaderMap: getNormalizedHeaderMap,
         getSheetHeaderMap: getSheetHeaderMap,
         readObjects: readObjects,
+        readPendingActions: readPendingActions,
         writeObjects: writeObjects,
         overwriteRows: overwriteRows,
         overwriteObjects: overwriteObjects,

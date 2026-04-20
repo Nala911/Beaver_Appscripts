@@ -61,16 +61,18 @@ function Pipeline_showSidebar() {
 
 function Pipeline_getSystemStatus() {
     return Logger.run('PIPELINE', 'Get Status', function () {
-        var enabled = _App_getProperty(APP_PROPS.SYSTEM_ENABLED);
-        return enabled === null ? 'false' : enabled;
+        var prefs = SyncEngine.getPrefs('SYSTEM');
+        return prefs.systemEnabled === true ? 'true' : 'false';
     });
 }
 
 function Pipeline_setSystemStatus(isEnabled) {
     return Logger.run('PIPELINE', 'Set Status', function () {
-        _App_setProperty(APP_PROPS.SYSTEM_ENABLED, isEnabled.toString());
-        _Pipeline_manageTrigger(isEnabled);
-        return isEnabled;
+        var prefs = SyncEngine.getPrefs('SYSTEM');
+        prefs.systemEnabled = (String(isEnabled).toLowerCase() === 'true' || isEnabled === true);
+        SyncEngine.setPrefs('SYSTEM', prefs);
+        _Pipeline_manageTrigger(prefs.systemEnabled);
+        return prefs.systemEnabled;
     });
 }
 
@@ -107,7 +109,8 @@ function _Pipeline_manageTrigger(isEnabled) {
 function Pipeline_processPipelines() {
     return Logger.run('PIPELINE', 'Scheduled Execution', function () {
         return _App_withDocumentLock('PIPELINE_PROCESS', function () {
-            if (_App_getProperty(APP_PROPS.SYSTEM_ENABLED) !== 'true') {
+            var prefs = SyncEngine.getPrefs('SYSTEM');
+            if (prefs.systemEnabled !== true) {
                 Logger.info('PIPELINE', 'Global', "System is globally disabled. Skipping execution.");
                 return;
             }

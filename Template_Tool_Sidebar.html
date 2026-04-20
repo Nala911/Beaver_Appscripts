@@ -1,46 +1,171 @@
 <!DOCTYPE html>
 <!-- 
   Template Frontend Tool
-  Version: 1.0 (Plugin Architecture)
+  Version: 1.1 (Plugin Architecture — Aligned with SyncSidebar)
 
   Instructions:
   1. This file relies heavily on `SidebarShared.html`. 
-  2. Do not include your own `loader` or basic CSS resets, they are already injected.
-  3. If you need bespoke styling, add it under the `<style>` tag below.
+  2. The backend function must be wrapped in Logger.run and return { success, message, data }.
+  3. Ensure the backend function name in executeBackendAction() matches your code.
 -->
 <html>
 <head>
     <base target="_top">
-    <!-- Inject Unified Toolkit (CSS, Typography, Color Palette, and Common JS) -->
-    <?!= include('SidebarShared'); ?>
+    <!-- Inject Unified Toolkit (Standard Project JS & Global Error Handlers) -->
+    <?!= _App_include('SidebarShared'); ?>
 
     <style>
-        /* Add Tool-specific styles here */
+        /* Baseline Layout (Standard project aesthetics) */
+        :root {
+            --primary: #1a73e8;
+            --primary-hover: #174ea6;
+            --text-main: #202124;
+            --text-sub: #5f6368;
+            --bg-light: #f8f9fa;
+            --border: #dadce0;
+            --white: #ffffff;
+            --danger: #d93025;
+            --shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--white);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
         .template-body {
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            padding: 8px;
+            gap: 16px;
+            padding: 16px;
+            flex: 1;
         }
 
-        .action-button {
-            margin-top: 10px;
+        .section-description {
+            font-size: 13px;
+            color: var(--text-sub);
+            line-height: 1.5;
+        }
+
+        /* Form elements */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-main);
+        }
+
+        input[type="text"] {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 24px;
+            border-radius: 4px;
+            font-weight: 500;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            transition: background 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        /* ── Loading Overlay ── */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.9);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .spinner {
+            border: 3px solid var(--bg-light);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loading-text {
+            font-size: 13px;
+            color: var(--text-sub);
+        }
+
+        /* ── Toast ── */
+        .toast {
+            visibility: hidden;
+            min-width: 200px;
+            background: #323232;
+            color: #fff;
+            text-align: center;
+            border-radius: 4px;
+            padding: 12px 24px;
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 13px;
+            z-index: 101;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.16);
+        }
+
+        .toast.show {
+            visibility: visible;
+            animation: toastIn 0.3s ease;
+        }
+
+        .toast.error-toast { background: var(--danger); }
+
+        @keyframes toastIn {
+            from { bottom: 0; opacity: 0; }
+            to { bottom: 30px; opacity: 1; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Unified Header Section (provided by SidebarShared, optionally overridden) -->
-    <div class="sidebar-header">
-        <div class="header-title">⚙️ Template Tool</div>
-        <div class="header-subtitle">Standardized Plugin Architecture</div>
+    <!-- Unified Header Section -->
+    <div class="sidebar-header" style="padding: 16px; border-bottom: 1px solid var(--border);">
+        <div class="header-title" style="font-size: 18px; font-weight: 500;">⚙️ Template Tool</div>
+        <div class="header-subtitle" style="font-size: 12px; color: var(--text-sub);">Standardized Plugin Architecture</div>
     </div>
 
     <!-- Main Content Area -->
     <div class="template-body">
         
         <p class="section-description">
-            This is a scaffolded tool. Use the button below to interact with the backend Google Apps Script function.
+            This scaffolded tool uses <code>SyncSidebar.run()</code> to securely communicate with the backend.
         </p>
 
         <!-- Form Elements -->
@@ -55,37 +180,32 @@
 
     </div>
 
-    <!-- The unified status/loading container provided by SidebarShared -->
-    <!-- Do NOT write your own spinner logic. Just use uiUtils.showLoading() -->
-    <div id="status-div"></div>
+    <!-- Required UI components for SyncSidebar -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <div id="loadingText" class="loading-text">Processing...</div>
+    </div>
+
+    <div id="toast" class="toast"></div>
 
     <script>
         /**
-         * Interacts with the Apps Script backend.
+         * Interacts with the Apps Script backend using the SyncSidebar wrapper.
          */
         function executeBackendAction() {
             var inputVal = document.getElementById('sampleInput').value;
             
-            // 1. Show the global loader inside #status-div
-            uiUtils.showLoading('Processing action...');
-
-            // 2. Call the registered backend function (ensure it returns {success, message})
-            // IMPORTANT: The backend function MUST be wrapped in Logger.run!
-            google.script.run
-                .withSuccessHandler(function(response) {
-                    if (response && response.success) {
-                        // Show success state
-                        uiUtils.showSuccess(response.message || 'Action completed.');
-                    } else {
-                        // Display internal failure handled safely by the backend
-                        uiUtils.showError(response ? response.message : 'Unknown failure.');
-                    }
-                })
-                .withFailureHandler(function(error) {
-                    // Display fatal GAS execution error (e.g. syntax error or timeout)
-                    uiUtils.showError(error.message || 'A catastrophic system error occurred.');
-                })
-                .TemplateTool_processAction({ input: inputVal });
+            // SyncSidebar.run(methodName, argsArray, options)
+            // options: { context, timeoutMs, unwrap, onSuccess, onError }
+            // It handles toggleLoading(true/false) and showToast(error) automatically.
+            SyncSidebar.run('TemplateTool_processAction', [{ input: inputVal }], {
+                context: 'Process Action',
+                onSuccess: function(data) {
+                    // SyncSidebar.run automatically shows a success toast if 'message' is present in unwrapped data
+                    // If you need custom post-run logic, add it here.
+                    console.log('Action successful', data);
+                }
+            });
         }
     </script>
 </body>

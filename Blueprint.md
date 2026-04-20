@@ -120,6 +120,13 @@ function ToolName_showSidebar() {
 ### 5. Background Automation & Trigger Management
 Tools that require background execution should manage their own triggers programmatically.
 
+### 6. Development Templates (The "Golden" Pattern)
+For creating any new tool, or modifying existing ones, agents MUST refer to the following template files as the source of truth for design patterns:
+- **Backend Pattern:** `Template_Tool_Code.js`
+- **Frontend Pattern:** `Template_Tool_Sidebar.html`
+These files contain the latest mandatory registration logic, column schema definitions, and UI status-handling patterns required by the core engine.
+
+
 ## 🌍 Global Variables & State
 
 - **`SHEET_THEME`**: A Proxy object in `01_Config_Theme.js` that provides access to theme colors and styles.

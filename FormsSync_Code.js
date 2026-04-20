@@ -149,10 +149,11 @@ function _FormsSync_pullForm(formInput) {
             // Apply body formatting via shared utility
             _App_applyBodyFormatting(sheet, sheetData.length, SyncEngine.getTool('FORMS_SYNC').FORMAT_CONFIG);
 
-            // Save Form ID to PropertiesService for syncing back
-            _App_setProperty(APP_PROPS.FORMS_CURRENT_FORM, formId);
-            // Save to UserProperties for sidebar auto-selection
-            _App_setProperty(APP_PROPS.FORMS_SELECTED_FORM, formId);
+            // Save Form ID to tool preferences
+            var prefs = SyncEngine.getPrefs('FORMS_SYNC');
+            prefs.currentFormId = formId;
+            prefs.selectedFormId = formId;
+            SyncEngine.setPrefs('FORMS_SYNC', prefs);
 
             return { success: true, message: "Successfully pulled " + sheetData.length + " items." };
         } catch (e) {
@@ -163,172 +164,131 @@ function _FormsSync_pullForm(formInput) {
 
 function _FormsSync_syncToForm() {
     return Logger.run('FORMS_SYNC', 'Sync to Form', function () {
-        var formId = _App_getProperty(APP_PROPS.FORMS_CURRENT_FORM);
+        var prefs = SyncEngine.getPrefs('FORMS_SYNC');
+        var formId = prefs.currentFormId;
         if (!formId) return { success: false, message: "No form connected. Please Pull data first." };
 
-        try {
-            var form = _App_callWithBackoff(function () { return FormApp.openById(formId); });
-            var sheet = _FormsSync_ensureSheetExistsAndActivate();
-            var dataRange = sheet.getDataRange();
-            var data = dataRange.getValues();
+        var form = FormApp.openById(formId);
 
-            if (data.length <= FORMSSYNC_CFG.HEADER_ROW) {
-                return { success: true, message: "No data to sync." };
+        var stats = ExecutionService.processPendingRows('FORMS_SYNC', function(rowObj) {
+            var action = String(rowObj['Action'] || '').toUpperCase();
+            var id = String(rowObj['Item ID'] || '').trim();
+            var title = String(rowObj['Question Title'] || '');
+            var type = String(rowObj['Type'] || '');
+            var optionsRaw = String(rowObj['Options'] || '');
+            var helpText = String(rowObj['Help Text'] || '');
+            var required = rowObj['Required'] === true;
+
+            var optionsArr = [];
+            var gridRows = [];
+            var gridCols = [];
+
+            if (type === "GRID" || type === "CHECKBOX_GRID") {
+                var gridParts = optionsRaw.split("||");
+                gridRows = (gridParts[0] || "").split("\n").map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });
+                gridCols = (gridParts[1] || "").split("\n").map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });
+            } else {
+                optionsArr = optionsRaw ? optionsRaw.split("\n").map(function (o) { return o.trim(); }).filter(function (o) { return o.length > 0; }) : [];
             }
 
-            var rowUpdates = [];
+            var updates = { 'Action': '', 'Item ID': id };
 
-            // Loop through data starting after header
-            for (var i = FORMSSYNC_CFG.HEADER_ROW; i < data.length; i++) {
-                var row = data[i];
-                var action = (row[FORMSSYNC_CFG.COLUMNS.ACTION - 1] || "").toString().trim().toUpperCase();
-                var id = (row[FORMSSYNC_CFG.COLUMNS.ID - 1] || "").toString().trim();
-                var title = (row[FORMSSYNC_CFG.COLUMNS.TITLE - 1] || "").toString();
-                var type = (row[FORMSSYNC_CFG.COLUMNS.TYPE - 1] || "").toString();
-                var optionsRaw = (row[FORMSSYNC_CFG.COLUMNS.OPTIONS - 1] || "").toString();
-                var helpText = (row[FORMSSYNC_CFG.COLUMNS.HELP_TEXT - 1] || "").toString();
-                var required = row[FORMSSYNC_CFG.COLUMNS.REQUIRED - 1] === true || row[FORMSSYNC_CFG.COLUMNS.REQUIRED - 1] === 'TRUE';
+            switch (action) {
+                case "CREATE":
+                    if (!title) throw new Error("Missing Title");
+                    var targetItem = null;
 
-                var updateObj = {
-                    action: action,
-                    id: id
-                };
-
-                if (!action || (action !== "CREATE" && action !== "UPDATE" && action !== "REMOVE")) {
-                    rowUpdates.push(updateObj);
-                    continue;
-                }
-
-                var optionsArr = [];
-                var gridRows = [];
-                var gridCols = [];
-
-                if (type === "GRID" || type === "CHECKBOX_GRID") {
-                    // Parse "Row1\nRow2\n||\nCol1\nCol2" format
-                    var gridParts = optionsRaw.split("||");
-                    gridRows = (gridParts[0] || "").split("\n").map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });
-                    gridCols = (gridParts[1] || "").split("\n").map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });
-                } else {
-                    optionsArr = optionsRaw ? optionsRaw.split("\n").map(function (o) { return o.trim(); }).filter(function (o) { return o.length > 0; }) : [];
-                }
-
-                try {
-                    if (action === "CREATE") {
-                        if (!title) throw new Error("Missing Title");
-                        var targetItem = null;
-
-                        _App_callWithBackoff(function () {
-                            if (type === "MULTIPLE_CHOICE") targetItem = form.addMultipleChoiceItem();
-                            else if (type === "CHECKBOX") targetItem = form.addCheckboxItem();
-                            else if (type === "LIST") targetItem = form.addListItem();
-                            else if (type === "TEXT") targetItem = form.addTextItem();
-                            else if (type === "PARAGRAPH_TEXT") targetItem = form.addParagraphTextItem();
-                            else if (type === "DATE") targetItem = form.addDateItem();
-                            else if (type === "TIME") targetItem = form.addTimeItem();
-                            else if (type === "DATETIME") targetItem = form.addDateTimeItem();
-                            else if (type === "DURATION") targetItem = form.addDurationItem();
-                            else if (type === "SCALE") targetItem = form.addScaleItem();
-                            else if (type === "GRID") targetItem = form.addGridItem();
-                            else if (type === "CHECKBOX_GRID") targetItem = form.addCheckboxGridItem();
-                            else {
-                                targetItem = form.addTextItem();
-                                type = "TEXT";
-                            }
-                        });
-
-                        _App_callWithBackoff(function () {
-                            targetItem.setTitle(title);
-                            targetItem.setHelpText(helpText);
-                            _applyItemProperties(targetItem, type, required, optionsArr, gridRows, gridCols);
-                        });
-
-                        updateObj.id = targetItem.getId().toString();
-                        Logger.info(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Item: ' + title, '✅ Created');
-                        updateObj.action = "";
+                    if (type === "MULTIPLE_CHOICE") targetItem = form.addMultipleChoiceItem();
+                    else if (type === "CHECKBOX") targetItem = form.addCheckboxItem();
+                    else if (type === "LIST") targetItem = form.addListItem();
+                    else if (type === "TEXT") targetItem = form.addTextItem();
+                    else if (type === "PARAGRAPH_TEXT") targetItem = form.addParagraphTextItem();
+                    else if (type === "DATE") targetItem = form.addDateItem();
+                    else if (type === "TIME") targetItem = form.addTimeItem();
+                    else if (type === "DATETIME") targetItem = form.addDateTimeItem();
+                    else if (type === "DURATION") targetItem = form.addDurationItem();
+                    else if (type === "SCALE") targetItem = form.addScaleItem();
+                    else if (type === "GRID") targetItem = form.addGridItem();
+                    else if (type === "CHECKBOX_GRID") targetItem = form.addCheckboxGridItem();
+                    else {
+                        targetItem = form.addTextItem();
+                        type = "TEXT";
                     }
-                    else if (action === "UPDATE") {
-                        if (!id) throw new Error("Missing ID");
-                        var updItem = _App_callWithBackoff(function () { return form.getItemById(parseInt(id, 10)); });
-                        if (!updItem) throw new Error("Item ID not found");
 
-                        var currentType = updItem.getType().toString();
+                    targetItem.setTitle(title);
+                    targetItem.setHelpText(helpText);
+                    _applyItemProperties(targetItem, type, required, optionsArr, gridRows, gridCols);
 
-                        if (currentType === type) {
-                            // Type matches, safely apply properties
-                            _App_callWithBackoff(function () {
-                                updItem.setTitle(title);
-                                updItem.setHelpText(helpText);
-                                _applyItemProperties(updItem, type, required, optionsArr, gridRows, gridCols);
-                            });
-                            Logger.info(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Item: ' + title, '✅ Updated');
-                        } else {
-                            // Type changed! Google Forms API doesn't allow changing types of existing items.
-                            // We must cache the index, delete the old, and create a new item of the target type.
-                            var targetIndex = updItem.getIndex();
-                            _App_callWithBackoff(function () { form.deleteItem(updItem); });
+                    updates['Item ID'] = targetItem.getId().toString();
+                    updates['Log'] = '✅ Created';
+                    break;
 
-                            var newItem = null;
-                            _App_callWithBackoff(function () {
-                                if (type === "MULTIPLE_CHOICE") newItem = form.addMultipleChoiceItem();
-                                else if (type === "CHECKBOX") newItem = form.addCheckboxItem();
-                                else if (type === "LIST") newItem = form.addListItem();
-                                else if (type === "TEXT") newItem = form.addTextItem();
-                                else if (type === "PARAGRAPH_TEXT") newItem = form.addParagraphTextItem();
-                                else if (type === "DATE") newItem = form.addDateItem();
-                                else if (type === "TIME") newItem = form.addTimeItem();
-                                else if (type === "DATETIME") newItem = form.addDateTimeItem();
-                                else if (type === "DURATION") newItem = form.addDurationItem();
-                                else if (type === "SCALE") newItem = form.addScaleItem();
-                                else if (type === "GRID") newItem = form.addGridItem();
-                                else if (type === "CHECKBOX_GRID") newItem = form.addCheckboxGridItem();
-                                else {
-                                    newItem = form.addTextItem();
-                                    type = "TEXT";
-                                }
-                            });
+                case "UPDATE":
+                    if (!id) throw new Error("Missing Item ID");
+                    var updItem = form.getItemById(parseInt(id, 10));
+                    if (!updItem) throw new Error("Item ID not found on form");
 
-                            _App_callWithBackoff(function () {
-                                newItem.setTitle(title);
-                                newItem.setHelpText(helpText);
-                                _applyItemProperties(newItem, type, required, optionsArr, gridRows, gridCols);
-                                // Move the newly created item to the old item's exact position
-                                form.moveItem(newItem.getIndex(), targetIndex);
-                            });
+                    var currentType = updItem.getType().toString();
 
-                            updateObj.id = newItem.getId().toString();
-                            Logger.info(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Item: ' + title, '✅ Updated (Type Recreated)');
+                    if (currentType === type) {
+                        updItem.setTitle(title);
+                        updItem.setHelpText(helpText);
+                        _applyItemProperties(updItem, type, required, optionsArr, gridRows, gridCols);
+                    } else {
+                        var targetIndex = updItem.getIndex();
+                        form.deleteItem(updItem);
+
+                        var newItem = null;
+                        if (type === "MULTIPLE_CHOICE") newItem = form.addMultipleChoiceItem();
+                        else if (type === "CHECKBOX") newItem = form.addCheckboxItem();
+                        else if (type === "LIST") newItem = form.addListItem();
+                        else if (type === "TEXT") newItem = form.addTextItem();
+                        else if (type === "PARAGRAPH_TEXT") newItem = form.addParagraphTextItem();
+                        else if (type === "DATE") newItem = form.addDateItem();
+                        else if (type === "TIME") newItem = form.addTimeItem();
+                        else if (type === "DATETIME") newItem = form.addDateTimeItem();
+                        else if (type === "DURATION") newItem = form.addDurationItem();
+                        else if (type === "SCALE") newItem = form.addScaleItem();
+                        else if (type === "GRID") newItem = form.addGridItem();
+                        else if (type === "CHECKBOX_GRID") newItem = form.addCheckboxGridItem();
+                        else {
+                            newItem = form.addTextItem();
+                            type = "TEXT";
                         }
-                        updateObj.action = "";
-                    }
-                    else if (action === "REMOVE") {
-                        if (!id) throw new Error("Missing ID");
-                        var delItem = _App_callWithBackoff(function () { return form.getItemById(parseInt(id, 10)); });
-                        if (delItem) {
-                            _App_callWithBackoff(function () { form.deleteItem(delItem); });
-                            Logger.info(SyncEngine.getTool('FORMS_SYNC').TITLE, 'ID Map: ' + id, '🗑️ Removed');
-                        } else {
-                            Logger.info(SyncEngine.getTool('FORMS_SYNC').TITLE, 'ID Map: ' + id, '⚠️ Already Deleted');
-                        }
-                        updateObj.action = "";
-                    }
-                } catch (err) {
-                    Logger.error(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Row ' + i, err);
-                }
 
-                rowUpdates.push(updateObj);
+                        newItem.setTitle(title);
+                        newItem.setHelpText(helpText);
+                        _applyItemProperties(newItem, type, required, optionsArr, gridRows, gridCols);
+                        form.moveItem(newItem.getIndex(), targetIndex);
+                        updates['Item ID'] = newItem.getId().toString();
+                    }
+                    updates['Log'] = '✅ Updated';
+                    break;
+
+                case "REMOVE":
+                    if (!id) throw new Error("Missing Item ID");
+                    var delItem = form.getItemById(parseInt(id, 10));
+                    if (delItem) {
+                        form.deleteItem(delItem);
+                        updates['Log'] = '🗑️ Removed';
+                    } else {
+                        updates['Log'] = '⚠️ Already Deleted';
+                    }
+                    break;
+
+                default:
+                    updates['Log'] = "❓ Unknown Action '" + action + "'";
+                    updates['Action'] = action;
             }
 
-            // Write updates back to sheet
-            rowUpdates.forEach(function (upd, idx) {
-                var rowNum = FORMSSYNC_CFG.HEADER_ROW + 1 + idx;
-                sheet.getRange(rowNum, FORMSSYNC_CFG.COLUMNS.ACTION).setValue(upd.action);
-                if (upd.id) sheet.getRange(rowNum, FORMSSYNC_CFG.COLUMNS.ID).setValue(upd.id);
-            });
+            SheetManager.patchRow('FORMS_SYNC', rowObj._rowNumber, updates);
+        });
 
-            return { success: true, message: "Sync Complete. Check the Developer Log for details." };
-        } catch (e) {
-            throw e;
+        if (stats.processed === 0 && stats.errors === 0) {
+            return _App_ok("No data to sync.");
         }
+
+        return _App_ok("Sync Complete. Success: " + stats.processed + ", Errors: " + stats.errors);
     });
 }
 
@@ -463,9 +423,9 @@ function FormsSync_getForms() {
                 return { id: f.id, title: f.title };
             });
 
-            var savedFormId = _App_getProperty(APP_PROPS.FORMS_SELECTED_FORM);
+            var prefs = SyncEngine.getPrefs('FORMS_SYNC');
 
-            return { forms: mappedForms, savedFormId: savedFormId };
+            return { forms: mappedForms, savedFormId: prefs.selectedFormId };
         } catch (e) {
             Logger.error(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Get Forms', e);
             throw new Error("Failed to fetch forms: " + e.toString());
@@ -483,7 +443,8 @@ function FormsSync_syncToForm() {
 
 function FormsSync_getFormLinks() {
     return Logger.run('FORMS_SYNC', 'Get Form Links', function () {
-        var formId = _App_getProperty(APP_PROPS.FORMS_CURRENT_FORM);
+        var prefs = SyncEngine.getPrefs('FORMS_SYNC');
+        var formId = prefs.currentFormId;
         if (!formId) return null;
         try {
             var form = FormApp.openById(formId);
