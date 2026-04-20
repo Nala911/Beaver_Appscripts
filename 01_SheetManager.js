@@ -1,333 +1,183 @@
-// ==========================================
-// Centralized Sheet Manager (DAO Pattern)
-// ==========================================
+/**
+ * DATA LAYER (DAO & MAPPER)
+ * ==========================================
+ * Manages spreadsheet interactions and data transformation.
+ */
 
-var SheetManager = (function() {
+Object.assign(App.Data, (function() {
 
     function _normalizeHeaderKey(header) {
         return String(header || '').toUpperCase().trim();
     }
 
     /**
-     * Retrieves the sheet for a given toolKey from APP_REGISTRY.
-     * Throws an error if the toolKey or sheet does not exist.
+     * Retrieves the sheet for a given toolKey.
      */
     function getSheet(toolKey) {
-        var cfg = SyncEngine.getTool(toolKey);
-        if (!cfg) throw new Error("SheetManager: Unknown toolKey '" + toolKey + "'");
+        var cfg = App.Engine.getTool(toolKey);
         var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(cfg.SHEET_NAME);
-        if (!sheet) throw new Error("SheetManager: Sheet '" + cfg.SHEET_NAME + "' not found.");
+        if (!sheet) throw new Error("App.Data: Sheet '" + cfg.SHEET_NAME + "' not found.");
         return sheet;
     }
 
-    function ensureSheet(toolKey) {
-        return _App_ensureSheetExists(toolKey);
-    }
-
-    function getHeaders(toolKey) {
-        return SyncEngine.getTool(toolKey).HEADERS || [];
-    }
-
-    function getHeaderMap(toolKey) {
-        var headers = getHeaders(toolKey);
-        var map = {};
-        headers.forEach(function(header, index) {
-            map[header] = index + 1;
-        });
-        return map;
-    }
-
-    function getNormalizedHeaderMap(toolKey) {
-        var headers = getHeaders(toolKey);
-        var map = {};
-        headers.forEach(function(header, index) {
-            map[_normalizeHeaderKey(header)] = index;
-        });
-        return map;
-    }
-
-    function getSheetHeaderMap(sheet) {
-        var lastCol = sheet.getLastColumn();
-        var headers = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [];
-        var map = {};
-        headers.forEach(function(header, index) {
-            if (header) map[_normalizeHeaderKey(header)] = index;
-        });
-        return map;
-    }
-
     /**
-     * Reads all data rows (row 2 onwards) and maps them to an array of objects
-     * using the headers defined in the tool configuration.
-     * @returns {Object[]} Array of row objects mapped by header names
+     * Intelligent Data Mapper
+     * Converts sheet rows (arrays) to objects and vice-versa with type casting.
      */
-    function readObjects(toolKey) {
-        var sheet = getSheet(toolKey);
-        var lastRow = sheet.getLastRow();
-        if (lastRow < 2) return [];
+    var Mapper = {
+        _castValue: function(value, type) {
+            if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) return null;
+            switch (type) {
+                case 'DATETIME':
+                case 'DATE':
+                    if (value instanceof Date) return value;
+                    var d = new Date(value);
+                    return isNaN(d.getTime()) ? value : d;
+                case 'NUMBER':
+                    return isNaN(parseFloat(value)) ? value : Number(value);
+                case 'BOOLEAN':
+                case 'CHECKBOX':
+                    return String(value).toUpperCase() === 'TRUE' || value === true || value === 'Yes' || value === 'CHECKED';
+                case 'EMAIL_LIST':
+                case 'LIST':
+                    return typeof value === 'string' ? value.split(',').map(function(e) { return e.trim(); }).filter(Boolean) : (Array.isArray(value) ? value : [value]);
+                default:
+                    return value;
+            }
+        },
 
-        var cfg = SyncEngine.getTool(toolKey);
-        var headers = cfg.HEADERS;
-        var dataRange = sheet.getRange(2, 1, lastRow - 1, headers.length);
-        var data = dataRange.getValues();
-
-        return data.map(function(row) {
+        toObject: function(toolKey, rowData) {
+            var cfg = App.Engine.getTool(toolKey);
+            var schema = (cfg.FORMAT_CONFIG && cfg.FORMAT_CONFIG.COL_SCHEMA) ? cfg.FORMAT_CONFIG.COL_SCHEMA : [];
             var obj = {};
-            for (var i = 0; i < headers.length; i++) {
-                obj[headers[i]] = row[i];
+            for (var i = 0; i < cfg.HEADERS.length; i++) {
+                obj[cfg.HEADERS[i]] = this._castValue(rowData[i], schema[i] ? schema[i].type : 'TEXT');
             }
             return obj;
-        });
-    }
+        },
 
-    /**
-     * Reads only rows with a pending 'Action' in Column A.
-     * Memory-efficient alternative to readObjects for large sheets.
-     * @returns {Object[]} Array of row objects with an additional '_rowNumber' property.
-     */
-    function readPendingActions(toolKey) {
-        var sheet = getSheet(toolKey);
-        var lastRow = sheet.getLastRow();
-        if (lastRow < 2) return [];
+        castRow: function(toolKey, rawRow) {
+            var cfg = App.Engine.getTool(toolKey);
+            var schema = (cfg.FORMAT_CONFIG && cfg.FORMAT_CONFIG.COL_SCHEMA) ? cfg.FORMAT_CONFIG.COL_SCHEMA : [];
+            var casted = {};
+            Object.keys(rawRow).forEach(function(k) { if (k.indexOf('_') === 0) casted[k] = rawRow[k]; });
+            schema.forEach(function(col) {
+                casted[col.header] = Mapper._castValue(rawRow[col.header], col.type);
+            });
+            return casted;
+        },
 
-        var cfg = SyncEngine.getTool(toolKey);
-        var headers = cfg.HEADERS;
-        
-        // Step 1: Read ONLY the Action column (Column A)
-        var actionValues = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
-        var rowsToRead = [];
-        for (var i = 0; i < actionValues.length; i++) {
-            if (actionValues[i][0] && actionValues[i][0] !== "") {
-                rowsToRead.push(i + 2); // 1-based index, row 2 is index 0
-            }
+        toRow: function(toolKey, obj) {
+            var cfg = App.Engine.getTool(toolKey);
+            return cfg.HEADERS.map(function(h) {
+                var val = obj[h];
+                if (Array.isArray(val)) return val.join(',');
+                if (val instanceof Date) return Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+                return val === null || val === undefined ? "" : val;
+            });
         }
-        
-        if (rowsToRead.length === 0) return [];
-
-        // Step 2: For efficiency, read full range and filter in memory if row count is small,
-        // or fetch specific rows if the list is sparse. 
-        // For Google Sheets, reading a single block is usually faster than many getRange calls.
-        var dataRange = sheet.getRange(2, 1, lastRow - 1, headers.length);
-        var allData = dataRange.getValues();
-        
-        var filteredData = [];
-        for (var j = 0; j < rowsToRead.length; j++) {
-            var rowIdx = rowsToRead[j] - 2;
-            var row = allData[rowIdx];
-            var obj = { _rowNumber: rowsToRead[j] };
-            for (var k = 0; k < headers.length; k++) {
-                obj[headers[k]] = row[k];
-            }
-            filteredData.push(obj);
-        }
-        
-        return filteredData;
-    }
-
-    /**
-     * Writes an array of objects back to the sheet.
-     * Automatically maps object keys to the correct columns based on tool headers.
-     * @param {string} toolKey - Tool key (e.g., 'MAIL_SENDER')
-     * @param {Object[]} objectsArray - Array of objects to write
-     * @param {number} [startRow] - Optional start row to write from. Defaults to lastRow + 1.
-     */
-    function writeObjects(toolKey, objectsArray, startRow) {
-        if (!objectsArray || objectsArray.length === 0) return;
-
-        var sheet = getSheet(toolKey);
-        var cfg = SyncEngine.getTool(toolKey);
-        var headers = cfg.HEADERS;
-
-        var data2D = objectsArray.map(function(obj) {
-            var row = [];
-            for (var i = 0; i < headers.length; i++) {
-                row.push(obj[headers[i]] !== undefined ? obj[headers[i]] : "");
-            }
-            return row;
-        });
-
-        var targetRow = startRow || Math.max(2, sheet.getLastRow() + 1);
-
-        var range = sheet.getRange(targetRow, 1, data2D.length, headers.length);
-        range.setValues(data2D);
-    }
-
-    function overwriteRows(toolKey, rows, options) {
-        var opts = options || {};
-        var sheet = getSheet(toolKey);
-        var cfg = SyncEngine.getTool(toolKey);
-        var totalCols = opts.totalCols || (cfg.HEADERS ? cfg.HEADERS.length : sheet.getLastColumn());
-        var lastRow = sheet.getLastRow();
-
-        if (lastRow >= 2) {
-            sheet.getRange(2, 1, lastRow - 1, Math.max(sheet.getLastColumn(), totalCols)).clearContent();
-        }
-
-        if (rows && rows.length > 0) {
-            sheet.getRange(2, 1, rows.length, totalCols).setValues(rows);
-        }
-
-        _App_applyBodyFormatting(sheet, rows ? rows.length : 0, opts.formatConfig || cfg.FORMAT_CONFIG);
-    }
-
-    /**
-     * Overwrites all data starting from row 2 with the given objects array.
-     */
-    function overwriteObjects(toolKey, objectsArray) {
-        clearData(toolKey);
-        if (objectsArray && objectsArray.length > 0) {
-            writeObjects(toolKey, objectsArray, 2);
-        }
-        _App_applyBodyFormatting(getSheet(toolKey), objectsArray ? objectsArray.length : 0, SyncEngine.getTool(toolKey).FORMAT_CONFIG);
-    }
-
-    /**
-     * Clears all data rows (row 2 onwards) for the specified tool.
-     */
-    function clearData(toolKey) {
-        var sheet = getSheet(toolKey);
-        var lastRow = sheet.getLastRow();
-        var cfg = SyncEngine.getTool(toolKey);
-        var headers = cfg.HEADERS;
-        if (lastRow >= 2) {
-            sheet.getRange(2, 1, lastRow - 1, headers.length).clearContent();
-            if (cfg.FORMAT_CONFIG) {
-                _App_applyBodyFormatting(sheet, 0, cfg.FORMAT_CONFIG);
-            }
-        }
-    }
-
-    /**
-     * Returns only the values in the 'Action' column (Column A) for quick scanning.
-     * Returns an array of strings.
-     */
-    function getActions(toolKey) {
-        var sheet = getSheet(toolKey);
-        var lastRow = sheet.getLastRow();
-        if (lastRow < 2) return [];
-        var values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
-        return values.map(function(row) { return row[0]; });
-    }
-
-    function hasPendingActions(toolKey) {
-        return getActions(toolKey).some(function(action) {
-            return action !== '';
-        });
-    }
-
-    function getActionStats(toolKey, actionNames) {
-        var actions = getActions(toolKey);
-        var stats = {};
-        (actionNames || []).forEach(function(action) {
-            stats[action] = 0;
-        });
-
-        actions.forEach(function(action) {
-            if (stats.hasOwnProperty(action)) {
-                stats[action]++;
-            }
-        });
-
-        return stats;
-    }
-
-    function patchRow(toolKey, rowNumber, updates) {
-        if (!updates || Object.keys(updates).length === 0) return;
-        var sheet = getSheet(toolKey);
-        var headerMap = getHeaderMap(toolKey);
-        var lastCol = sheet.getLastColumn();
-        if (lastCol === 0) return;
-
-        var range = sheet.getRange(rowNumber, 1, 1, lastCol);
-        var rowData = range.getValues()[0];
-
-        var hasChanges = false;
-        Object.keys(updates).forEach(function(header) {
-            if (headerMap[header]) {
-                var colIndex = headerMap[header] - 1;
-                if (colIndex < lastCol && rowData[colIndex] !== updates[header]) {
-                    rowData[colIndex] = updates[header];
-                    hasChanges = true;
-                }
-            }
-        });
-
-        if (hasChanges) {
-            range.setValues([rowData]);
-        }
-    }
-
-    function batchPatchRows(toolKey, rowNumbers, updatesArray) {
-        if (!rowNumbers || !updatesArray || rowNumbers.length === 0 || rowNumbers.length !== updatesArray.length) return;
-        
-        var sheet = getSheet(toolKey);
-        var headerMap = getHeaderMap(toolKey);
-        var lastRow = sheet.getLastRow();
-        var lastCol = sheet.getLastColumn();
-        
-        if (lastRow < 2 || lastCol === 0) return;
-        
-        // Find min and max row to fetch a single block
-        var minRow = Math.min.apply(null, rowNumbers);
-        var maxRow = Math.max.apply(null, rowNumbers);
-        var numRows = maxRow - minRow + 1;
-        
-        var range = sheet.getRange(minRow, 1, numRows, lastCol);
-        var data = range.getValues();
-        var hasChanges = false;
-        
-        for (var i = 0; i < rowNumbers.length; i++) {
-            var actualRow = rowNumbers[i];
-            var relativeIdx = actualRow - minRow; // index in 'data' array
-            var updates = updatesArray[i];
-            
-            if (updates && relativeIdx >= 0 && relativeIdx < data.length) {
-                Object.keys(updates).forEach(function(header) {
-                    if (headerMap[header]) {
-                        var colIndex = headerMap[header] - 1;
-                        if (colIndex < lastCol && data[relativeIdx][colIndex] !== updates[header]) {
-                            data[relativeIdx][colIndex] = updates[header];
-                            hasChanges = true;
-                        }
-                    }
-                });
-            }
-        }
-        
-        if (hasChanges) {
-            range.setValues(data);
-        }
-    }
-
-    function assertActiveSheet(toolKey) {
-        var cfg = SyncEngine.getTool(toolKey);
-        return _App_assertActiveSheet(cfg.SHEET_NAME);
-    }
-
-    function syncDynamicColumns(toolKey, dynamicHeaders, options) {
-        return _App_syncDynamicColumns(toolKey, dynamicHeaders, options);
-    }
-
-    return {
-        getSheet: getSheet,
-        ensureSheet: ensureSheet,
-        getHeaders: getHeaders,
-        getHeaderMap: getHeaderMap,
-        getNormalizedHeaderMap: getNormalizedHeaderMap,
-        getSheetHeaderMap: getSheetHeaderMap,
-        readObjects: readObjects,
-        readPendingActions: readPendingActions,
-        writeObjects: writeObjects,
-        overwriteRows: overwriteRows,
-        overwriteObjects: overwriteObjects,
-        clearData: clearData,
-        getActions: getActions,
-        hasPendingActions: hasPendingActions,
-        getActionStats: getActionStats,
-        patchRow: patchRow,
-        batchPatchRows: batchPatchRows,
-        assertActiveSheet: assertActiveSheet,
-        syncDynamicColumns: syncDynamicColumns
     };
 
-})();
+    return {
+        Mapper: Mapper,
+        getSheet: getSheet,
+        
+        readObjects: function(toolKey) {
+            var sheet = getSheet(toolKey);
+            var lastRow = sheet.getLastRow();
+            if (lastRow < 2) return [];
+
+            var cfg = App.Engine.getTool(toolKey);
+            var data = sheet.getRange(2, 1, lastRow - 1, cfg.HEADERS.length).getValues();
+
+            return data.map(function(row) {
+                return Mapper.toObject(toolKey, row);
+            });
+        },
+
+        readPendingActions: function(toolKey) {
+            var sheet = getSheet(toolKey);
+            var lastRow = sheet.getLastRow();
+            if (lastRow < 2) return [];
+
+            var cfg = App.Engine.getTool(toolKey);
+            var actionValues = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+            var allData = sheet.getRange(2, 1, lastRow - 1, cfg.HEADERS.length).getValues();
+            
+            var results = [];
+            for (var i = 0; i < actionValues.length; i++) {
+                if (actionValues[i][0]) {
+                    var obj = Mapper.toObject(toolKey, allData[i]);
+                    obj._rowNumber = i + 2;
+                    results.push(obj);
+                }
+            }
+            return results;
+        },
+
+        writeObjects: function(toolKey, objectsArray, startRow) {
+            if (!objectsArray || objectsArray.length === 0) return;
+            var sheet = getSheet(toolKey);
+            var data2D = objectsArray.map(function(obj) {
+                return Mapper.toRow(toolKey, obj);
+            });
+            var targetRow = startRow || Math.max(2, sheet.getLastRow() + 1);
+            sheet.getRange(targetRow, 1, data2D.length, data2D[0].length).setValues(data2D);
+        },
+
+        patchRow: function(toolKey, rowNumber, updates) {
+            var sheet = getSheet(toolKey);
+            var cfg = App.Engine.getTool(toolKey);
+            var headers = cfg.HEADERS;
+            var range = sheet.getRange(rowNumber, 1, 1, headers.length);
+            var rowData = range.getValues()[0];
+            var obj = Mapper.toObject(toolKey, rowData);
+
+            var changed = false;
+            Object.keys(updates).forEach(function(k) {
+                if (obj.hasOwnProperty(k) && obj[k] !== updates[k]) {
+                    obj[k] = updates[k];
+                    changed = true;
+                }
+            });
+
+            if (changed) {
+                range.setValues([Mapper.toRow(toolKey, obj)]);
+            }
+        },
+
+        clearData: function(toolKey) {
+            var sheet = getSheet(toolKey);
+            var lastRow = sheet.getLastRow();
+            var cfg = App.Engine.getTool(toolKey);
+            if (lastRow >= 2) {
+                sheet.getRange(2, 1, lastRow - 1, cfg.HEADERS.length).clearContent();
+            }
+        },
+
+        hasPendingActions: function(toolKey) {
+            var sheet = getSheet(toolKey);
+            var lastRow = sheet.getLastRow();
+            if (lastRow < 2) return false;
+            var values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+            return values.some(function(r) { return r[0] !== ""; });
+        },
+
+        getSheetHeaderMap: function(sheet) {
+            var lastCol = sheet.getLastColumn();
+            if (lastCol === 0) return {};
+            var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+            var map = {};
+            headers.forEach(function(h, i) {
+                if (h) map[_normalizeHeaderKey(h)] = i;
+            });
+            return map;
+        },
+
+        // Backward Compatibility
+        ensureSheet: function(toolKey, callback) { return _App_ensureSheetExists(toolKey, callback); }
+    };
+})());
+
+// Backward Compatibility Layer
+var SheetManager = App.Data;

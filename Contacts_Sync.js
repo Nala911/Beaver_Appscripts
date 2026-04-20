@@ -10,7 +10,7 @@ SyncEngine.registerTool('CONTACTS_SYNC', {
     MENU_LABEL: '☎️ Google Contacts',
     MENU_ENTRYPOINT: 'Contacts_showSidebar',
     MENU_ORDER: 20,
-    SIDEBAR_HTML: 'ContactsSidebar',
+    SIDEBAR_HTML: 'Contacts_Sidebar',
     SIDEBAR_WIDTH: 400,
     FROZEN_ROWS: 1,
     FROZEN_COLS: 0,

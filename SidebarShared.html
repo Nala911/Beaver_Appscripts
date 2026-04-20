@@ -114,10 +114,39 @@
       runner[methodName].apply(runner, args || []);
     }
 
+    /**
+     * Executes a tool action via the central App_exec dispatcher.
+     * @param {string} toolKey - The tool key (e.g., 'CALENDAR_SYNC')
+     * @param {string} action - The action name (e.g., 'pullEvents')
+     * @param {*} params - Parameters to pass to the action
+     * @param {Object} options - Standard SyncSidebar options (onSuccess, onError, etc.)
+     */
+    function call(toolKey, action, params, options) {
+      var opts = options || {};
+      if (opts.loading) toggleLoading(true, opts.loading, opts);
+
+      google.script.run
+        .withSuccessHandler(function (result) {
+          if (opts.loading) toggleLoading(false, null, opts);
+          try {
+            var payload = opts.unwrap === false ? result : unwrap(result);
+            if (result.success && opts.onSuccess) opts.onSuccess(payload);
+            else if (!result.success) handleError(result.message || 'Operation failed', opts);
+          } catch (err) {
+            handleError(err, opts);
+          }
+        })
+        .withFailureHandler(function (err) {
+          handleError(err, opts);
+        })
+        .App_exec(toolKey, action, params);
+    }
+
     installGlobalErrorHandlers();
 
     return {
       run: run,
+      call: call,
       unwrap: unwrap,
       handleError: handleError,
       logClientError: logClientError,

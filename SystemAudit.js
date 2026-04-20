@@ -310,6 +310,7 @@ function Logger_runSystemAudit() {
         var summary = { passed: 0, warnings: 0, errors: 0 };
 
         Logger.info('System Audit', 'Global', "Starting rule-based audit for " + keys.length + " tools...");
+        Logger.info('System Audit', 'Diagnostic', "Registered tools: " + keys.join(', '));
 
         // 1. Run Global Rules
         GlobalAuditRules.forEach(function (rule) {

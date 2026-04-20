@@ -1,109 +1,67 @@
-var __propsCache = {};
-
 /**
- * Helper to get the appropriate properties store.
+ * STORAGE LAYER (Properties & Cache)
+ * ==========================================
+ * Unified interface for PropertiesService and CacheService.
  */
-function _App_getStore_(storeType) {
-    switch (storeType) {
-        case STORE_TYPES.DOCUMENT: return PropertiesService.getDocumentProperties();
-        case STORE_TYPES.USER: return PropertiesService.getUserProperties();
-        case STORE_TYPES.SCRIPT: return PropertiesService.getScriptProperties();
-        default: throw new Error("Invalid store type: " + storeType);
-    }
-}
 
-/**
- * Helper to get the appropriate cache store.
- */
-function _App_getCacheStore_(storeType) {
-    switch (storeType) {
-        case STORE_TYPES.DOCUMENT: return CacheService.getDocumentCache() || CacheService.getScriptCache();
-        case STORE_TYPES.USER: return CacheService.getUserCache();
-        case STORE_TYPES.SCRIPT: return CacheService.getScriptCache();
-        default: return null;
-    }
-}
+Object.assign(App.Storage, (function() {
+    var _memoryCache = {};
 
-/**
- * Retrieves a property from the registry. Automatically parses JSON if configured.
- * @param {Object} propConfig An entry from APP_PROPS
- * @returns {*} The value or null if not found
- */
-function _App_getProperty(propConfig) {
-    var cacheKey = propConfig.key;
-    
-    // 1. Fast Memory Cache
-    if (__propsCache.hasOwnProperty(cacheKey)) {
-        return __propsCache[cacheKey];
-    }
-
-    // 2. CacheService Layer
-    var cacheStore = _App_getCacheStore_(propConfig.store);
-    var valStr = cacheStore ? cacheStore.get(cacheKey) : null;
-    
-    // 3. PropertiesService Fallback
-    if (valStr === null) {
-        var store = _App_getStore_(propConfig.store);
-        valStr = store.getProperty(cacheKey);
-        if (valStr && cacheStore) {
-            cacheStore.put(cacheKey, valStr, 21600); // Max 6 hours
+    function _getStore(type) {
+        switch (type) {
+            case App.Config.STORE_TYPES.DOCUMENT: return PropertiesService.getDocumentProperties();
+            case App.Config.STORE_TYPES.USER: return PropertiesService.getUserProperties();
+            case App.Config.STORE_TYPES.SCRIPT: return PropertiesService.getScriptProperties();
+            default: throw new Error("Invalid store type: " + type);
         }
     }
 
-    if (!valStr) return null;
-
-    var result = valStr;
-    if (propConfig.isJson) {
-        try {
-            result = JSON.parse(valStr);
-        } catch (e) {
-            console.warn("Failed to parse JSON for property " + cacheKey, e);
-            result = null;
+    function _getCache(type) {
+        switch (type) {
+            case App.Config.STORE_TYPES.DOCUMENT: return CacheService.getDocumentCache();
+            case App.Config.STORE_TYPES.USER: return CacheService.getUserCache();
+            case App.Config.STORE_TYPES.SCRIPT: return CacheService.getScriptCache();
+            default: return null;
         }
     }
 
-    // Save to memory cache for subsequent calls
-    __propsCache[cacheKey] = result;
-    return result;
-}
+    return {
+        get: function(prop) {
+            var key = prop.key;
+            if (_memoryCache.hasOwnProperty(key)) return _memoryCache[key];
 
-function _App_getRawProperty(propConfig) {
-    return _App_getStore_(propConfig.store).getProperty(propConfig.key);
-}
+            var cache = _getCache(prop.store);
+            var val = cache ? cache.get(key) : null;
 
-/**
- * Sets a property in the registry. Automatically stringifies JSON if configured.
- * @param {Object} propConfig An entry from APP_PROPS
- * @param {*} value The value to set (can be an object or primitive)
- */
-function _App_setProperty(propConfig, value) {
-    var valToStore = propConfig.isJson ? JSON.stringify(value) : String(value);
-    
-    // Save to DB
-    var store = _App_getStore_(propConfig.store);
-    store.setProperty(propConfig.key, valToStore);
-    
-    // Update Caches
-    __propsCache[propConfig.key] = value;
-    var cacheStore = _App_getCacheStore_(propConfig.store);
-    if (cacheStore) {
-        cacheStore.put(propConfig.key, valToStore, 21600);
-    }
-}
+            if (val === null) {
+                val = _getStore(prop.store).getProperty(key);
+                if (val && cache) cache.put(key, val, 21600);
+            }
 
-/**
- * Deletes a property from the registry.
- * @param {Object} propConfig An entry from APP_PROPS
- */
-function _App_deleteProperty(propConfig) {
-    // Delete from DB
-    var store = _App_getStore_(propConfig.store);
-    store.deleteProperty(propConfig.key);
-    
-    // Clear Caches
-    delete __propsCache[propConfig.key];
-    var cacheStore = _App_getCacheStore_(propConfig.store);
-    if (cacheStore) {
-        cacheStore.remove(propConfig.key);
-    }
-}
+            if (!val) return null;
+            var res = prop.isJson ? JSON.parse(val) : val;
+            _memoryCache[key] = res;
+            return res;
+        },
+
+        set: function(prop, value) {
+            var str = prop.isJson ? JSON.stringify(value) : String(value);
+            _getStore(prop.store).setProperty(prop.key, str);
+            _memoryCache[prop.key] = value;
+            var cache = _getCache(prop.store);
+            if (cache) cache.put(prop.key, str, 21600);
+        },
+
+        delete: function(prop) {
+            _getStore(prop.store).deleteProperty(prop.key);
+            delete _memoryCache[prop.key];
+            var cache = _getCache(prop.store);
+            if (cache) cache.remove(prop.key);
+        }
+    };
+})());
+
+// Backward Compatibility Aliases
+function _App_getProperty(p) { return App.Storage.get(p); }
+function _App_setProperty(p, v) { return App.Storage.set(p, v); }
+function _App_deleteProperty(p) { return App.Storage.delete(p); }

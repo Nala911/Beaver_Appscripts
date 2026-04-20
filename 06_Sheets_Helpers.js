@@ -1,27 +1,32 @@
-function _App_canScaffoldSheet(toolConfig) {
-    return !!(toolConfig && toolConfig.HEADERS && toolConfig.HEADERS.length);
-}
 /**
- * Throws an error if the active sheet is not the expected one. Useful for direct action trigger functions.
- * @param {string} expectedSheetName The globally defined sheet name from SHEET_NAMES
- * @returns {GoogleAppsScript.Spreadsheet.Sheet} The active sheet object if valid
+ * DATA HELPERS (Sheet Scaffolding)
+ * ==========================================
+ * Low-level spreadsheet operations and validation.
  */
-function _App_assertActiveSheet(expectedSheetName) {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    if (sheet.getName() !== expectedSheetName) {
-        throw new Error("⚠️ Please run this action from the '" + expectedSheetName + "' sheet.");
-    }
-    return sheet;
-}
-/**
- * Returns a validation object. Useful for UI-triggered functions that need to return an error shape `{success: false, message: ...}` instead of failing ungracefully.
- * @param {string} expectedSheetName 
- * @returns {Object} `{ valid: boolean, sheet: Sheet, message?: string }`
- */
-function _App_validateActiveSheet(expectedSheetName) {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    if (sheet.getName() !== expectedSheetName) {
-        return { valid: false, message: "⚠️ Please run this action from the '" + expectedSheetName + "' sheet." };
-    }
-    return { valid: true, sheet: sheet };
-}
+
+App.Data.Helpers = (function() {
+    return {
+        canScaffold: function(toolConfig) {
+            return !!(toolConfig && toolConfig.HEADERS && toolConfig.HEADERS.length);
+        },
+        assertActive: function(expectedName) {
+            var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+            if (sheet.getName() !== expectedName) {
+                throw new Error("⚠️ Please run from '" + expectedName + "' sheet.");
+            }
+            return sheet;
+        },
+        validateActive: function(expectedName) {
+            var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+            if (sheet.getName() !== expectedName) {
+                return { valid: false, message: "⚠️ Please run from '" + expectedName + "'." };
+            }
+            return { valid: true, sheet: sheet };
+        }
+    };
+})();
+
+// Backward Compatibility Aliases
+function _App_canScaffoldSheet(c) { return App.Data.Helpers.canScaffold(c); }
+function _App_assertActiveSheet(n) { return App.Data.Helpers.assertActive(n); }
+function _App_validateActiveSheet(n) { return App.Data.Helpers.validateActive(n); }

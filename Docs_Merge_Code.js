@@ -9,7 +9,7 @@ SyncEngine.registerTool('DOCS_MERGE', {
     MENU_LABEL: '📄 Start Docs Merge',
     MENU_ENTRYPOINT: 'DocsMerge_openSidebar',
     MENU_ORDER: 50,
-    SIDEBAR_HTML: 'Docs_merge_Sidebar',
+    SIDEBAR_HTML: 'DocsMerge_Sidebar',
     SIDEBAR_WIDTH: 400,
     FROZEN_ROWS: 1,
     FROZEN_COLS: 1,
@@ -178,9 +178,12 @@ function DocsMerge_syncPlaceholders(templateUrl) {
 }
 
 function _DocsMerge_replacePlaceholders(body, headers, row) {
-  for (var h = 2; h < headers.length; h++) {
-    body.replaceText('{{' + headers[h] + '}}', row[h] !== undefined ? String(row[h]) : "");
-  }
+  headers.forEach(function(header) {
+    if (!header || header === 'Action' || header === 'Merged File Link') return;
+    var val = row[header];
+    var valStr = (val === undefined || val === null || val === "") ? "" : String(val);
+    body.replaceText('{{' + _DocsMerge_escapeRegExp(header) + '}}', valStr);
+  });
 }
 
 function _DocsMerge_escapeRegExp(string) {
@@ -189,11 +192,11 @@ function _DocsMerge_escapeRegExp(string) {
 
 // execution context - no longer a single monolith function
 
-function DocsMerge_initExport(config) {
-  return Logger.run('DOCS_MERGE', 'Init Export', function () {
+function DocsMerge_runSync(config) {
+  return Logger.run('DOCS_MERGE', 'Run Docs Merge', function () {
     var templateUrl = config.templateUrl;
     var folderUrl = config.folderUrl;
-    var mode = config.mode; // 'SINGLE' or 'INDIVIDUAL'
+    var mode = config.mode || 'INDIVIDUAL'; // 'SINGLE' or 'INDIVIDUAL'
 
     var templateId = _DocsMerge_extractIdFromUrl(templateUrl);
     var folderId = _DocsMerge_extractIdFromUrl(folderUrl);
@@ -203,207 +206,151 @@ function DocsMerge_initExport(config) {
     }
 
     // Save config for future use
-    var saveResult = DocsMerge_saveConfig({
+    DocsMerge_saveConfig({
       templateUrl: templateUrl,
       folderUrl: folderUrl,
       templateName: config.templateName,
       folderName: config.folderName
     });
-    if (!saveResult.success) {
-      throw new Error(saveResult.message);
-    }
 
-    var sheet = _App_assertActiveSheet(SHEET_NAMES.DOCS_MERGE);
-    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-
-    var dataRange = sheet.getDataRange();
-    var data = dataRange.getDisplayValues();
-    if (data.length < 2) throw new Error("Sheet is empty.");
-
-    try {
-      var templateFile = DriveApp.getFileById(templateId);
-      var targetFolder = DriveApp.getFolderById(folderId);
-    } catch (e) {
-      throw new Error("Permission Error: I can't access the Doc or Folder. Make sure you have 'Editor' access.");
-    }
-
-    var allRows = data.slice(1);
-    var rowsToProcess = [];
-    allRows.forEach(function (row, index) {
-      var action = (row[DOCS_MERGE_CFG.COLUMNS.ACTION] || "").toString();
-      if (action === "Generate PDF" || action === "Generate Doc") {
-        rowsToProcess.push({
-          row: row,
-          index: index,
-          action: action
-        });
-      }
-    });
-
-    if (rowsToProcess.length === 0) {
-      throw new Error("0 rows had 'Generate PDF' or 'Generate Doc' action.");
-    }
-
-    var masterDocId = null;
-    if (mode === "SINGLE") {
-      try {
-        var dateStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm");
-        var masterDoc = templateFile.makeCopy('Merged_Doc_' + dateStr);
-        masterDocId = masterDoc.getId();
-        var masterDocOpen = DocumentApp.openById(masterDocId);
-        masterDocOpen.getBody().clear();
-        masterDocOpen.saveAndClose();
-      } catch (e) {
-        throw new Error("Error initializing master document: " + e.message);
-      }
-    }
-
-    return _App_ok('Export initialized.', {
-      rowsToProcess: rowsToProcess,
-      masterDocId: masterDocId,
-      templateId: templateId,
-      folderId: folderId,
-      headers: headers
-    });
-  });
-}
-
-function DocsMerge_processRow(item, config, masterDocId, templateId, folderId, headers, isFirst, isLast) {
-  return Logger.run('DOCS_MERGE', 'Process Row', function () {
-    var sheet = SpreadsheetApp.getActiveSheet();
     var templateFile = DriveApp.getFileById(templateId);
     var targetFolder = DriveApp.getFolderById(folderId);
-    var mode = config.mode;
-    var rowLinkColName = "Merged File Link";
-    var linkColIndex = headers.indexOf(rowLinkColName) + 1; // 1-based index
-
-    var outputFormat = item.action === "Generate PDF" ? "PDF" : "DOC";
-
-    try {
-      if (mode === "SINGLE") {
-        var tempId = templateFile.makeCopy('Temp_' + item.index).getId();
-        var tempDoc = DocumentApp.openById(tempId);
-        var tempBody = tempDoc.getBody();
-
-        _DocsMerge_replacePlaceholders(tempBody, headers, item.row);
-        tempDoc.saveAndClose();
-
-        var masterOpened = DocumentApp.openById(masterDocId);
-        var masterBody = masterOpened.getBody();
-
-        var tempOpened = DocumentApp.openById(tempId);
-        var tempBodyOpened = tempOpened.getBody();
-        var numChildren = tempBodyOpened.getNumChildren();
-
-        for (var j = 0; j < numChildren; j++) {
-          var child = tempBodyOpened.getChild(j).copy();
-          var type = child.getType();
-
-          if (isFirst && j === 0) {
-            if (type === DocumentApp.ElementType.PARAGRAPH) masterBody.appendParagraph(child.asParagraph());
-            else if (type === DocumentApp.ElementType.TABLE) masterBody.appendTable(child.asTable());
-            else if (type === DocumentApp.ElementType.LIST_ITEM) masterBody.appendListItem(child.asListItem());
-            if (masterBody.getChild(0).getType() === DocumentApp.ElementType.PARAGRAPH && masterBody.getChild(0).getText() === "") {
-              masterBody.removeChild(masterBody.getChild(0)); // Remove default empty paragraph safely
-            }
-          } else {
-            if (type === DocumentApp.ElementType.PARAGRAPH) masterBody.appendParagraph(child.asParagraph());
-            else if (type === DocumentApp.ElementType.TABLE) masterBody.appendTable(child.asTable());
-            else if (type === DocumentApp.ElementType.LIST_ITEM) masterBody.appendListItem(child.asListItem());
-          }
-        }
-
-        if (!isLast) {
-          masterBody.appendPageBreak();
-        }
-
-        masterOpened.saveAndClose();
-        DriveApp.getFileById(tempId).setTrashed(true);
-
-        Logger.info(SyncEngine.getTool('DOCS_MERGE').TITLE, 'Row ' + (item.index + 2), "✅ Appended to Master");
-        sheet.getRange(item.index + 2, DOCS_MERGE_CFG.COLUMNS.ACTION + 1).setValue("");
-
-        return _App_ok("Row " + (item.index + 1) + " appended.");
-
-      } else {
-        // INDIVIDUAL
-        var fileName = item.row[DOCS_MERGE_CFG.COLUMNS.DOC_NAME] || 'Document_' + (item.index + 1);
-        var tempFile = templateFile.makeCopy(fileName);
-        var tempDoc = DocumentApp.openById(tempFile.getId());
-        _DocsMerge_replacePlaceholders(tempDoc.getBody(), headers, item.row);
-        tempDoc.saveAndClose();
-
-        var finalUrl = "";
-
-        if (outputFormat === "PDF") {
-          var pdfBlob = tempFile.getAs(MimeType.PDF);
-          var newPdf = targetFolder.createFile(pdfBlob);
-          finalUrl = newPdf.getUrl();
-          tempFile.setTrashed(true);
-        } else {
-          // Move doc to target folder
-          tempFile.moveTo(targetFolder);
-          finalUrl = tempFile.getUrl();
-        }
-
-        Logger.info(SyncEngine.getTool('DOCS_MERGE').TITLE, 'Row ' + (item.index + 2), '✅ ' + outputFormat + ' Created');
-        sheet.getRange(item.index + 2, DOCS_MERGE_CFG.COLUMNS.ACTION + 1).setValue("");
-
-        // Insert rich text link
-        var richText = SpreadsheetApp.newRichTextValue()
-          .setText("View File")
-          .setLinkUrl(finalUrl)
-          .build();
-
-        sheet.getRange(item.index + 2, linkColIndex).setRichTextValue(richText);
-
-        return _App_ok("Created " + outputFormat + " for row " + (item.index + 1));
-      }
-    } catch (e) {
-      Logger.error(SyncEngine.getTool('DOCS_MERGE').TITLE, 'Row ' + (item.index + 2), e);
-      return _App_fail("Error on row " + (item.index + 1) + ": " + e.message);
+    var toolCfg = SyncEngine.getTool('DOCS_MERGE');
+    var headers = toolCfg.HEADERS;
+    
+    // 1. Initialization for SINGLE mode
+    var masterDocId = null;
+    var masterOpened = null;
+    var masterBody = null;
+    if (mode === "SINGLE") {
+      var dateStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm");
+      var masterDoc = templateFile.makeCopy('Merged_Doc_' + dateStr);
+      masterDocId = masterDoc.getId();
+      masterOpened = DocumentApp.openById(masterDocId);
+      masterBody = masterOpened.getBody();
+      masterBody.clear();
     }
-  });
-}
 
-function DocsMerge_finishExport(config, masterDocId, folderId, rowsProcessed) {
-  return Logger.run('DOCS_MERGE', 'Finish Export', function () {
-    if (config.mode === "SINGLE") {
-      var targetFolder = DriveApp.getFolderById(folderId);
-      var sheet = SpreadsheetApp.getActiveSheet();
+    var processedRows = [];
 
-      var firstAction = (rowsProcessed && rowsProcessed.length > 0) ? rowsProcessed[0].action : "Generate PDF";
-      var isPdf = (firstAction === "Generate PDF");
-      var formatName = isPdf ? "PDF" : "Doc";
+    // 2. Execution via ExecutionService
+    var stats = ExecutionService.processPendingRows('DOCS_MERGE', function(rowObj) {
+        var action = String(rowObj['Action'] || '').toUpperCase();
+        var outputFormat = action === "GENERATE PDF" ? "PDF" : "DOC";
+        var isFirst = processedRows.length === 0;
 
-      var masterFile = DriveApp.getFileById(masterDocId);
+        if (mode === "SINGLE") {
+          // Process for Master Doc
+          var tempId = templateFile.makeCopy('Temp_' + rowObj._rowNumber).getId();
+          var tempDoc = DocumentApp.openById(tempId);
+          _DocsMerge_replacePlaceholders(tempDoc.getBody(), headers, rowObj);
+          tempDoc.saveAndClose();
+
+          var tempOpened = DocumentApp.openById(tempId);
+          var tempBodyOpened = tempOpened.getBody();
+          var numChildren = tempBodyOpened.getNumChildren();
+
+          for (var j = 0; j < numChildren; j++) {
+            var child = tempBodyOpened.getChild(j).copy();
+            var type = child.getType();
+
+            if (isFirst && j === 0) {
+              if (type === DocumentApp.ElementType.PARAGRAPH) masterBody.appendParagraph(child.asParagraph());
+              else if (type === DocumentApp.ElementType.TABLE) masterBody.appendTable(child.asTable());
+              else if (type === DocumentApp.ElementType.LIST_ITEM) masterBody.appendListItem(child.asListItem());
+              
+              if (masterBody.getChild(0).getType() === DocumentApp.ElementType.PARAGRAPH && masterBody.getChild(0).getText() === "") {
+                masterBody.removeChild(masterBody.getChild(0));
+              }
+            } else {
+              if (type === DocumentApp.ElementType.PARAGRAPH) masterBody.appendParagraph(child.asParagraph());
+              else if (type === DocumentApp.ElementType.TABLE) masterBody.appendTable(child.asTable());
+              else if (type === DocumentApp.ElementType.LIST_ITEM) masterBody.appendListItem(child.asListItem());
+            }
+          }
+          masterBody.appendPageBreak();
+          
+          tempOpened.saveAndClose();
+          DriveApp.getFileById(tempId).setTrashed(true);
+          
+          processedRows.push(rowObj._rowNumber);
+          SheetManager.patchRow('DOCS_MERGE', rowObj._rowNumber, { 'Action': '' });
+
+        } else {
+          // INDIVIDUAL
+          var fileName = rowObj['Document Name'] || 'Document_' + rowObj._rowNumber;
+          var tempFile = templateFile.makeCopy(fileName);
+          var tempDoc = DocumentApp.openById(tempFile.getId());
+          _DocsMerge_replacePlaceholders(tempDoc.getBody(), headers, rowObj);
+          tempDoc.saveAndClose();
+
+          var finalUrl = "";
+          if (outputFormat === "PDF") {
+            var pdfBlob = tempFile.getAs(MimeType.PDF);
+            var newPdf = targetFolder.createFile(pdfBlob);
+            finalUrl = newPdf.getUrl();
+            tempFile.setTrashed(true);
+          } else {
+            tempFile.moveTo(targetFolder);
+            finalUrl = tempFile.getUrl();
+          }
+
+          var richText = SpreadsheetApp.newRichTextValue()
+            .setText("View File")
+            .setLinkUrl(finalUrl)
+            .build();
+
+          SheetManager.patchRow('DOCS_MERGE', rowObj._rowNumber, { 
+            'Action': '',
+            'Merged File Link': finalUrl
+          });
+          
+          // Apply rich text separately
+          var sheet = SheetManager.getSheet('DOCS_MERGE');
+          var hMap = SheetManager.getHeaderMap('DOCS_MERGE');
+          sheet.getRange(rowObj._rowNumber, hMap['Merged File Link']).setRichTextValue(richText);
+        }
+    });
+
+    // 3. Finalization
+    if (mode === "SINGLE" && masterDocId) {
+      // Remove trailing page break if any
+      var lastChild = masterBody.getChild(masterBody.getNumChildren() - 1);
+      if (lastChild && lastChild.getType() === DocumentApp.ElementType.PAGE_BREAK) {
+        masterBody.removeChild(lastChild);
+      }
+      masterOpened.saveAndClose();
+
+      var finalMasterFile = DriveApp.getFileById(masterDocId);
+      var isPdf = true;
+      
       var finalUrl = "";
-
       if (isPdf) {
-        var pdfBlob = masterFile.getAs(MimeType.PDF);
+        var pdfBlob = finalMasterFile.getAs(MimeType.PDF);
         var newPdf = targetFolder.createFile(pdfBlob);
         finalUrl = newPdf.getUrl();
-        masterFile.setTrashed(true);
+        finalMasterFile.setTrashed(true);
       } else {
-        masterFile.moveTo(targetFolder);
-        finalUrl = masterFile.getUrl();
+        finalMasterFile.moveTo(targetFolder);
+        finalUrl = finalMasterFile.getUrl();
       }
-
-      var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-      var linkColIndex = headers.indexOf("Merged File Link") + 1;
 
       var richText = SpreadsheetApp.newRichTextValue()
         .setText("View Master File")
         .setLinkUrl(finalUrl)
         .build();
 
-      rowsProcessed.forEach(function (item) {
-        sheet.getRange(item.index + 2, linkColIndex).setRichTextValue(richText);
-        Logger.info(SyncEngine.getTool('DOCS_MERGE').TITLE, 'Row ' + (item.index + 2), "✅ Merged into Single " + formatName);
+      var sheet = SheetManager.getSheet('DOCS_MERGE');
+      var hMap = SheetManager.getHeaderMap('DOCS_MERGE');
+      processedRows.forEach(function(rowNum) {
+        sheet.getRange(rowNum, hMap['Merged File Link']).setRichTextValue(richText);
       });
-
-      return _App_ok("Successfully generated and linked Master " + formatName + ".");
     }
-    return _App_ok("All individual documents processed successfully.");
+
+    if (stats.processed === 0 && stats.errors === 0) {
+      return _App_ok("No data to merge.");
+    }
+
+    return _App_ok("Merge Complete. Success: " + stats.processed + ", Errors: " + stats.errors);
   });
 }

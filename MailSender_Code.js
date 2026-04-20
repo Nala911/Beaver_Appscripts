@@ -9,7 +9,7 @@ SyncEngine.registerTool('MAIL_SENDER', {
     MENU_LABEL: '📩 Mail Sender',
     MENU_ENTRYPOINT: 'Mail_Sender_openSidebar',
     MENU_ORDER: 40,
-    SIDEBAR_HTML: 'Mail_Sender-Sidebar',
+    SIDEBAR_HTML: 'MailSender_Sidebar',
     SIDEBAR_WIDTH: 400,
     FROZEN_ROWS: 1,
     FROZEN_COLS: 1,

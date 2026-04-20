@@ -22,6 +22,8 @@ The system logic is split into sequential modules evaluated in order:
 - `07_Sheets_Formatting.js`: UI/styling application to sheets (`_App_applyBodyFormatting`).
 - `08_Engine_Core.js`: The `SyncEngine` plugin registration and retrieval system.
 - `09_Engine_UI.js`: UI abstractions for opening sidebars and dialogs.
+- `10_ExecutionService.js`: Row-level execution service managing automated retries, schema validation, and exponential backoff.
+- `11_DataMapper.js`: Schema validation and automated object mapping based on SyncEngine configurations.
 - `UI.js`: The central UI orchestrator. Responsible for creating the custom "🦫 WorkspaceSync Tools" menu (`onOpen`), providing the global wrapper for the Theme Editor sidebar, and connecting user actions to the tools.
 - `SidebarShared.html`: Shared HTML, CSS, and JS components to eliminate redundant sidebar code and infinite spinners.
 - `01_SheetManager.js`: Centralized data access object (DAO). Uses `SyncEngine` configurations to map sheet data to JavaScript objects and vice-versa.
@@ -35,22 +37,23 @@ Each tool has a Backend file, a Frontend sidebar file, and a global Entry Functi
 
 | Tool Name | Backend (`.js`) | Frontend (`.html`) | UI Menu Entry Function |
 |---|---|---|---|
-| **Calendar Sync** | `Calendar_Sync.js` | `Calender_Sidebar.html` | `Calendar_showSidebar` |
-| **Contacts Sync** | `Contacts_Sync.js` | `ContactsSidebar.html` | `Contacts_showSidebar` |
-| **Mail Merge** | `Mail_merge_Code.js` | `Mail_merge_HTML.html` | `MailMerge_openSidebar` |
-| **Mail Sender** | `Mail_Sender.js` | `Mail_Sender-Sidebar.html` | `Mail_Sender_openSidebar` |
-| **Docs Merge** | `Docs_Merge_Code.js` | `Docs_merge_Sidebar.html` | `DocsMerge_openSidebar` |
-| **Task Manager** | `Task_Sync_code.js` | `Tasks_Sidebar.html` | `Tasks_showSidebar` |
+| **Calendar Sync** | `Calendar_Sync.js` | `Calendar_Sidebar.html` | `Calendar_showSidebar` |
+| **Contacts Sync** | `Contacts_Sync.js` | `Contacts_Sidebar.html` | `Contacts_showSidebar` |
+| **Mail Merge** | `Mail_merge_Code.js` | `MailMerge_Sidebar.html` | `MailMerge_openSidebar` |
+| **Mail Sender** | `MailSender_Code.js` | `MailSender_Sidebar.html` | `Mail_Sender_openSidebar` |
+| **Docs Merge** | `Docs_Merge_Code.js` | `DocsMerge_Sidebar.html` | `DocsMerge_openSidebar` |
+| **Task Manager** | `Tasks_Code.js` | `Tasks_Sidebar.html` | `Tasks_showSidebar` |
 | **Forms Sync** | `FormsSync_Code.js` | `FormsSync_Sidebar.html` | `FormsSync_openSidebar` |
-| **Bulk Folder** | `BulkFolderCreation.js` | `BulkFolderCreationSidebar.html` | `BulkFolder_showSidebar` |
-| **Drive Sync** | `DriveFileDetails.gs.js` | `DriveFileDetailsSidebar.html` | `Drive_showSidebar` |
+| **Bulk Folder** | `BulkFolder_Code.js` | `BulkFolder_Sidebar.html` | `BulkFolder_showSidebar` |
+| **Drive Sync** | `DriveSync_Code.js` | `DriveSync_Sidebar.html` | `Drive_showSidebar` |
+| **Chat Space Sync** | `ChatSpaceSync_Code.js` | `ChatSpaceSync_Sidebar.html` | `ChatSync_showSidebar` |
 | **Pipeline Control** | `PipelineControl.js` | `PipelineSidebar.html` | `Pipeline_showSidebar` |
 | **Developer Log** | `Logger.js`, `SystemAudit.js`, `Logger_SidebarController.js` | `Logger_Sidebar.html` | `Logger_showSidebar` |
 | **Theme Editor** | (Inside `UI.js`) | `ThemeEditorSidebar.html` | `UI_openThemeDialog` |
 
 > [!CAUTION]
 > **Large File Warning:** The following files are large (25KB+). Use surgical reads.
-> - `DriveFileDetails.gs.js` (~32KB): Complex Drive synchronization logic.
+> - `DriveSync_Code.js` (~32KB): Complex Drive synchronization logic.
 > - `Contacts_Sync.js` (~27KB): People API integration logic.
 
 ## 🔑 Google API Scopes & Services Used
@@ -67,7 +70,8 @@ Each tool relies on specific Google APIs. Do NOT use an API in a tool that doesn
 | **Task Manager** | `Tasks` (Advanced) | Yes — `Tasks API v1` |
 | **Forms Sync** | `FormApp`, `DriveApp` | No |
 | **Bulk Folder** | `DriveApp` | No |
-| **Pipeline Sync** | `DriveApp`, `Drive` (Advanced) | Yes — `Drive API v3` |
+| **Drive Sync** | `DriveApp`, `Drive` (Advanced) | Yes — `Drive API v3` |
+| **Chat Space Sync** | `Chat` (Advanced) | Yes — `Chat API` |
 | **Pipeline Control** | `PropertiesService`, `SpreadsheetApp`, `ScriptApp` | No |
 | **Developer Log** | `CacheService`, `Session`, `Utilities` | No |
 | **Theme Editor** | `PropertiesService` only | No |

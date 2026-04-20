@@ -9,7 +9,7 @@ SyncEngine.registerTool('BULK_FOLDER', {
     MENU_LABEL: '📂 Bulk Folder Creation',
     MENU_ENTRYPOINT: 'BulkFolder_showSidebar',
     MENU_ORDER: 80,
-    SIDEBAR_HTML: 'BulkFolderCreationSidebar',
+    SIDEBAR_HTML: 'BulkFolder_Sidebar',
     SIDEBAR_WIDTH: 400,
     FROZEN_ROWS: 1,
     FROZEN_COLS: 1,

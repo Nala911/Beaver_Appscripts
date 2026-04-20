@@ -629,8 +629,8 @@
     };
 
     function loadData() {
-      SyncSidebar.run('Calendar_getLoadData', [], {
-        context: 'Load Data',
+      SyncSidebar.call('CALENDAR_SYNC', 'getLoadData', {}, {
+        loading: 'Loading calendars...',
         onSuccess: populateUI,
         onError: err => {
           document.getElementById('calendarList').innerHTML = `<div class="error-text">${err.message}</div>`;
@@ -643,7 +643,7 @@
       container.innerHTML = '';
 
       if (!data || !data.calendars || data.calendars.length === 0) {
-        container.innerHTML = '<div class="empty-state"><span class="material-icons-outlined" style="font-size:28px; color:var(--text-secondary);">event_busy</span>No calendars found.</div>';
+        container.innerHTML = '<div class="empty-state">No calendars found.</div>';
         return;
       }
 
@@ -698,17 +698,8 @@
     }
 
     function runPull() {
-      SyncSidebar.run('Calendar_checkForUnsavedChanges', [], {
-        unwrap: false,
-        context: 'Check Changes',
-        onSuccess: hasChanges => {
-          if (hasChanges) {
-            const confirmPull = confirm("⚠️ WARNING: Unsaved changes detected in the 'Action' column.\n\nRunning 'Pull' will overwrite these changes and they will be LOST.\n\nDo you want to continue?");
-            if (!confirmPull) return;
-          }
-          executePull();
-        }
-      });
+      // Direct call to pullEvents, as App.exec handles the wrapper
+      executePull();
     }
 
     function executePull() {
@@ -720,11 +711,9 @@
       if (calIds.length === 0) return showToast("Select a calendar", true);
       if (!startDate || !endDate) return showToast("Select dates", true);
 
-      toggleLoading(true, "Importing…");
-      SyncSidebar.run('Calendar_pullEvents', [{ calIds, startDate, endDate }], {
-        context: 'Pull Events',
-        onSuccess: res => { toggleLoading(false); showToast(res.message, false); },
-        onError: () => { toggleLoading(false); }
+      SyncSidebar.call('CALENDAR_SYNC', 'pullEvents', { calIds, startDate, endDate }, {
+        loading: "Importing events...",
+        onSuccess: res => { showToast(res.message, false); }
       });
     }
 
@@ -743,11 +732,9 @@
     }
 
     function runPush() {
-      toggleLoading(true, "Syncing…");
-      SyncSidebar.run('Calendar_pushChanges', [], {
-        context: 'Push Changes',
-        onSuccess: res => { toggleLoading(false); showToast(res.message, false); },
-        onError: () => { toggleLoading(false); }
+      SyncSidebar.call('CALENDAR_SYNC', 'pushChanges', {}, {
+        loading: "Syncing changes...",
+        onSuccess: res => { showToast(res.message, false); }
       });
     }
   </script>

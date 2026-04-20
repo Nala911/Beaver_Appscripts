@@ -1,53 +1,68 @@
-// ==========================================
-// _App_openSidebar — Universal Sidebar Opener
-// ==========================================
 /**
- * Opens a tool's sidebar, ensuring the sheet exists first.
+ * UI ENGINE
+ * ==========================================
+ * Handles sidebar/modal rendering and menu generation.
  */
-function _App_openSidebar(toolKey, postCreateCallback) {
-    var cfg = SyncEngine.getTool(toolKey);
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName(cfg.SHEET_NAME);
 
-    if (!sheet) {
-        sheet = _App_ensureSheetExists(toolKey, postCreateCallback);
-    } else {
-        sheet.activate();
-    }
+Object.assign(App.UI, (function() {
 
-    var html = HtmlService.createTemplateFromFile(cfg.SIDEBAR_HTML).evaluate()
-        .setTitle(cfg.TITLE)
-        .setWidth(cfg.SIDEBAR_WIDTH || 300);
-    SpreadsheetApp.getUi().showSidebar(html);
-}
+    function openSidebar(toolKey, postCreateCallback) {
+        var cfg = App.Engine.getTool(toolKey);
+        var ss = SpreadsheetApp.getActiveSpreadsheet();
+        var sheet = ss.getSheetByName(cfg.SHEET_NAME);
 
-function _App_launchTool(toolKey, postCreateCallback) {
-    return Logger.run(toolKey, 'Launch Tool', function () {
-        var cfg = SyncEngine.getTool(toolKey);
-        var launchMode = cfg.LAUNCH_MODE || TOOL_LAUNCH_MODES.SIDEBAR;
-
-        if (launchMode === TOOL_LAUNCH_MODES.MODAL) {
-            var html = HtmlService.createTemplateFromFile(cfg.MODAL_HTML || cfg.SIDEBAR_HTML).evaluate()
-                .setTitle(cfg.TITLE)
-                .setWidth(cfg.MODAL_WIDTH || cfg.SIDEBAR_WIDTH || 300)
-                .setHeight(cfg.MODAL_HEIGHT || 600);
-            SpreadsheetApp.getUi().showModalDialog(html, cfg.TITLE);
-            return;
+        if (!sheet) {
+            sheet = _App_ensureSheetExists(toolKey, postCreateCallback);
+        } else {
+            sheet.activate();
         }
 
-        _App_openSidebar(toolKey, postCreateCallback);
-    });
-}
+        var html = HtmlService.createTemplateFromFile(cfg.SIDEBAR_HTML).evaluate()
+            .setTitle(cfg.TITLE)
+            .setSandboxMode(HtmlService.SandboxMode.IFRAME)
+            .setWidth(cfg.SIDEBAR_WIDTH || 300);
+        SpreadsheetApp.getUi().showSidebar(html);
+    }
 
-function _App_getMenuTools() {
-    return Object.keys(SyncEngine.getAllTools())
-        .map(function(key) { return SyncEngine.getTool(key); })
-        .filter(function(cfg) { return !!cfg.MENU_LABEL; })
-        .sort(function(a, b) {
-            if (a.MENU_ORDER !== b.MENU_ORDER) return a.MENU_ORDER - b.MENU_ORDER;
-            return String(a.MENU_LABEL).localeCompare(String(b.MENU_LABEL));
+    function launchTool(toolKey, postCreateCallback) {
+        return App.Log.run(toolKey, 'Launch Tool', function () {
+            var cfg = App.Engine.getTool(toolKey);
+            var launchMode = cfg.LAUNCH_MODE || App.Config.TOOL_LAUNCH_MODES.SIDEBAR;
+
+            if (launchMode === App.Config.TOOL_LAUNCH_MODES.MODAL) {
+                var html = HtmlService.createTemplateFromFile(cfg.MODAL_HTML || cfg.SIDEBAR_HTML).evaluate()
+                    .setTitle(cfg.TITLE)
+                    .setWidth(cfg.MODAL_WIDTH || cfg.SIDEBAR_WIDTH || 300)
+                    .setHeight(cfg.MODAL_HEIGHT || 600);
+                SpreadsheetApp.getUi().showModalDialog(html, cfg.TITLE);
+                return;
+            }
+
+            openSidebar(toolKey, postCreateCallback);
         });
-}
+    }
+
+    function getMenuTools() {
+        return Object.keys(App.Engine.getAllTools())
+            .map(function(key) { return App.Engine.getTool(key); })
+            .filter(function(cfg) { return !!cfg.MENU_LABEL; })
+            .sort(function(a, b) {
+                if (a.MENU_ORDER !== b.MENU_ORDER) return a.MENU_ORDER - b.MENU_ORDER;
+                return String(a.MENU_LABEL).localeCompare(String(b.MENU_LABEL));
+            });
+    }
+
+    return {
+        openSidebar: openSidebar,
+        launchTool: launchTool,
+        getMenuTools: getMenuTools
+    };
+})());
+
+// Backward Compatibility Aliases
+function _App_openSidebar(k, c) { return App.UI.openSidebar(k, c); }
+function _App_launchTool(k, c) { return App.UI.launchTool(k, c); }
+function _App_getMenuTools() { return App.UI.getMenuTools(); }
 // ==========================================
 // _App_ensureSheetExists — Universal Sheet Scaffolding
 // ==========================================

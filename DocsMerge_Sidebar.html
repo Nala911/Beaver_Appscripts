@@ -738,8 +738,8 @@
 
             if (!confirm(confirmMsg)) return;
 
-            setStatus('working', 'Initializing...');
-            log("Initializing Docs Merge Engine...");
+            setStatus('working', 'Processing...');
+            log("Starting Docs Merge Sync Engine...");
             document.getElementById('console').innerHTML = '';
 
             const config = {
@@ -750,56 +750,14 @@
                 mode: currentMode
             };
 
-            SyncSidebar.run('DocsMerge_initExport', [config], {
-                onSuccess: function (exportData) {
-                    log("Found " + exportData.rowsToProcess.length + " rows to process.", "success");
-                    processNextRow(exportData, 0);
-                },
-                toast: false
-            });
-        }
-
-        function processNextRow(exportData, index) {
-            if (index >= exportData.rowsToProcess.length) {
-                // Done with rows, finish up
-                log("All rows processed, finalizing...", "success");
-                setStatus('working', 'Finalizing...');
-
-                const config = { mode: currentMode };
-                SyncSidebar.run('DocsMerge_finishExport', [config, exportData.masterDocId, exportData.folderId, exportData.rowsToProcess], {
-                    onSuccess: function (res) {
-                        setStatus('ready');
-                        log(res.message, "success");
-                    },
-                    toast: false
-                });
-                return;
-            }
-
-            const item = exportData.rowsToProcess[index];
-            const isFirst = index === 0;
-            const isLast = index === (exportData.rowsToProcess.length - 1);
-
-            setStatus('working', 'Row ' + (item.index + 1) + '...');
-            log("Processing row " + (item.index + 1) + " [" + (index + 1) + "/" + exportData.rowsToProcess.length + "]...");
-
-            const config = { mode: currentMode };
-
-            SyncSidebar.run('DocsMerge_processRow', [item, config, exportData.masterDocId, exportData.templateId, exportData.folderId, exportData.headers, isFirst, isLast], {
-                unwrap: false,
+            SyncSidebar.run('DocsMerge_runSync', [config], {
                 onSuccess: function (res) {
-                    if (res.success) {
-                        log(res.message, "success");
-                    } else {
-                        log(res.message, "error");
-                    }
-                    // Process next regardless of generic success/fail
-                    processNextRow(exportData, index + 1);
+                    setStatus('ready');
+                    log(res.message, "success");
                 },
                 onError: function (err) {
-                    log("Hard fail on row " + (item.index + 1) + ": " + err, "error");
-                    // Keep going even if script failed hard
-                    processNextRow(exportData, index + 1);
+                    log("Sync failed: " + err, "error");
+                    setStatus('ready');
                 },
                 toast: false
             });

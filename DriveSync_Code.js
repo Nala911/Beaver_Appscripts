@@ -10,7 +10,7 @@ SyncEngine.registerTool('DRIVE_SYNC', {
     MENU_LABEL: '💾 Google Drive',
     MENU_ENTRYPOINT: 'Drive_showSidebar',
     MENU_ORDER: 90,
-    SIDEBAR_HTML: 'DriveFileDetailsSidebar',
+    SIDEBAR_HTML: 'DriveSync_Sidebar',
     SIDEBAR_WIDTH: 400,
     FROZEN_ROWS: 1,
     FROZEN_COLS: 0,
@@ -434,97 +434,53 @@ function Drive_pullFromDrive(targetFolderId, isShallow) {
 function Drive_runPushSequence() {
   return Logger.run('DRIVE_SYNC', 'Push Sequence', function () {
     var lock = LockService.getScriptLock();
-    if (!lock.tryLock(5000)) return ["⚠️ System is busy. Please try again."];
-
-    var logs = [];
-    function log(msg) { logs.push("[" + new Date().toLocaleTimeString() + "] " + msg); }
+    if (!lock.tryLock(5000)) return _App_fail("⚠️ System is busy. Please try again.");
 
     try {
       DRIVE_SYNC_START_TIME = Date.now();
-      log("Starting Push Sequence...");
+      
+      var stats = ExecutionService.processPendingRows('DRIVE_SYNC', function(rowObj) {
+          _DriveSync_checkTimeLimit();
 
-      var sheet = _App_assertActiveSheet(SHEET_NAMES.DRIVE_SYNC);
-      _DriveSync_validateHeaders(sheet);
+          var action = String(rowObj['Action'] || '').toLowerCase();
+          var resultValues = {};
+          var statusMsg = "";
 
-      var data = sheet.getDataRange().getValues();
-      var pendingRows = [];
+          switch (action) {
+            case 'create': 
+              statusMsg = _DriveSync_handleCreate(rowObj, resultValues); 
+              break;
+            case 'clone': 
+              statusMsg = _DriveSync_handleClone(rowObj, resultValues); 
+              break;
+            case 'update': 
+              statusMsg = _DriveSync_handleUpdate(rowObj); 
+              break;
+            case 'delete': 
+              statusMsg = _DriveSync_handleDelete(rowObj); 
+              break;
+            default:
+              throw new Error("Unknown action: " + action);
+          }
 
-      for (var i = 1; i < data.length; i++) {
-        if (data[i][DRIVE_SYNC_COL.ACTION] !== "") {
-          pendingRows.push({ rowData: data[i], rowIndex: i + 1 });
-        }
-      }
+          var updates = {
+            'Action': '',
+            'Log': '✅ ' + statusMsg
+          };
 
-      log("Found " + pendingRows.length + " pending actions.");
+          if (resultValues.id) updates['Item ID'] = resultValues.id;
+          if (resultValues.url) updates['URL'] = resultValues.url;
+          if (resultValues.mime) updates['Mime Type'] = resultValues.mime;
+          if (resultValues.size) updates['Size'] = resultValues.size;
 
-      pendingRows.sort(function (a, b) {
-        var score = function (r) {
-          var act = r.rowData[DRIVE_SYNC_COL.ACTION];
-          var type = r.rowData[DRIVE_SYNC_COL.TYPE];
-          if (act === 'Create' && type === 'Folder') return 1;
-          if (act === 'Clone') return 2;
-          if (act === 'Create') return 3;
-          if (act === 'Update') return 4;
-          return 5;
-        };
-        return score(a) - score(b);
+          SheetManager.patchRow('DRIVE_SYNC', rowObj._rowNumber, updates);
       });
 
-      var fullSheetData = sheet.getDataRange().getValues();
-      var isPartialPush = false;
-
-      for (var k = 0; k < pendingRows.length; k++) {
-        try {
-          _DriveSync_checkTimeLimit();
-        } catch (timeoutEx) {
-          log(timeoutEx.message);
-          isPartialPush = true;
-          break;
-        }
-
-        var item = pendingRows[k];
-        var rowNum = item.rowIndex; 
-        var arrayIndex = rowNum - 1; 
-
-        try {
-          var statusMsg = "";
-          var action = item.rowData[DRIVE_SYNC_COL.ACTION];
-
-          if (!action) continue;
-
-          var resultValues = {};
-
-          if (action === 'Create') statusMsg = _DriveSync_handleCreate(item.rowData, resultValues);
-          else if (action === 'Clone') statusMsg = _DriveSync_handleClone(item.rowData, resultValues);
-          else if (action === 'Update') statusMsg = _DriveSync_handleUpdate(item.rowData);
-          else if (action === 'Delete') statusMsg = _DriveSync_handleDelete(item.rowData);
-
-          fullSheetData[arrayIndex][DRIVE_SYNC_COL.ACTION] = "";
-
-          if (resultValues.id) fullSheetData[arrayIndex][DRIVE_SYNC_COL.ITEM_ID] = resultValues.id;
-          if (resultValues.url) fullSheetData[arrayIndex][DRIVE_SYNC_COL.URL] = resultValues.url;
-          if (resultValues.mime) fullSheetData[arrayIndex][DRIVE_SYNC_COL.MIME] = resultValues.mime;
-          if (resultValues.size) fullSheetData[arrayIndex][DRIVE_SYNC_COL.SIZE] = resultValues.size;
-
-          Logger.info(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'Row ' + rowNum + ' (' + item.rowData[DRIVE_SYNC_COL.NAME] + ')', '✅ ' + statusMsg);
-          log("Row " + rowNum + ": " + statusMsg);
-
-        } catch (e) {
-          Logger.error(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'Row ' + rowNum + ' (' + item.rowData[DRIVE_SYNC_COL.NAME] + ')', e);
-          log("Row " + rowNum + " Error: " + e.message);
-        }
+      if (stats.processed === 0 && stats.errors === 0) {
+        return _App_ok("No data to sync.");
       }
 
-      if (pendingRows.length > 0) {
-        sheet.getRange(1, 1, fullSheetData.length, fullSheetData[0].length).setValues(fullSheetData);
-      }
-
-      if (isPartialPush) {
-        log("Sequence Paused: 5.5-minute time limit approached. Please run again to process remaining items.");
-      } else {
-        log("Sequence Complete.");
-      }
-      return logs;
+      return _App_ok("Sync Complete. Success: " + stats.processed + ", Errors: " + stats.errors);
 
     } finally {
       lock.releaseLock();
@@ -660,16 +616,16 @@ function _DriveSync_initializeHeaders(sheet) {
 
 // --- Handlers ---
 
-function _DriveSync_handleCreate(row, res) {
-  var name = row[DRIVE_SYNC_COL.NAME];
-  if (!name) throw new Error("Name is required");
+function _DriveSync_handleCreate(rowObj, res) {
+  var name = rowObj['Item Name'];
+  if (!name) throw new Error("Item Name is required");
 
-  var desc = row[DRIVE_SYNC_COL.DESC];
-  var starred = row[DRIVE_SYNC_COL.STARRED] === true;
-  var friendlyType = row[DRIVE_SYNC_COL.TYPE];
+  var desc = rowObj['Description'];
+  var starred = rowObj['Starred'] === true;
+  var friendlyType = rowObj['Type'];
 
-  var parentId = row[DRIVE_SYNC_COL.PARENT_ID];
-  var pathStr = row[DRIVE_SYNC_COL.PATH];
+  var parentId = rowObj['Parent ID'];
+  var pathStr = rowObj['Folder Path'];
 
   // Priority: Path > ParentID > Root
   if (pathStr && pathStr.trim() !== "") {
@@ -758,10 +714,10 @@ function _DriveSync_resolveFolderIdFromPath(pathString) {
   return currentId;
 }
 
-function _DriveSync_handleClone(row, res) {
-  var fileId = row[DRIVE_SYNC_COL.ITEM_ID];
-  var nameInCell = row[DRIVE_SYNC_COL.NAME];
-  var parentId = row[DRIVE_SYNC_COL.PARENT_ID];
+function _DriveSync_handleClone(rowObj, res) {
+  var fileId = rowObj['Item ID'];
+  var nameInCell = rowObj['Item Name'];
+  var parentId = rowObj['Parent ID'];
 
   if (!fileId) throw new Error("Cannot Clone: Source Item ID is missing.");
   if (!nameInCell) throw new Error("Cannot Clone: Target Name is missing.");
@@ -780,15 +736,15 @@ function _DriveSync_handleClone(row, res) {
   return "Cloned";
 }
 
-function _DriveSync_handleUpdate(row) {
-  var fileId = row[DRIVE_SYNC_COL.ITEM_ID];
+function _DriveSync_handleUpdate(rowObj) {
+  var fileId = rowObj['Item ID'];
   if (!fileId) throw new Error("Cannot Update: Item ID is missing.");
 
-  var newName = row[DRIVE_SYNC_COL.NAME];
-  var newDesc = row[DRIVE_SYNC_COL.DESC];
-  var newStarred = row[DRIVE_SYNC_COL.STARRED];
-  var newParentId = row[DRIVE_SYNC_COL.PARENT_ID];
-  var pathStr = row[DRIVE_SYNC_COL.PATH];
+  var newName = rowObj['Item Name'];
+  var newDesc = rowObj['Description'];
+  var newStarred = rowObj['Starred'];
+  var newParentId = rowObj['Parent ID'];
+  var pathStr = rowObj['Folder Path'];
   if (pathStr && pathStr.trim() !== "") {
     newParentId = _DriveSync_resolveFolderIdFromPath(pathStr);
   }
@@ -821,9 +777,9 @@ function _DriveSync_handleUpdate(row) {
   }
 
   // Permissions
-  var newEditors = _DriveSync_parseEmailList(row[DRIVE_SYNC_COL.EDITORS]);
-  var newViewers = _DriveSync_parseEmailList(row[DRIVE_SYNC_COL.VIEWERS]);
-  var targetIsPublic = row[DRIVE_SYNC_COL.IS_PUBLIC] === true;
+  var newEditors = _DriveSync_parseEmailList(rowObj['Editors']);
+  var newViewers = _DriveSync_parseEmailList(rowObj['Viewers']);
+  var targetIsPublic = rowObj['Is Public?'] === true;
 
   var currentEmailPerms = {};
   var publicPermId = null;
@@ -878,8 +834,8 @@ function _DriveSync_handleUpdate(row) {
   return changes.length > 0 ? "Updated: " + changes.join(", ") : "No Changes Needed";
 }
 
-function _DriveSync_handleDelete(row) {
-  var fileId = row[DRIVE_SYNC_COL.ITEM_ID];
+function _DriveSync_handleDelete(rowObj) {
+  var fileId = rowObj['Item ID'];
   if (!fileId) throw new Error("Cannot Delete: Item ID is missing.");
   _App_callWithBackoff(function () { Drive.Files.update({ trashed: true }, fileId, null, { supportsAllDrives: true }); });
   return "Deleted (Trashed)";

@@ -22,7 +22,7 @@ This project uses **Clasp** (Command Line Apps Script Projects) for local develo
 The system is split into two halves: the Core Engine and the Tool Modules. Agents maintaining specific features should treat the **Core Engine** files as immutable unless explicitly tasked to refactor the framework itself.
 
 **Core Engine Files (Do Not Modify for Feature Work):**
-- `00_Config_Constants.js` through `09_Engine_UI.js`
+- `00_Config_Constants.js` through `11_DataMapper.js` (including `01_SheetManager.js`)
 - `UI.js`
 - `SidebarShared.html`
 - `Logger.js` and `SystemAudit.js`
