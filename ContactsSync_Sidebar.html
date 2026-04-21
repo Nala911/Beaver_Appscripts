@@ -578,7 +578,7 @@
 
         function refreshGroupsData() {
             toggleLoading(true, 'Loading groups…');
-            SyncSidebar.run('Contacts_getLoadData', [], {
+            SyncSidebar.run('ContactsSync_getLoadData', [], {
                 context: 'Refresh Groups',
                 onSuccess: data => {
                     allGroups = data.groups.filter(g => g.id !== 'all');
@@ -635,7 +635,7 @@
         }
 
         function modifyGroup(groupName, action) {
-            SyncSidebar.run('Contacts_modifyGroupInActiveRow', [groupName, action], {
+            SyncSidebar.run('ContactsSync_modifyGroupInActiveRow', [groupName, action], {
                 context: 'Modify Group',
                 unwrap: false,
                 onSuccess: res => {
@@ -650,7 +650,7 @@
             if (!name) return;
 
             toggleLoading(true, 'Creating group…');
-            SyncSidebar.run('Contacts_createContactGroup', [name], {
+            SyncSidebar.run('ContactsSync_createContactGroup', [name], {
                 context: 'Create Group',
                 onSuccess: newGroup => {
                     input.value = '';
@@ -666,7 +666,7 @@
 
         function pullData() {
             toggleLoading(true, 'Pulling contacts…');
-            SyncSidebar.run('Contacts_pullContacts', [{ groupIds: ['all'] }], {
+            SyncSidebar.run('ContactsSync_pullContacts', [{ groupIds: ['all'] }], {
                 context: 'Pull Contacts',
                 onSuccess: res => {
                     toggleLoading(false);
@@ -678,7 +678,7 @@
 
         function pushData() {
             toggleLoading(true, 'Pushing changes…');
-            SyncSidebar.run('Contacts_pushChanges', [], {
+            SyncSidebar.run('ContactsSync_pushChanges', [], {
                 context: 'Push Changes',
                 onSuccess: res => {
                     toggleLoading(false);

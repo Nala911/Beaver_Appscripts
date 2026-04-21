@@ -7,9 +7,9 @@ SyncEngine.registerTool('PIPELINE', {
     SHEET_NAME: SHEET_NAMES.PIPELINE,
     TITLE: '⛓ Pipeline Control Center',
     MENU_LABEL: '⛓  Control Center',
-    MENU_ENTRYPOINT: 'Pipeline_showSidebar',
+    MENU_ENTRYPOINT: 'PipelineControl_openSidebar',
     MENU_ORDER: 100,
-    SIDEBAR_HTML: 'PipelineSidebar',
+    SIDEBAR_HTML: 'PipelineControl_Sidebar',
     SIDEBAR_WIDTH: 300,
     FROZEN_ROWS: 1,
     FROZEN_COLS: 2,
@@ -46,12 +46,12 @@ var PIPELINE_NON_DATA_ROWS = 1;
 // --- SIDEBAR ---
 
 /** @deprecated — Use _App_ensureSheetExists('PIPELINE') instead. */
-function _Pipeline_ensureSheetExistsAndActivate() {
+function _PipelineControl_ensureSheetExistsAndActivate() {
     return _App_ensureSheetExists('PIPELINE');
 }
 
 /** Opens the Pipeline sidebar, creating the sheet if needed. */
-function Pipeline_showSidebar() {
+function PipelineControl_openSidebar() {
     return Logger.run('PIPELINE', 'Open Sidebar', function () {
         _App_launchTool('PIPELINE');
     });
@@ -59,17 +59,17 @@ function Pipeline_showSidebar() {
 
 // --- GLOBAL CONTROLS ---
 
-function Pipeline_getSystemStatus() {
+function PipelineControl_getSystemStatus() {
     return Logger.run('PIPELINE', 'Get Status', function () {
         var enabled = _App_getProperty(APP_PROPS.SYSTEM_ENABLED);
         return enabled === null ? 'false' : enabled;
     });
 }
 
-function Pipeline_setSystemStatus(isEnabled) {
+function PipelineControl_setSystemStatus(isEnabled) {
     return Logger.run('PIPELINE', 'Set Status', function () {
         _App_setProperty(APP_PROPS.SYSTEM_ENABLED, isEnabled.toString());
-        _Pipeline_manageTrigger(isEnabled);
+        _PipelineControl_manageTrigger(isEnabled);
         return isEnabled;
     });
 }
@@ -78,8 +78,8 @@ function Pipeline_setSystemStatus(isEnabled) {
  * Manages the background execution trigger for Pipeline sync.
  * @param {boolean} isEnabled Whether the system should be active.
  */
-function _Pipeline_manageTrigger(isEnabled) {
-    var functionName = 'Pipeline_processPipelines';
+function _PipelineControl_manageTrigger(isEnabled) {
+    var functionName = 'PipelineControl_processPipelines';
     var triggers = ScriptApp.getProjectTriggers();
     
     // Remove existing triggers to avoid duplicates or when disabling
@@ -104,7 +104,7 @@ function _Pipeline_manageTrigger(isEnabled) {
 
 // --- PIPELINE EXECUTION ---
 
-function Pipeline_processPipelines() {
+function PipelineControl_processPipelines() {
     return Logger.run('PIPELINE', 'Scheduled Execution', function () {
         return _App_withDocumentLock('PIPELINE_PROCESS', function () {
             if (_App_getProperty(APP_PROPS.SYSTEM_ENABLED) !== 'true') {
@@ -122,15 +122,15 @@ function Pipeline_processPipelines() {
 
                 if (!isEnabled) continue;
 
-                if (_Pipeline_shouldRun(row)) {
-                    _Pipeline_runPipeline(sheet, i + 1, row);
+                if (_PipelineControl_shouldRun(row)) {
+                    _PipelineControl_runPipeline(sheet, i + 1, row);
                 }
             }
         });
     });
 }
 
-function Pipeline_runAllPipelines() {
+function PipelineControl_runAllPipelines() {
     return Logger.run('PIPELINE', 'Run All', function () {
         return _App_withDocumentLock('PIPELINE_RUN_ALL', function () {
             var sheet = SheetManager.getSheet('PIPELINE');
@@ -142,7 +142,7 @@ function Pipeline_runAllPipelines() {
                 var isEnabled = (String(statusVal).toLowerCase() === 'enabled') || (statusVal === true);
 
                 if (isEnabled) {
-                    _Pipeline_runPipeline(sheet, i + 1, row);
+                    _PipelineControl_runPipeline(sheet, i + 1, row);
                 }
             }
             return _App_ok('Execution complete');
@@ -150,7 +150,7 @@ function Pipeline_runAllPipelines() {
     });
 }
 
-function _Pipeline_shouldRun(row) {
+function _PipelineControl_shouldRun(row) {
     var intervalStr = String(row[6]);
     var lastRun = row[7];
 
@@ -176,7 +176,7 @@ function _Pipeline_shouldRun(row) {
     return false;
 }
 
-function Pipeline_getPipelineDashboardData() {
+function PipelineControl_getPipelineDashboardData() {
     return Logger.run('PIPELINE', 'Dashboard Data', function () {
         var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAMES.PIPELINE);
         if (!sheet) return null;
@@ -228,7 +228,7 @@ function Pipeline_getPipelineDashboardData() {
     });
 }
 
-function Pipeline_runSelectedPipelines(rowIndexes) {
+function PipelineControl_runSelectedPipelines(rowIndexes) {
     return Logger.run('PIPELINE', 'Run Selected', function () {
         return _App_withDocumentLock('PIPELINE_RUN_SELECTED', function () {
             var sheet = SheetManager.getSheet('PIPELINE');
@@ -238,7 +238,7 @@ function Pipeline_runSelectedPipelines(rowIndexes) {
             for (var i = 0; i < rowIndexes.length; i++) {
                 var rowIdx = rowIndexes[i];
                 var data = sheet.getRange(rowIdx, 1, 1, colCount).getValues()[0];
-                _Pipeline_runPipeline(sheet, rowIdx, data);
+                _PipelineControl_runPipeline(sheet, rowIdx, data);
 
                 var updatedData = sheet.getRange(rowIdx, 1, 1, colCount).getValues()[0];
                 results.push({
@@ -252,7 +252,7 @@ function Pipeline_runSelectedPipelines(rowIndexes) {
     });
 }
 
-function _Pipeline_runPipeline(sheet, rowIdx, rowData) {
+function _PipelineControl_runPipeline(sheet, rowIdx, rowData) {
     var logMessage = "";
     var isSuccess = false;
     var errorObj = null;
@@ -375,7 +375,7 @@ function _Pipeline_runPipeline(sheet, rowIdx, rowData) {
     }
 }
 
-function Pipeline_formatControlCenter() {
+function PipelineControl_formatControlCenter() {
     return Logger.run('PIPELINE', 'Format Center', function () {
         var sheet = _App_ensureSheetExists('PIPELINE');
 

@@ -636,7 +636,7 @@
         // ── Init ──
         window.onload = function () {
             lucide.createIcons();
-            SyncSidebar.run('Tasks_getTaskLists', [], {
+            SyncSidebar.run('TasksSync_getTaskLists', [], {
                 onSuccess: function (data) {
                     renderLists(data.lists);
                 },
@@ -713,7 +713,7 @@
                     log(res.message, res.success ? 'success' : 'error');
                 })
                 .withFailureHandler(handleError)
-                .Tasks_pullRPC(ids, incl);
+                .TasksSync_pullRPC(ids, incl);
         }
 
         // ── Push ──
@@ -727,7 +727,7 @@
                     log(res.message, res.success ? 'success' : 'error');
                 })
                 .withFailureHandler(handleError)
-                .Tasks_pushRPC();
+                .TasksSync_pushRPC();
         }
 
         // ── Helpers ──

@@ -8,9 +8,9 @@ SyncEngine.registerTool('CALENDAR_SYNC', {
     SHEET_NAME: SHEET_NAMES.CALENDAR_SYNC,
     TITLE: '📅 Calendar Sync Master',
     MENU_LABEL: '🗓️ Google Calendar',
-    MENU_ENTRYPOINT: 'Calendar_showSidebar',
+    MENU_ENTRYPOINT: 'CalendarSync_openSidebar',
     MENU_ORDER: 10,
-    SIDEBAR_HTML: 'Calender_Sidebar',
+    SIDEBAR_HTML: 'CalendarSync_Sidebar',
     SIDEBAR_WIDTH: 400,
     FROZEN_ROWS: 1,
     FROZEN_COLS: 0,
@@ -51,7 +51,7 @@ function _CalendarSync_ensureSheetExistsAndActivate() {
 }
 
 /** Opens the Calendar sidebar and ensures the sheet exists. */
-function Calendar_showSidebar() {
+function CalendarSync_openSidebar() {
   return Logger.run('CALENDAR_SYNC', 'Open Sidebar', function () {
     _App_launchTool('CALENDAR_SYNC');
   });
@@ -60,7 +60,7 @@ function Calendar_showSidebar() {
 
 // --- API FOR SIDEBAR ---
 
-function Calendar_getLoadData() {
+function CalendarSync_getLoadData() {
   return Logger.run('CALENDAR_SYNC', 'Load Data', function () {
     try {
       var allCalendars = _App_callWithBackoff(function () {
@@ -95,7 +95,7 @@ function Calendar_getLoadData() {
   });
 }
 
-function Calendar_savePreferences(calIds, startStr, endStr) {
+function CalendarSync_savePreferences(calIds, startStr, endStr) {
   if (calIds) _App_setProperty(APP_PROPS.CAL_SELECTED_IDS, calIds);
   if (startStr !== undefined) _App_setProperty(APP_PROPS.CAL_START_DATE, startStr);
   if (endStr !== undefined) _App_setProperty(APP_PROPS.CAL_END_DATE, endStr);
@@ -103,7 +103,7 @@ function Calendar_savePreferences(calIds, startStr, endStr) {
 
 // --- PART 2: THE "PULL" WORKFLOW ---
 
-function Calendar_pullEvents(request) {
+function CalendarSync_pullEvents(request) {
   return Logger.run('CALENDAR_SYNC', 'Pull Events', function () {
     var TARGET_SHEET_NAME = SHEET_NAMES.CALENDAR_SYNC;
     var sheet = _CalendarSync_ensureSheetExistsAndActivate();
@@ -149,20 +149,20 @@ function Calendar_pullEvents(request) {
     // Populate Sheet via DAO
     SheetManager.overwriteObjects('CALENDAR_SYNC', outputObjects);
 
-    Calendar_savePreferences(request.calIds, request.startDate, request.endDate);
+    CalendarSync_savePreferences(request.calIds, request.startDate, request.endDate);
     var summary = 'Successfully imported ' + outputObjects.length + " events into '" + TARGET_SHEET_NAME + "'.";
     Logger.info(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Pull Events', summary);
     return _App_ok(summary);
   });
 }
 
-function Calendar_checkForUnsavedChanges() {
+function CalendarSync_checkForUnsavedChanges() {
   return SheetManager.hasPendingActions('CALENDAR_SYNC');
 }
 
 // --- PART 2: THE "PUSH" WORKFLOW ---
 
-function Calendar_pushChanges() {
+function CalendarSync_pushChanges() {
   return Logger.run('CALENDAR_SYNC', 'Push Changes', function () {
     var dataObjects = SheetManager.readObjects('CALENDAR_SYNC');
     

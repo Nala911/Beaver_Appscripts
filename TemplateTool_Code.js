@@ -6,7 +6,7 @@
  * 1. Duplicate this file and rename it (e.g. `MyNewTool_Code.js`).
  * 2. Update the Tool Key throughout from `TEMPLATE_TOOL` to your key.
  * 3. Add your `SHEET_NAME` to `00_Config_Constants.js` inside the `SHEET_NAMES` object.
- * 4. Create the corresponding HTML file `MyNewTool_Sidebar.html` from `Template_Tool_Sidebar.html`.
+ * 4. Create the corresponding HTML file `MyNewTool_Sidebar.html` from `TemplateTool_Sidebar.html`.
  */
 
 // --- TOOL REGISTRATION ---
@@ -17,7 +17,7 @@ SyncEngine.registerTool('TEMPLATE_TOOL', {
     // MENU_LABEL removed to keep custom menu clean
     MENU_ENTRYPOINT: 'TemplateTool_openSidebar', 
     MENU_ORDER: 90, 
-    SIDEBAR_HTML: 'Template_Tool_Sidebar', // Name of the .html file
+    SIDEBAR_HTML: 'TemplateTool_Sidebar', // Name of the .html file
     SIDEBAR_WIDTH: 300,
     FROZEN_ROWS: 1,
     FROZEN_COLS: 0,

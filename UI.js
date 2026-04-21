@@ -36,7 +36,7 @@ function Logger_showSidebar() {
 
 function UI_openThemeDialog() {
   return Logger.run('SYSTEM', 'Open Theme Dialog', function () {
-    const html = HtmlService.createTemplateFromFile('ThemeEditorSidebar').evaluate()
+    const html = HtmlService.createTemplateFromFile('ThemeEditor_Sidebar').evaluate()
       .setTitle('🎨 Theme Studio')
       .setWidth(1200)
       .setHeight(800);

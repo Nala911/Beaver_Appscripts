@@ -8,9 +8,9 @@ SyncEngine.registerTool('TASKS', {
     SHEET_NAME: SHEET_NAMES.TASKS,
     TITLE: '✅ Task Manager',
     MENU_LABEL: '✅ Google Tasks',
-    MENU_ENTRYPOINT: 'Tasks_showSidebar',
+    MENU_ENTRYPOINT: 'TasksSync_openSidebar',
     MENU_ORDER: 60,
-    SIDEBAR_HTML: 'Tasks_Sidebar',
+    SIDEBAR_HTML: 'TasksSync_Sidebar',
     SIDEBAR_WIDTH: 300,
     FROZEN_ROWS: 1,
     FROZEN_COLS: 0,
@@ -37,7 +37,7 @@ SyncEngine.registerTool('TASKS', {
 // 1. CONFIGURATION & CONSTANTS
 // ==========================================
 
-function _TaskSync_getConfig() {
+function _TasksSync_getConfig() {
   return SyncEngine.getTool('TASKS');
 }
 
@@ -45,11 +45,11 @@ function _TaskSync_getConfig() {
 // 2. UTILITY HELPERS
 // ==========================================
 
-function _TaskSync_getColumnMap(sheet) {
+function _TasksSync_getColumnMap(sheet) {
   return SheetManager.getSheetHeaderMap(sheet);
 }
 
-function _TaskSync_colLetter(idx) {
+function _TasksSync_colLetter(idx) {
   return String.fromCharCode(65 + idx);
 }
 
@@ -57,15 +57,15 @@ function _TaskSync_colLetter(idx) {
  * @deprecated — Use _App_throttle(tracker, calls) from 03_Core_Utils.js instead.
  * Kept as a thin proxy for backward compatibility.
  */
-function _TaskSync_throttle(counter, calls) {
+function _TasksSync_throttle(counter, calls) {
   _App_throttle(counter, calls);
 }
 
-function _TaskSync_getTargetSheet() {
+function _TasksSync_getTargetSheet() {
   try {
     return SheetManager.getSheet('TASKS');
   } catch (e) {
-    throw new Error('"' + _TaskSync_getConfig().SHEET_NAME + '" sheet not found. Please pull tasks first to create it.');
+    throw new Error('"' + _TasksSync_getConfig().SHEET_NAME + '" sheet not found. Please pull tasks first to create it.');
   }
 }
 
@@ -74,18 +74,18 @@ function _TaskSync_getTargetSheet() {
 // ==========================================
 
 /** @deprecated — Use _App_ensureSheetExists('TASKS') instead. */
-function _TaskSync_ensureSheetExistsAndActivate() {
+function _TasksSync_ensureSheetExistsAndActivate() {
   return SheetManager.ensureSheet('TASKS');
 }
 
 /** Opens the Tasks sidebar and ensures the sheet exists. */
-function Tasks_showSidebar() {
+function TasksSync_openSidebar() {
   return Logger.run('TASKS', 'Open Sidebar', function () {
     _App_launchTool('TASKS');
   });
 }
 
-function Tasks_getTaskLists() {
+function TasksSync_getTaskLists() {
   return Logger.run('TASKS', 'Get Task Lists', function () {
     try {
       var items = Tasks.Tasklists.list().items || [];
@@ -101,16 +101,16 @@ function Tasks_getTaskLists() {
   });
 }
 
-function Tasks_pullRPC(selectedListIds, includeCompleted) {
+function TasksSync_pullRPC(selectedListIds, includeCompleted) {
   return Logger.run('TASKS', 'Pull Tasks', function () {
-    _TaskSync_pullTasks(selectedListIds, includeCompleted);
+    _TasksSync_pullTasks(selectedListIds, includeCompleted);
     return _App_ok('Tasks pulled successfully!');
   });
 }
 
-function Tasks_pushRPC() {
+function TasksSync_pushRPC() {
   return Logger.run('TASKS', 'Push Changes', function () {
-    _TaskSync_pushTasks();
+    _TasksSync_pushTasks();
     return _App_ok('Changes pushed successfully!');
   });
 }
@@ -119,19 +119,19 @@ function Tasks_pushRPC() {
 // 4. PULL LOGIC
 // ==========================================
 
-function _TaskSync_pullTasks(selectedListIds, includeCompleted) {
-  var sheet = _TaskSync_ensureSheetExistsAndActivate();
+function _TasksSync_pullTasks(selectedListIds, includeCompleted) {
+  var sheet = _TasksSync_ensureSheetExistsAndActivate();
 
   if (sheet.getLastRow() > 1 && SheetManager.hasPendingActions('TASKS')) {
     throw new Error('Unsaved actions detected! Push your changes first or clear the Action column manually.');
   }
 
-  var allListTasks = _TaskSync_fetchSelectedTasks(selectedListIds, includeCompleted);
-  var rows = _TaskSync_transformForSheet(allListTasks);
-  _TaskSync_renderSheet(sheet, rows);
+  var allListTasks = _TasksSync_fetchSelectedTasks(selectedListIds, includeCompleted);
+  var rows = _TasksSync_transformForSheet(allListTasks);
+  _TasksSync_renderSheet(sheet, rows);
 }
 
-function _TaskSync_fetchSelectedTasks(selectedIds, includeCompleted) {
+function _TasksSync_fetchSelectedTasks(selectedIds, includeCompleted) {
   var taskLists = Tasks.Tasklists.list().items || [];
 
   if (selectedIds && selectedIds.length > 0) {
@@ -169,16 +169,16 @@ function _TaskSync_fetchSelectedTasks(selectedIds, includeCompleted) {
   return result;
 }
 
-function _TaskSync_transformForSheet(allListTasks) {
+function _TasksSync_transformForSheet(allListTasks) {
   var allRows = [];
   allListTasks.forEach(function (entry) {
-    var sortedRows = _TaskSync_processHierarchy(entry.tasks, entry.listName);
+    var sortedRows = _TasksSync_processHierarchy(entry.tasks, entry.listName);
     allRows = allRows.concat(sortedRows);
   });
   return allRows;
 }
 
-function _TaskSync_processHierarchy(tasks, listName) {
+function _TasksSync_processHierarchy(tasks, listName) {
   var rows = [];
   var childrenMap = {};
   var roots = [];
@@ -229,10 +229,10 @@ function _TaskSync_processHierarchy(tasks, listName) {
   return rows;
 }
 
-function _TaskSync_renderSheet(sheet, rows) {
+function _TasksSync_renderSheet(sheet, rows) {
   SheetManager.overwriteRows('TASKS', rows, {
-    totalCols: _TaskSync_getConfig().HEADERS.length,
-    formatConfig: _TaskSync_getConfig().FORMAT_CONFIG
+    totalCols: _TasksSync_getConfig().HEADERS.length,
+    formatConfig: _TasksSync_getConfig().FORMAT_CONFIG
   });
 
   var lastRow = sheet.getLastRow();
@@ -245,12 +245,12 @@ function _TaskSync_renderSheet(sheet, rows) {
 // 5. PUSH LOGIC
 // ==========================================
 
-function _TaskSync_pushTasks() {
-  var sheet = _TaskSync_getTargetSheet();
+function _TasksSync_pushTasks() {
+  var sheet = _TasksSync_getTargetSheet();
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return;
 
-  var map = _TaskSync_getColumnMap(sheet);
+  var map = _TasksSync_getColumnMap(sheet);
   if (map['ACTION'] === undefined || map['TASK ID'] === undefined) {
     throw new Error('Critical columns (Action, Task ID) missing. Please standardise headers.');
   }
@@ -317,7 +317,7 @@ function _TaskSync_pushTasks() {
         var newList = Tasks.Tasklists.insert({ title: listName });
         targetListId = newList.id;
         listNameToId[listName] = targetListId;
-        _TaskSync_throttle(counter, 1);
+        _TasksSync_throttle(counter, 1);
       }
       if (!targetListId) throw new Error('List not found: ' + listName);
 
@@ -327,7 +327,7 @@ function _TaskSync_pushTasks() {
         var opt = parentId ? { parent: parentId } : {};
 
         var inserted = Tasks.Tasks.insert(taskResource, targetListId, opt);
-        _TaskSync_throttle(counter, 1);
+        _TasksSync_throttle(counter, 1);
 
         values[i][map['TASK ID']] = inserted.id;
         values[i][map['VERSION TOKEN']] = inserted.etag;
@@ -341,7 +341,7 @@ function _TaskSync_pushTasks() {
         if (storedEtag) {
           try {
             var live = Tasks.Tasks.get(targetListId, taskId);
-            _TaskSync_throttle(counter, 1);
+            _TasksSync_throttle(counter, 1);
             if (live.etag !== storedEtag) {
               throw new Error('Conflict: Remote task changed. Pull to refresh.');
             }
@@ -352,7 +352,7 @@ function _TaskSync_pushTasks() {
         }
 
         var updated = Tasks.Tasks.patch(taskResource, targetListId, taskId);
-        _TaskSync_throttle(counter, 1);
+        _TasksSync_throttle(counter, 1);
 
         values[i][map['VERSION TOKEN']] = updated.etag;
         values[i][map['LAST SYNC']] = new Date();
@@ -361,7 +361,7 @@ function _TaskSync_pushTasks() {
       else if (action === 'Remove') {
         if (!taskId) throw new Error('Missing Task ID');
         Tasks.Tasks.remove(targetListId, taskId);
-        _TaskSync_throttle(counter, 1);
+        _TasksSync_throttle(counter, 1);
         logMsg = 'Removed successfully';
       }
       else if (action === 'Move') {
@@ -377,11 +377,11 @@ function _TaskSync_pushTasks() {
           }
           Tasks.Tasks.patch(taskResource, targetListId, taskId);
           Tasks.Tasks.move(targetListId, taskId, moveParams);
-          _TaskSync_throttle(counter, 2);
+          _TasksSync_throttle(counter, 2);
           logMsg = 'Moved (In-List) successfully';
         } else {
           var oldToNewMap = {}; // Capture all ID migrations from the recursive move
-          var insertedId = _TaskSync_deepMoveTask(sourceListId, taskId, targetListId, null, counter, taskCache, oldToNewMap);
+          var insertedId = _TasksSync_deepMoveTask(sourceListId, taskId, targetListId, null, counter, taskCache, oldToNewMap);
 
           if (!insertedId) {
             logMsg = 'Skipped (Parent moved)';
@@ -405,7 +405,7 @@ function _TaskSync_pushTasks() {
           }
 
           var inserted = Tasks.Tasks.get(targetListId, insertedId);
-          _TaskSync_throttle(counter, 1);
+          _TasksSync_throttle(counter, 1);
 
           values[i][map['TASK ID']] = inserted.id;
           values[i][map['VERSION TOKEN']] = inserted.etag;
@@ -439,7 +439,7 @@ function _TaskSync_pushTasks() {
   SpreadsheetApp.flush();
 }
 
-function _TaskSync_getCachedTasks(listId, cache, counter) {
+function _TasksSync_getCachedTasks(listId, cache, counter) {
   if (cache[listId]) return cache[listId];
   var options = { showHidden: true };
   var rawTasks = [];
@@ -447,7 +447,7 @@ function _TaskSync_getCachedTasks(listId, cache, counter) {
   do {
     options.pageToken = pageToken;
     var response = Tasks.Tasks.list(listId, options);
-    _TaskSync_throttle(counter, 1);
+    _TasksSync_throttle(counter, 1);
     if (response.items) {
       rawTasks = rawTasks.concat(response.items);
     }
@@ -457,10 +457,10 @@ function _TaskSync_getCachedTasks(listId, cache, counter) {
   return rawTasks;
 }
 
-function _TaskSync_deepMoveTask(sourceListId, taskId, targetListId, newParentId, counter, taskCache, oldToNewMap) {
+function _TasksSync_deepMoveTask(sourceListId, taskId, targetListId, newParentId, counter, taskCache, oldToNewMap) {
   try {
     var originalTask = Tasks.Tasks.get(sourceListId, taskId);
-    _TaskSync_throttle(counter, 1);
+    _TasksSync_throttle(counter, 1);
 
     var copyRes = {
       title: originalTask.title,
@@ -474,21 +474,21 @@ function _TaskSync_deepMoveTask(sourceListId, taskId, targetListId, newParentId,
 
     var opt = newParentId ? { parent: newParentId } : {};
     var inserted = Tasks.Tasks.insert(copyRes, targetListId, opt);
-    _TaskSync_throttle(counter, 1);
+    _TasksSync_throttle(counter, 1);
 
     if (oldToNewMap) {
       oldToNewMap[taskId] = inserted.id; // Record the mapping
     }
 
-    var allSourceTasks = _TaskSync_getCachedTasks(sourceListId, taskCache, counter);
+    var allSourceTasks = _TasksSync_getCachedTasks(sourceListId, taskCache, counter);
     var children = allSourceTasks.filter(function (t) { return t.parent === taskId; });
 
     children.forEach(function (child) {
-      _TaskSync_deepMoveTask(sourceListId, child.id, targetListId, inserted.id, counter, taskCache, oldToNewMap);
+      _TasksSync_deepMoveTask(sourceListId, child.id, targetListId, inserted.id, counter, taskCache, oldToNewMap);
     });
 
     Tasks.Tasks.remove(sourceListId, taskId);
-    _TaskSync_throttle(counter, 1);
+    _TasksSync_throttle(counter, 1);
 
     return inserted.id;
   } catch (e) {

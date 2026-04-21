@@ -590,7 +590,7 @@
                     }
                 })
                 .withFailureHandler(handleError)
-                .Drive_getFolderHierarchy();
+                .DriveFileDetails_getFolderHierarchy();
         };
 
         function log(msg, type = '') {
@@ -743,13 +743,13 @@
                     setStatus('ready');
                 })
                 .withFailureHandler(handleError)
-                .Drive_pullFromDrive(currentFolderId, isShallow);
+                .DriveFileDetails_pullFromDrive(currentFolderId, isShallow);
         }
 
         function checkAndPush() {
             setStatus('working', 'Checking...');
             log("Checking pending changes...");
-            SyncSidebar.run('Drive_getPendingStats', [], {
+            SyncSidebar.run('DriveFileDetails_getPendingStats', [], {
                 onSuccess: stats => {
                     if (stats.total === 0) {
                         log("No pending changes found.", 'info');
@@ -778,7 +778,7 @@
                     setStatus('ready');
                 })
                 .withFailureHandler(handleError)
-                .Drive_runPushSequence();
+                .DriveFileDetails_runPushSequence();
         }
 
         function fillPath() {
@@ -795,7 +795,7 @@
                     setStatus('ready');
                 })
                 .withFailureHandler(handleError)
-                .Drive_fillActivePath(currentFolderId, pathFormatted);
+                .DriveFileDetails_fillActivePath(currentFolderId, pathFormatted);
         }
 
         // --- Helpers ---

@@ -8,7 +8,7 @@ SyncEngine.registerTool('CHAT_SYNC', {
     SHEET_NAME: SHEET_NAMES.CHAT_SPACE_SYNC,
     TITLE: '💬 Chat Space Manager',
     MENU_LABEL: '💬 Google Chat',
-    MENU_ENTRYPOINT: 'ChatSync_showSidebar',
+    MENU_ENTRYPOINT: 'ChatSpaceSync_showSidebar',
     MENU_ORDER: 15,
     SIDEBAR_HTML: 'ChatSpaceSync_Sidebar',
     SIDEBAR_WIDTH: 400,
@@ -33,7 +33,7 @@ SyncEngine.registerTool('CHAT_SYNC', {
 // --- MENU & UI HANDLERS ---
 
 /** Opens the Chat Sync sidebar and ensures the sheet exists. */
-function ChatSync_showSidebar() {
+function ChatSpaceSync_showSidebar() {
   return Logger.run('CHAT_SYNC', 'Open Sidebar', function () {
     _App_launchTool('CHAT_SYNC');
   });
@@ -41,7 +41,7 @@ function ChatSync_showSidebar() {
 
 // --- API FOR SIDEBAR ---
 
-function ChatSync_getLoadData() {
+function ChatSpaceSync_getLoadData() {
   return Logger.run('CHAT_SYNC', 'Load Data', function () {
     try {
       var spacesList = [];
@@ -81,13 +81,13 @@ function ChatSync_getLoadData() {
   });
 }
 
-function ChatSync_savePreferences(spaceIds) {
+function ChatSpaceSync_savePreferences(spaceIds) {
   if (spaceIds) _App_setProperty(APP_PROPS.CHAT_SELECTED_SPACES, spaceIds);
 }
 
 // --- THE "PULL" WORKFLOW ---
 
-function ChatSync_pullMembers(request) {
+function ChatSpaceSync_pullMembers(request) {
   return Logger.run('CHAT_SYNC', 'Pull Members', function () {
     var TARGET_SHEET_NAME = SHEET_NAMES.CHAT_SPACE_SYNC;
     var sheet = _App_ensureSheetExists('CHAT_SYNC');
@@ -149,7 +149,7 @@ function ChatSync_pullMembers(request) {
     });
 
     SheetManager.overwriteObjects('CHAT_SYNC', outputObjects);
-    ChatSync_savePreferences(request.spaceIds);
+    ChatSpaceSync_savePreferences(request.spaceIds);
     
     var summary = 'Successfully imported ' + outputObjects.length + " members into '" + TARGET_SHEET_NAME + "'.";
     Logger.info(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Pull Members', summary);
@@ -157,13 +157,13 @@ function ChatSync_pullMembers(request) {
   });
 }
 
-function ChatSync_checkForUnsavedChanges() {
+function ChatSpaceSync_checkForUnsavedChanges() {
   return SheetManager.hasPendingActions('CHAT_SYNC');
 }
 
 // --- THE "PUSH" WORKFLOW ---
 
-function ChatSync_pushChanges() {
+function ChatSpaceSync_pushChanges() {
   return Logger.run('CHAT_SYNC', 'Push Changes', function () {
     var dataObjects = SheetManager.readObjects('CHAT_SYNC');
     

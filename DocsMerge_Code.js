@@ -9,7 +9,7 @@ SyncEngine.registerTool('DOCS_MERGE', {
     MENU_LABEL: '📄 Start Docs Merge',
     MENU_ENTRYPOINT: 'DocsMerge_openSidebar',
     MENU_ORDER: 50,
-    SIDEBAR_HTML: 'Docs_merge_Sidebar',
+    SIDEBAR_HTML: 'DocsMerge_Sidebar',
     SIDEBAR_WIDTH: 400,
     FROZEN_ROWS: 1,
     FROZEN_COLS: 1,

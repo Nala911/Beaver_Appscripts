@@ -629,7 +629,7 @@
     };
 
     function loadData() {
-      SyncSidebar.run('Calendar_getLoadData', [], {
+      SyncSidebar.run('CalendarSync_getLoadData', [], {
         context: 'Load Data',
         onSuccess: populateUI,
         onError: err => {
@@ -698,7 +698,7 @@
     }
 
     function runPull() {
-      SyncSidebar.run('Calendar_checkForUnsavedChanges', [], {
+      SyncSidebar.run('CalendarSync_checkForUnsavedChanges', [], {
         unwrap: false,
         context: 'Check Changes',
         onSuccess: hasChanges => {
@@ -721,7 +721,7 @@
       if (!startDate || !endDate) return showToast("Select dates", true);
 
       toggleLoading(true, "Importing…");
-      SyncSidebar.run('Calendar_pullEvents', [{ calIds, startDate, endDate }], {
+      SyncSidebar.run('CalendarSync_pullEvents', [{ calIds, startDate, endDate }], {
         context: 'Pull Events',
         onSuccess: res => { toggleLoading(false); showToast(res.message, false); },
         onError: () => { toggleLoading(false); }
@@ -744,7 +744,7 @@
 
     function runPush() {
       toggleLoading(true, "Syncing…");
-      SyncSidebar.run('Calendar_pushChanges', [], {
+      SyncSidebar.run('CalendarSync_pushChanges', [], {
         context: 'Push Changes',
         onSuccess: res => { toggleLoading(false); showToast(res.message, false); },
         onError: () => { toggleLoading(false); }

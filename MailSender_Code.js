@@ -1,5 +1,5 @@
 /**
- * Mail_Sender Toolkit
+ * MailSender Toolkit
  * Version: 5.0 (Plugin Architecture — registers with SyncEngine)
  */
 
@@ -7,9 +7,9 @@ SyncEngine.registerTool('MAIL_SENDER', {
     SHEET_NAME: SHEET_NAMES.MAIL_SENDER,
     TITLE: '📩 Mail Sender Toolkit',
     MENU_LABEL: '📩 Mail Sender',
-    MENU_ENTRYPOINT: 'Mail_Sender_openSidebar',
+    MENU_ENTRYPOINT: 'MailSender_openSidebar',
     MENU_ORDER: 40,
-    SIDEBAR_HTML: 'Mail_Sender-Sidebar',
+    SIDEBAR_HTML: 'MailSender_Sidebar',
     SIDEBAR_WIDTH: 400,
     FROZEN_ROWS: 1,
     FROZEN_COLS: 1,
@@ -43,18 +43,18 @@ var MAIL_SENDER_CFG = {
 };
 
 /** @deprecated — Use _App_ensureSheetExists('MAIL_SENDER') instead. */
-function _Mail_Sender_ensureSheetExistsAndActivate() {
+function _MailSender_ensureSheetExistsAndActivate() {
   return _App_ensureSheetExists('MAIL_SENDER');
 }
 
 /** Opens the Mail Sender sidebar and ensures the sheet exists. */
-function Mail_Sender_openSidebar() {
+function MailSender_openSidebar() {
   return Logger.run('MAIL_SENDER', 'Open Sidebar', function () {
     _App_launchTool('MAIL_SENDER');
   });
 }
 
-function Mail_Sender_getQuota() {
+function MailSender_getQuota() {
   return Logger.run('MAIL_SENDER', 'Get Quota', function () {
     return MailApp.getRemainingDailyQuota();
   });
@@ -62,11 +62,11 @@ function Mail_Sender_getQuota() {
 
 
 
-function _Mail_Sender_escapeRegExp(string) {
+function _MailSender_escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function _Mail_Sender_getDriveAttachment(fileIdOrUrl) {
+function _MailSender_getDriveAttachment(fileIdOrUrl) {
   try {
     if (!fileIdOrUrl) return null;
     var fileId = fileIdOrUrl;
@@ -81,7 +81,7 @@ function _Mail_Sender_getDriveAttachment(fileIdOrUrl) {
   }
 }
 
-function _Mail_Sender_validateEmails(emailsString) {
+function _MailSender_validateEmails(emailsString) {
   if (!emailsString) return true; // Empty is fine for CC/BCC
   var emails = emailsString.split(',');
   var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -94,7 +94,7 @@ function _Mail_Sender_validateEmails(emailsString) {
   return true;
 }
 
-function _Mail_Sender_mergeEmails(existingStr, newStr) {
+function _MailSender_mergeEmails(existingStr, newStr) {
   if (!newStr) return existingStr || "";
   var existingArr = (existingStr || "").split(',').map(function (e) { return e.trim(); }).filter(function (e) { return e; });
   var newArr = (newStr || "").split(',').map(function (e) { return e.trim(); }).filter(function (e) { return e; });
@@ -106,7 +106,7 @@ function _Mail_Sender_mergeEmails(existingStr, newStr) {
   return existingArr.join(',');
 }
 
-function Mail_Sender_executeActions() {
+function MailSender_executeActions() {
   return Logger.run('MAIL_SENDER', 'Execute Actions', function () {
     var sheet = _App_assertActiveSheet(SHEET_NAMES.MAIL_SENDER);
 
@@ -149,9 +149,9 @@ function Mail_Sender_executeActions() {
         var targetPdfName = row[MAIL_SENDER_CFG.COLUMNS.PDF_NAME];
 
         if (!targetTo && !targetThreadId) throw new Error("⚠️ Missing Email To");
-        if (targetTo && !_Mail_Sender_validateEmails(targetTo)) throw new Error("⚠️ Invalid Email To address");
-        if (!_Mail_Sender_validateEmails(targetCc)) throw new Error("⚠️ Invalid CC address");
-        if (!_Mail_Sender_validateEmails(targetBcc)) throw new Error("⚠️ Invalid BCC address");
+        if (targetTo && !_MailSender_validateEmails(targetTo)) throw new Error("⚠️ Invalid Email To address");
+        if (!_MailSender_validateEmails(targetCc)) throw new Error("⚠️ Invalid CC address");
+        if (!_MailSender_validateEmails(targetBcc)) throw new Error("⚠️ Invalid BCC address");
 
         var emailSubject = row[MAIL_SENDER_CFG.COLUMNS.EMAIL_SUBJECT];
         var emailBody = row[MAIL_SENDER_CFG.COLUMNS.EMAIL_BODY] ? String(row[MAIL_SENDER_CFG.COLUMNS.EMAIL_BODY]).replace(/\r?\n/g, '<br>') : "";
@@ -163,7 +163,7 @@ function Mail_Sender_executeActions() {
         if (targetAttachments) {
           var files = targetAttachments.split(',');
           for (var f = 0; f < files.length; f++) {
-            var blob = _Mail_Sender_getDriveAttachment(files[f].trim());
+            var blob = _MailSender_getDriveAttachment(files[f].trim());
             if (blob) finalAttachments.push(blob);
           }
         }
@@ -206,8 +206,8 @@ function Mail_Sender_executeActions() {
             var existingTo = lastMessage.getTo();
             var existingCc = lastMessage.getCc();
 
-            var newTo = _Mail_Sender_mergeEmails(existingTo, targetTo);
-            var newCc = _Mail_Sender_mergeEmails(existingCc, targetCc);
+            var newTo = _MailSender_mergeEmails(existingTo, targetTo);
+            var newCc = _MailSender_mergeEmails(existingCc, targetCc);
 
             var replyOptions = {
               htmlBody: emailBody,
@@ -256,8 +256,8 @@ function Mail_Sender_executeActions() {
             var existingTo = lastMessage.getTo();
             var existingCc = lastMessage.getCc();
 
-            var newTo = _Mail_Sender_mergeEmails(existingTo, targetTo);
-            var newCc = _Mail_Sender_mergeEmails(existingCc, targetCc);
+            var newTo = _MailSender_mergeEmails(existingTo, targetTo);
+            var newCc = _MailSender_mergeEmails(existingCc, targetCc);
 
             var replyOptions = {
               htmlBody: emailBody,
@@ -327,6 +327,6 @@ function Mail_Sender_executeActions() {
   });
 }
 
-function Mail_Sender_getProgress() {
+function MailSender_getProgress() {
   return _App_getProgress('MAIL_SENDER');
 }

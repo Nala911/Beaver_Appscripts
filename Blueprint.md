@@ -35,23 +35,23 @@ Each tool has a Backend file, a Frontend sidebar file, and a global Entry Functi
 
 | Tool Name | Backend (`.js`) | Frontend (`.html`) | UI Menu Entry Function |
 |---|---|---|---|
-| **Calendar Sync** | `Calendar_Sync.js` | `Calender_Sidebar.html` | `Calendar_showSidebar` |
-| **Contacts Sync** | `Contacts_Sync.js` | `ContactsSidebar.html` | `Contacts_showSidebar` |
-| **Mail Merge** | `Mail_merge_Code.js` | `Mail_merge_HTML.html` | `MailMerge_openSidebar` |
-| **Mail Sender** | `Mail_Sender.js` | `Mail_Sender-Sidebar.html` | `Mail_Sender_openSidebar` |
-| **Docs Merge** | `Docs_Merge_Code.js` | `Docs_merge_Sidebar.html` | `DocsMerge_openSidebar` |
-| **Task Manager** | `Task_Sync_code.js` | `Tasks_Sidebar.html` | `Tasks_showSidebar` |
+| **Calendar Sync** | `CalendarSync_Code.js` | `CalendarSync_Sidebar.html` | `CalendarSync_openSidebar` |
+| **Contacts Sync** | `ContactsSync_Code.js` | `ContactsSync_Sidebar.html` | `ContactsSync_openSidebar` |
+| **Mail Merge** | `MailMerge_Code.js` | `MailMerge_Sidebar.html` | `MailMerge_openSidebar` |
+| **Mail Sender** | `MailSender_Code.js` | `MailSender_Sidebar.html` | `MailSender_openSidebar` |
+| **Docs Merge** | `DocsMerge_Code.js` | `DocsMerge_Sidebar.html` | `DocsMerge_openSidebar` |
+| **Task Manager** | `TasksSync_Code.js` | `TasksSync_Sidebar.html` | `TasksSync_openSidebar` |
 | **Forms Sync** | `FormsSync_Code.js` | `FormsSync_Sidebar.html` | `FormsSync_openSidebar` |
-| **Bulk Folder** | `BulkFolderCreation.js` | `BulkFolderCreationSidebar.html` | `BulkFolder_showSidebar` |
-| **Drive Sync** | `DriveFileDetails.gs.js` | `DriveFileDetailsSidebar.html` | `Drive_showSidebar` |
-| **Pipeline Control** | `PipelineControl.js` | `PipelineSidebar.html` | `Pipeline_showSidebar` |
+| **Bulk Folder** | `BulkFolderCreation_Code.js` | `BulkFolderCreation_Sidebar.html` | `BulkFolderCreation_openSidebar` |
+| **Drive Sync** | `DriveFileDetails_Code.js` | `DriveFileDetails_Sidebar.html` | `DriveFileDetails_openSidebar` |
+| **Pipeline Control** | `PipelineControl_Code.js` | `PipelineControl_Sidebar.html` | `PipelineControl_openSidebar` |
 | **Developer Log** | `Logger.js`, `SystemAudit.js`, `Logger_SidebarController.js` | `Logger_Sidebar.html` | `Logger_showSidebar` |
-| **Theme Editor** | (Inside `UI.js`) | `ThemeEditorSidebar.html` | `UI_openThemeDialog` |
+| **Theme Editor** | (Inside `UI.js`) | `ThemeEditor_Sidebar.html` | `UI_openThemeDialog` |
 
 > [!CAUTION]
 > **Large File Warning:** The following files are large (25KB+). Use surgical reads.
-> - `DriveFileDetails.gs.js` (~32KB): Complex Drive synchronization logic.
-> - `Contacts_Sync.js` (~27KB): People API integration logic.
+> - `DriveFileDetails_Code.js` (~32KB): Complex Drive synchronization logic.
+> - `ContactsSync_Code.js` (~27KB): People API integration logic.
 
 ## 🔑 Google API Scopes & Services Used
 
@@ -79,15 +79,15 @@ All keys used across the codebase. **Do NOT invent new key names** — check her
 | Key | File | Store Type | Purpose |
 |---|---|---|---|
 | `WorkspaceSync_SHEET_THEME` | `01_Config_Theme.js` | `DocumentProperties` | Custom theme JSON overrides |
-| `SYSTEM_ENABLED` | `PipelineControl.js` | `ScriptProperties` | Master on/off toggle for pipeline |
-| `DOCS_MERGE_TEMPLATE_URL` | `Docs_Merge_Code.js` | `DocumentProperties` | Saved template Doc URL |
-| `DOCS_MERGE_FOLDER_URL` | `Docs_Merge_Code.js` | `DocumentProperties` | Saved output folder URL |
-| `DOCS_MERGE_TEMPLATE_NAME` | `Docs_Merge_Code.js` | `DocumentProperties` | Cached template file name |
-| `DOCS_MERGE_FOLDER_NAME` | `Docs_Merge_Code.js` | `DocumentProperties` | Cached folder name |
-| `selectedCalIds` | `Calendar_Sync.js` | `UserProperties` | JSON array of selected calendar IDs |
-| `startDate` | `Calendar_Sync.js` | `UserProperties` | Saved start date filter |
-| `endDate` | `Calendar_Sync.js` | `UserProperties` | Saved end date filter |
-| `selectedContactGroups` | `Contacts_Sync.js` | `UserProperties` | JSON array of selected contact group IDs |
+| `SYSTEM_ENABLED` | `PipelineControl_Code.js` | `ScriptProperties` | Master on/off toggle for pipeline |
+| `DOCS_MERGE_TEMPLATE_URL` | `DocsMerge_Code.js` | `DocumentProperties` | Saved template Doc URL |
+| `DOCS_MERGE_FOLDER_URL` | `DocsMerge_Code.js` | `DocumentProperties` | Saved output folder URL |
+| `DOCS_MERGE_TEMPLATE_NAME` | `DocsMerge_Code.js` | `DocumentProperties` | Cached template file name |
+| `DOCS_MERGE_FOLDER_NAME` | `DocsMerge_Code.js` | `DocumentProperties` | Cached folder name |
+| `selectedCalIds` | `CalendarSync_Code.js` | `UserProperties` | JSON array of selected calendar IDs |
+| `startDate` | `CalendarSync_Code.js` | `UserProperties` | Saved start date filter |
+| `endDate` | `CalendarSync_Code.js` | `UserProperties` | Saved end date filter |
+| `selectedContactGroups` | `ContactsSync_Code.js` | `UserProperties` | JSON array of selected contact group IDs |
 | `FORMSSYNC_CURRENT_FORM` | `FormsSync_Code.js` | `DocumentProperties` | Stores currently synced form ID |
 | `FORMSSYNC_SELECTED_FORM` | `FormsSync_Code.js` | `UserProperties` | Stores user's selected form ID for sidebar auto-selection |
 | `ENABLE_DEBUG_LOGGING` | `Logger.js` | `DocumentProperties` | Global on/off for debug logging ('true'/'false') |

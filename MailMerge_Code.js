@@ -9,7 +9,7 @@ SyncEngine.registerTool('MAIL_MERGE', {
     MENU_LABEL: '📧 Mail Merge System',
     MENU_ENTRYPOINT: 'MailMerge_openSidebar',
     MENU_ORDER: 30,
-    SIDEBAR_HTML: 'Mail_merge_HTML',
+    SIDEBAR_HTML: 'MailMerge_Sidebar',
     SIDEBAR_WIDTH: 400,
     FROZEN_ROWS: 1,
     FROZEN_COLS: 1,

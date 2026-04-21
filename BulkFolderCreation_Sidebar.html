@@ -126,7 +126,7 @@
       google.script.run
         .withSuccessHandler(renderExplorer)
         .withFailureHandler(showError)
-        .BulkFolder_getDriveNavData(id);
+        .BulkFolderCreation_getDriveNavData(id);
     }
 
     function renderExplorer(data) {
@@ -218,7 +218,7 @@
       google.script.run
         .withSuccessHandler(finishProcess)
         .withFailureHandler(showError)
-        .BulkFolder_runBulkCreationSequence(currentFolderId);
+        .BulkFolderCreation_runBulkCreationSequence(currentFolderId);
     }
 
     function pollProgress() {
@@ -232,7 +232,7 @@
             document.getElementById('progress-text').innerText = "Processed " + progress.current + " of " + progress.total + " rows...";
           }
         })
-        .BulkFolder_getProgress();
+        .BulkFolderCreation_getProgress();
     }
 
     function finishProcess(responseMsg) {

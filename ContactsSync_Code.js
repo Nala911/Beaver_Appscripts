@@ -8,9 +8,9 @@ SyncEngine.registerTool('CONTACTS_SYNC', {
     SHEET_NAME: SHEET_NAMES.CONTACTS_SYNC,
     TITLE: '📇 Contacts Sync Master',
     MENU_LABEL: '☎️ Google Contacts',
-    MENU_ENTRYPOINT: 'Contacts_showSidebar',
+    MENU_ENTRYPOINT: 'ContactsSync_openSidebar',
     MENU_ORDER: 20,
-    SIDEBAR_HTML: 'ContactsSidebar',
+    SIDEBAR_HTML: 'ContactsSync_Sidebar',
     SIDEBAR_WIDTH: 400,
     FROZEN_ROWS: 1,
     FROZEN_COLS: 0,
@@ -57,14 +57,14 @@ function _ContactsSync_ensureSheetExistsAndActivate() {
 }
 
 /** Opens the Contacts sidebar and ensures the sheet exists. */
-function Contacts_showSidebar() {
+function ContactsSync_openSidebar() {
   return Logger.run('CONTACTS_SYNC', 'Open Sidebar', function () {
     _App_launchTool('CONTACTS_SYNC');
   });
 }
 
 
-function Contacts_getLoadData() {
+function ContactsSync_getLoadData() {
     return Logger.run('CONTACTS_SYNC', 'Load Data', function () {
         if (typeof People === 'undefined') {
             throw new Error("⚠️ People API is not enabled. Go to Services -> Add 'People API'.");
@@ -100,7 +100,7 @@ function Contacts_getLoadData() {
     });
 }
 
-function Contacts_savePreferences(groupIds) {
+function ContactsSync_savePreferences(groupIds) {
     if (groupIds) _App_setProperty(APP_PROPS.CONTACTS_SELECTED_GROUPS, groupIds);
 }
 
@@ -112,7 +112,7 @@ function _ContactsSync_getPrimary(array) {
 
 
 
-function Contacts_pullContacts(request) {
+function ContactsSync_pullContacts(request) {
     return Logger.run('CONTACTS_SYNC', 'Pull Contacts', function () {
         if (typeof People === 'undefined') {
             throw new Error("⚠️ People API is not enabled. Go to Services -> Add 'People API'.");
@@ -224,7 +224,7 @@ function Contacts_pullContacts(request) {
             formatConfig: formatConfig
         });
 
-        Contacts_savePreferences(groupIds);
+        ContactsSync_savePreferences(groupIds);
         return _App_ok('Successfully imported ' + outputData.length + " contacts.");
     });
 }
@@ -241,11 +241,11 @@ function _ContactsSync_highlightDuplicates(sheet) {
     _App_applyBodyFormatting(sheet, numDataRows, formatConfig);
 }
 
-function Contacts_checkForUnsavedChanges() {
+function ContactsSync_checkForUnsavedChanges() {
     return SheetManager.hasPendingActions('CONTACTS_SYNC');
 }
 
-function Contacts_pushChanges() {
+function ContactsSync_pushChanges() {
     return Logger.run('CONTACTS_SYNC', 'Push Changes', function () {
         if (typeof People === 'undefined') {
             throw new Error("⚠️ People API is not enabled. Go to Services -> Add 'People API'.");
@@ -531,7 +531,7 @@ function _ContactsSync_applyDataValidationsInternal(sheet) {
     sheet.getRange(2, CONTACTS_SYNC_CFG.COLUMNS.STARRED + 1, maxRows - 1).setDataValidation(ruleStarred);
 }
 
-function Contacts_modifyGroupInActiveRow(groupName, action) {
+function ContactsSync_modifyGroupInActiveRow(groupName, action) {
     return Logger.run('CONTACTS_SYNC', 'Modify Group Row', function () {
         var validation = _App_validateActiveSheet(SHEET_NAMES.CONTACTS_SYNC);
         if (!validation.valid) return { success: false, message: validation.message };
@@ -580,7 +580,7 @@ function Contacts_modifyGroupInActiveRow(groupName, action) {
     });
 }
 
-function Contacts_createContactGroup(groupName) {
+function ContactsSync_createContactGroup(groupName) {
     return Logger.run('CONTACTS_SYNC', 'Create Group', function () {
         if (typeof People === 'undefined') throw new Error("People API not enabled");
         var newGroup = _App_callWithBackoff(function () {
@@ -595,7 +595,7 @@ function Contacts_createContactGroup(groupName) {
     });
 }
 
-function Contacts_deleteContactGroup(resourceName) {
+function ContactsSync_deleteContactGroup(resourceName) {
     return Logger.run('CONTACTS_SYNC', 'Delete Group', function () {
         if (typeof People === 'undefined') throw new Error("People API not enabled");
         _App_callWithBackoff(function () {

@@ -7,9 +7,9 @@ SyncEngine.registerTool('BULK_FOLDER', {
     SHEET_NAME: SHEET_NAMES.BULK_FOLDER,
     TITLE: '📂 Bulk Drive Automator',
     MENU_LABEL: '📂 Bulk Folder Creation',
-    MENU_ENTRYPOINT: 'BulkFolder_showSidebar',
+    MENU_ENTRYPOINT: 'BulkFolderCreation_openSidebar',
     MENU_ORDER: 80,
-    SIDEBAR_HTML: 'BulkFolderCreationSidebar',
+    SIDEBAR_HTML: 'BulkFolderCreation_Sidebar',
     SIDEBAR_WIDTH: 400,
     FROZEN_ROWS: 1,
     FROZEN_COLS: 1,
@@ -36,32 +36,32 @@ var BULKFOLDER_COL = {
 var BULKFOLDER_START_TIME = 0;
 var BULKFOLDER_MAX_EXECUTION_TIME = 330 * 1000; // 5.5 minutes
 
-function _BulkFolder_isTimeLimitReached() {
+function _BulkFolderCreation_isTimeLimitReached() {
   return (Date.now() - BULKFOLDER_START_TIME > BULKFOLDER_MAX_EXECUTION_TIME);
 }
 
 // --- MENU & UI HANDLERS ---
 
 /** @deprecated — Use _App_ensureSheetExists('BULK_FOLDER') instead. */
-function _BulkFolder_ensureSheetExistsAndActivate() {
+function _BulkFolderCreation_ensureSheetExistsAndActivate() {
   return _App_ensureSheetExists('BULK_FOLDER');
 }
 
 /** Opens the Bulk Folder sidebar and ensures the sheet exists. */
-function BulkFolder_showSidebar() {
+function BulkFolderCreation_openSidebar() {
   return Logger.run('BULK_FOLDER', 'Open Sidebar', function () {
     _App_launchTool('BULK_FOLDER');
   });
 }
 
 /** Alias for menu compatibility. */
-function BulkFolder_showSidebarbulkcreation() {
-  BulkFolder_showSidebar();
+function BulkFolderCreation_showSidebarbulkcreation() {
+  BulkFolderCreation_openSidebar();
 }
 
 // --- EXPLORER LOGIC ---
 
-function BulkFolder_getDriveNavData(folderId) {
+function BulkFolderCreation_getDriveNavData(folderId) {
   return Logger.run('BULK_FOLDER', 'Fetch Nav Data', function () {
     try {
       var folder;
@@ -118,11 +118,11 @@ function BulkFolder_getDriveNavData(folderId) {
 
 // --- BATCH CREATION LOGIC ---
 
-function BulkFolder_getProgress() {
+function BulkFolderCreation_getProgress() {
   return _App_getProgress('BULK_FOLDER');
 }
 
-function BulkFolder_runBulkCreationSequence(targetFolderId) {
+function BulkFolderCreation_runBulkCreationSequence(targetFolderId) {
   return Logger.run('BULK_FOLDER', 'Batch Creation', function () {
     var lock = LockService.getScriptLock();
     if (!lock.tryLock(5000)) throw new Error("⚠️ System is busy. Please try again.");
@@ -219,7 +219,7 @@ function BulkFolder_runBulkCreationSequence(targetFolderId) {
       var timeLimitReached = false;
 
       for (var k = 0; k < pendingRows.length; k++) {
-        if (_BulkFolder_isTimeLimitReached()) {
+        if (_BulkFolderCreation_isTimeLimitReached()) {
           timeLimitReached = true;
           break;
         }
@@ -242,7 +242,7 @@ function BulkFolder_runBulkCreationSequence(targetFolderId) {
             throw new Error("No folder names specified in Level columns.");
           }
 
-          var resultId = _BulkFolder_createFolderPath(targetFolderId, folderNames, folderCache);
+          var resultId = _BulkFolderCreation_createFolderPath(targetFolderId, folderNames, folderCache);
 
           // Update data matrix successfully
           data[rowNum - 1][actionColIdx] = "";
@@ -273,7 +273,7 @@ function BulkFolder_runBulkCreationSequence(targetFolderId) {
   });
 }
 
-function _BulkFolder_createFolderPath(baseFolderId, folderNamesArr, folderCache) {
+function _BulkFolderCreation_createFolderPath(baseFolderId, folderNamesArr, folderCache) {
   var currentParentId = baseFolderId === "root" ? DriveApp.getRootFolder().getId() : baseFolderId;
 
   for (var i = 0; i < folderNamesArr.length; i++) {
@@ -326,7 +326,7 @@ function BulkFolder_setupSheet_bulkcreation(sheet) {
   return "Sheet has been setup successfully for Bulk Folder Creation.";
 }
 
-function _BulkFolder_initializeHeaders(sheet) {
+function _BulkFolderCreation_initializeHeaders(sheet) {
   var allHeaders = SyncEngine.getTool('BULK_FOLDER').HEADERS;
   sheet.getRange(1, 1, 1, allHeaders.length).setValues([allHeaders])
     .setFontWeight(SHEET_THEME.LAYOUT.HEADER_WEIGHT)
@@ -346,7 +346,7 @@ function _BulkFolder_initializeHeaders(sheet) {
 }
 
 // Stage 1: Data validations only (body formatting handled by _App_applyBodyFormatting)
-function _BulkFolder_applyDataValidations(sheet) {
+function _BulkFolderCreation_applyDataValidations(sheet) {
   var maxRows = sheet.getMaxRows();
   if (maxRows < 2) return;
 

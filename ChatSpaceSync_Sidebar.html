@@ -559,7 +559,7 @@
     };
 
     function loadData() {
-      SyncSidebar.run('ChatSync_getLoadData', [], {
+      SyncSidebar.run('ChatSpaceSync_getLoadData', [], {
         context: 'Load Data',
         onSuccess: populateUI,
         onError: err => {
@@ -625,7 +625,7 @@
     }
 
     function runPull() {
-      SyncSidebar.run('ChatSync_checkForUnsavedChanges', [], {
+      SyncSidebar.run('ChatSpaceSync_checkForUnsavedChanges', [], {
         unwrap: false,
         context: 'Check Changes',
         onSuccess: hasChanges => {
@@ -645,7 +645,7 @@
       if (spaceIds.length === 0) return showToast("Select at least one space", true);
 
       toggleLoading(true, "Importing…");
-      SyncSidebar.run('ChatSync_pullMembers', [{ spaceIds }], {
+      SyncSidebar.run('ChatSpaceSync_pullMembers', [{ spaceIds }], {
         context: 'Pull Members',
         onSuccess: res => { toggleLoading(false); showToast(res.message, false); },
         onError: () => { toggleLoading(false); }
@@ -668,7 +668,7 @@
 
     function runPush() {
       toggleLoading(true, "Syncing…");
-      SyncSidebar.run('ChatSync_pushChanges', [], {
+      SyncSidebar.run('ChatSpaceSync_pushChanges', [], {
         context: 'Push Changes',
         onSuccess: res => { toggleLoading(false); showToast(res.message, false); },
         onError: () => { toggleLoading(false); }

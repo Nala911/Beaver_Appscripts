@@ -17,7 +17,7 @@
 
         window.onload = function () {
             loadDashboard();
-            google.script.run.withSuccessHandler(updateToggle).Pipeline_getSystemStatus();
+            google.script.run.withSuccessHandler(updateToggle).PipelineControl_getSystemStatus();
         };
 
         function showToast(msg, isError, isSuccess = false) {
@@ -42,7 +42,7 @@
                     handleError(err, 'Load Dashboard');
                     document.getElementById('pipelineListContainer').innerHTML = `<div class="empty-state"><span class="material-icons-outlined" style="font-size:28px; color:var(--danger);">error_outline</span>Error loading pipelines.</div>`;
                 })
-                .Pipeline_getPipelineDashboardData();
+                .PipelineControl_getPipelineDashboardData();
         }
 
         function renderDashboard(data) {
@@ -229,7 +229,7 @@
                     handleError(err, 'Run Execution');
                     loadDashboard();
                 })
-                .Pipeline_runSelectedPipelines(rowIndexes);
+                .PipelineControl_runSelectedPipelines(rowIndexes);
         }
 
         // --- Existing System Toggles ---
@@ -268,7 +268,7 @@
                     updateStatusText(!isChecked);
                     handleError(err, 'Toggle System');
                 })
-                .Pipeline_setSystemStatus(isChecked);
+                .PipelineControl_setSystemStatus(isChecked);
         }
 
         function formatSheet() {
@@ -295,6 +295,6 @@
                     btn.innerHTML = originalHtml;
                     handleError(err, 'Format Sheet');
                 })
-                .Pipeline_formatControlCenter();
+                .PipelineControl_formatControlCenter();
         }
 </script>

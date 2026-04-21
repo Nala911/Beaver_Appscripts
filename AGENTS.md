@@ -32,9 +32,12 @@ If you are just editing or adding a feature (like Mail Merge, Tasks Sync, etc.),
 ## ⚙️ Mandatory Code Contracts
 
 ### 1. Naming Standards
+- **Tool Backend Logic:** `<ToolName>_Code.js` (e.g., `MailMerge_Code.js`). Always PascalCase for the tool name.
+- **Tool Sidebar Interface:** `<ToolName>_Sidebar.html` (e.g., `MailMerge_Sidebar.html`).
 - **Public Backend Functions:** `ToolName_FunctionName` (e.g., `MailMerge_openSidebar`). These are called from Sidebars or the UI menu.
 - **Internal Helper Functions:** `_ToolName_InternalFunction` (e.g., `_MailMerge_validateData`).
 - **Core System Utilities:** `_App_UtilityName` (e.g., `_App_launchTool`).
+- **HTML Includes (Partials):** `ToolName_CSS.html` or `ToolName_JS.html`. Use `<?!= _App_include('ToolName_Type'); ?>` to include them.
 
 ### 2. The SyncEngine Contract
 Every tool backend file must register itself with the engine at the very top of the script using `SyncEngine.registerTool(key, config)`. Do not hardcode columns inside backend logic; rely on the registry's `COL_SCHEMA`.
