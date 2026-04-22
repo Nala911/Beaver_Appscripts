@@ -6,8 +6,8 @@
 
 SyncEngine.registerTool('FORMS_SYNC', {
     SHEET_NAME: SHEET_NAMES.FORMS_SYNC,
-    TITLE: '📝 Forms Sync',
-    MENU_LABEL: '📝 Google Forms',
+    TITLE: SHEET_NAMES.FORMS_SYNC,
+    MENU_LABEL: SHEET_NAMES.FORMS_SYNC,
     MENU_ENTRYPOINT: 'FormsSync_openSidebar',
     MENU_ORDER: 70,
     SIDEBAR_HTML: 'FormsSync_Sidebar',
@@ -168,39 +168,24 @@ function _FormsSync_syncToForm() {
 
         try {
             var form = _App_callWithBackoff(function () { return FormApp.openById(formId); });
-            var sheet = _FormsSync_ensureSheetExistsAndActivate();
-            var dataRange = sheet.getDataRange();
-            var data = dataRange.getValues();
-
-            if (data.length <= FORMSSYNC_CFG.HEADER_ROW) {
-                return { success: true, message: "No data to sync." };
-            }
-
-            var pendingRows = [];
-            for (var i = FORMSSYNC_CFG.HEADER_ROW; i < data.length; i++) {
-                var action = (data[i][FORMSSYNC_CFG.COLUMNS.ACTION - 1] || "").toString().trim().toUpperCase();
-                if (action === "CREATE" || action === "UPDATE" || action === "REMOVE") {
-                    pendingRows.push({ data: data[i], originalIndex: i });
-                }
-            }
+            
+            var pendingRows = SheetManager.readPendingObjects('FORMS_SYNC', { useDisplayValues: true });
 
             if (pendingRows.length === 0) return { success: true, message: "No pending actions found." };
 
             var stats = _App_BatchProcessor('FORMS_SYNC', pendingRows, function (item) {
-                var row = item.data;
-                var originalIdx = item.originalIndex;
-                var action = (row[FORMSSYNC_CFG.COLUMNS.ACTION - 1] || "").toString().trim().toUpperCase();
-                var id = (row[FORMSSYNC_CFG.COLUMNS.ID - 1] || "").toString().trim();
-                var title = (row[FORMSSYNC_CFG.COLUMNS.TITLE - 1] || "").toString();
-                var type = (row[FORMSSYNC_CFG.COLUMNS.TYPE - 1] || "").toString();
-                var optionsRaw = (row[FORMSSYNC_CFG.COLUMNS.OPTIONS - 1] || "").toString();
-                var helpText = (row[FORMSSYNC_CFG.COLUMNS.HELP_TEXT - 1] || "").toString();
-                var required = row[FORMSSYNC_CFG.COLUMNS.REQUIRED - 1] === true || row[FORMSSYNC_CFG.COLUMNS.REQUIRED - 1] === 'TRUE';
+                var action = (item['Action'] || "").toString().trim().toUpperCase();
+                var id = (item['Item ID'] || "").toString().trim();
+                var title = (item['Question Title'] || "").toString();
+                var type = (item['Type'] || "").toString();
+                var optionsRaw = (item['Options'] || "").toString();
+                var helpText = (item['Help Text'] || "").toString();
+                var required = item['Required'] === true || item['Required'] === 'TRUE';
 
                 var updateObj = {
                     action: action,
                     id: id,
-                    originalIndex: originalIdx
+                    _rowNumber: item._rowNumber
                 };
 
                 var optionsArr = [];
@@ -305,7 +290,7 @@ function _FormsSync_syncToForm() {
                         updateObj.action = "";
                     }
                 } catch (err) {
-                    Logger.error(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Row ' + (originalIdx + 1), err);
+                    Logger.error(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Row ' + item._rowNumber, err);
                 }
 
                 return updateObj;
@@ -314,8 +299,8 @@ function _FormsSync_syncToForm() {
                     var rowNumbers = [];
                     var patchData = [];
                     batchResults.forEach(function (res) {
-                        if (res && res.originalIndex !== undefined) {
-                            rowNumbers.push(res.originalIndex + 1);
+                        if (res && res._rowNumber !== undefined) {
+                            rowNumbers.push(res._rowNumber);
                             patchData.push({ 'Action': res.action, 'Item ID': res.id });
                         }
                     });

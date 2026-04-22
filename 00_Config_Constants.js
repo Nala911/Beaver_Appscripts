@@ -13,7 +13,7 @@ var SHEET_NAMES = {
     FORMS_SYNC: '📝 Google Forms',
     BULK_FOLDER: '📂 Bulk Folder Creation',
     DRIVE_SYNC: '💾 Google Drive',
-    PIPELINE: '⛓  Control Center',
+    PIPELINE: '⛓  Pipeline',
     CHAT_SPACE_SYNC: '💬 Google Chat Spaces',
     LOGS: '🛠️ Developer Log'
 };
@@ -32,7 +32,7 @@ var APP_PROPS = {
     // UI Theme
     THEME: { key: 'WorkspaceSync_SHEET_THEME', store: STORE_TYPES.DOCUMENT, isJson: true },
 
-    // Pipeline Control
+    // Pipeline
     SYSTEM_ENABLED: { key: 'SYSTEM_ENABLED', store: STORE_TYPES.SCRIPT, isJson: false },
 
     // Docs Merge

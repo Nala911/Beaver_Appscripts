@@ -1,13 +1,13 @@
 /**
- * MASTER EDITION: Google Sheets <-> Google Calendar Sync
- * Version: 5.0 (Plugin Architecture — registers with SyncEngine)
+ * Google Calendar
+ * Version: 6.0 (Plugin Architecture — registers with SyncEngine)
  */
 
 SyncEngine.registerTool('CALENDAR_SYNC', {
     REQUIRED_SERVICES: [ { name: 'Calendar API', test: function() { return typeof Calendar !== 'undefined'; } } ],
     SHEET_NAME: SHEET_NAMES.CALENDAR_SYNC,
-    TITLE: '📅 Calendar Sync Master',
-    MENU_LABEL: '🗓️ Google Calendar',
+    TITLE: SHEET_NAMES.CALENDAR_SYNC,
+    MENU_LABEL: SHEET_NAMES.CALENDAR_SYNC,
     MENU_ENTRYPOINT: 'CalendarSync_openSidebar',
     MENU_ORDER: 10,
     SIDEBAR_HTML: 'CalendarSync_Sidebar',
@@ -164,15 +164,7 @@ function CalendarSync_checkForUnsavedChanges() {
 
 function CalendarSync_pushChanges() {
   return Logger.run('CALENDAR_SYNC', 'Push Changes', function () {
-    var dataObjects = SheetManager.readObjects('CALENDAR_SYNC');
-    if (dataObjects.length === 0) return "No data to sync.";
-
-    var pendingItems = [];
-    dataObjects.forEach(function (obj, idx) {
-      if (obj['Action']) {
-        pendingItems.push({ data: obj, originalIndex: idx });
-      }
-    });
+    var pendingItems = SheetManager.readPendingObjects('CALENDAR_SYNC');
 
     if (pendingItems.length === 0) return "No pending actions found.";
 
@@ -188,31 +180,29 @@ function CalendarSync_pushChanges() {
     });
 
     var stats = _App_BatchProcessor('CALENDAR_SYNC', pendingItems, function (item) {
-      var rowObj = item.data;
-      var originalIdx = item.originalIndex;
       var rowUpdates = {
-        action: rowObj['Action'],
-        eventId: rowObj['Event ID'] ? String(rowObj['Event ID']) : null,
-        calId: rowObj['Original Calendar ID'] ? String(rowObj['Original Calendar ID']) : null,
+        action: item['Action'],
+        eventId: item['Event ID'] ? String(item['Event ID']) : null,
+        calId: item['Original Calendar ID'] ? String(item['Original Calendar ID']) : null,
         status: "",
-        originalIndex: originalIdx
+        _rowNumber: item._rowNumber
       };
 
       try {
         var action = rowUpdates.action.toString().toUpperCase();
-        var targetCalName = rowObj['Target Calendar Name'];
+        var targetCalName = item['Target Calendar Name'];
         var targetCalId = calMap.get(targetCalName);
 
         var eventData = {
-          title: rowObj['Event Title'],
-          start: rowObj['Start Time'],
-          end: rowObj['End Time'],
-          desc: rowObj['Description'],
-          loc: rowObj['Location'],
-          meet: rowObj['Add Meet?'],
-          guests: rowObj['Guests'],
-          color: rowObj['Color'],
-          visibility: rowObj['Visibility']
+          title: item['Event Title'],
+          start: item['Start Time'],
+          end: item['End Time'],
+          desc: item['Description'],
+          loc: item['Location'],
+          meet: item['Add Meet?'],
+          guests: item['Guests'],
+          color: item['Color'],
+          visibility: item['Visibility']
         };
 
         if (!(eventData.start instanceof Date)) eventData.start = new Date(eventData.start);
@@ -321,14 +311,14 @@ function CalendarSync_pushChanges() {
         }
 
         var isError = rowUpdates.status && (rowUpdates.status.indexOf('❌') > -1 || rowUpdates.status.indexOf('⚠️') > -1);
-        if (isError) Logger.error(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Row ' + (originalIdx + 2), rowUpdates.status);
-        else if (rowUpdates.status) Logger.info(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Row ' + (originalIdx + 2), rowUpdates.status);
+        if (isError) Logger.error(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Row ' + item._rowNumber, rowUpdates.status);
+        else if (rowUpdates.status) Logger.info(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Row ' + item._rowNumber, rowUpdates.status);
 
         return rowUpdates;
 
       } catch (e) {
         rowUpdates.status = e.message;
-        Logger.error(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Row ' + (originalIdx + 2), e);
+        Logger.error(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Row ' + item._rowNumber, e);
         return rowUpdates;
       }
     }, {
@@ -336,8 +326,8 @@ function CalendarSync_pushChanges() {
         var rowNumbers = [];
         var patchData = [];
         batchResults.forEach(function (res) {
-          if (res && res.originalIndex !== undefined) {
-            rowNumbers.push(res.originalIndex + 2);
+          if (res && res._rowNumber !== undefined) {
+            rowNumbers.push(res._rowNumber);
             patchData.push({
               'Action': res.action,
               'Event ID': res.eventId,

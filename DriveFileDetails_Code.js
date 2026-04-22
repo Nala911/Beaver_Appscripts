@@ -1,13 +1,13 @@
 /**
- * DRIVE SYNC MANAGER
+ * Google Drive
  * Server-side Logic — Version 5.0 (Plugin Architecture — registers with SyncEngine)
  */
 
 SyncEngine.registerTool('DRIVE_SYNC', {
     REQUIRED_SERVICES: [ { name: 'Drive API', test: function() { return typeof Drive !== 'undefined'; } } ],
     SHEET_NAME: SHEET_NAMES.DRIVE_SYNC,
-    TITLE: '💾 Drive Sync Manager',
-    MENU_LABEL: '💾 Google Drive',
+    TITLE: SHEET_NAMES.DRIVE_SYNC,
+    MENU_LABEL: SHEET_NAMES.DRIVE_SYNC,
     MENU_ENTRYPOINT: 'DriveFileDetails_openSidebar',
     MENU_ORDER: 90,
     SIDEBAR_HTML: 'DriveFileDetails_Sidebar',
@@ -435,24 +435,19 @@ function DriveFileDetails_runPushSequence() {
       DRIVE_SYNC_START_TIME = Date.now();
       log("Starting Push Sequence...");
 
-      var sheet = _App_assertActiveSheet(SHEET_NAMES.DRIVE_SYNC);
-      _DriveFileDetails_validateHeaders(sheet);
+      var pendingRows = SheetManager.readPendingObjects('DRIVE_SYNC');
 
-      var data = sheet.getDataRange().getValues();
-      var pendingRows = [];
-
-      for (var i = 1; i < data.length; i++) {
-        if (data[i][DRIVE_SYNC_COL.ACTION] !== "") {
-          pendingRows.push({ rowData: data[i], rowIndex: i + 1 });
-        }
+      if (pendingRows.length === 0) {
+        log("No pending actions found.");
+        return logs;
       }
 
       log("Found " + pendingRows.length + " pending actions.");
 
       pendingRows.sort(function (a, b) {
-        var score = function (r) {
-          var act = r.rowData[DRIVE_SYNC_COL.ACTION];
-          var type = r.rowData[DRIVE_SYNC_COL.TYPE];
+        var score = function (obj) {
+          var act = obj['Action'];
+          var type = obj['Type'];
           if (act === 'Create' && type === 'Folder') return 1;
           if (act === 'Clone') return 2;
           if (act === 'Create') return 3;
@@ -462,56 +457,50 @@ function DriveFileDetails_runPushSequence() {
         return score(a) - score(b);
       });
 
-      var fullSheetData = sheet.getDataRange().getValues();
-      var isPartialPush = false;
-
-      for (var k = 0; k < pendingRows.length; k++) {
-        try {
-          _DriveFileDetails_checkTimeLimit();
-        } catch (timeoutEx) {
-          log(timeoutEx.message);
-          isPartialPush = true;
-          break;
-        }
-
-        var item = pendingRows[k];
-        var rowNum = item.rowIndex; 
-        var arrayIndex = rowNum - 1; 
-
+      var stats = _App_BatchProcessor('DRIVE_SYNC', pendingRows, function (item) {
         try {
           var statusMsg = "";
-          var action = item.rowData[DRIVE_SYNC_COL.ACTION];
-
-          if (!action) continue;
-
+          var action = item['Action'];
           var resultValues = {};
 
-          if (action === 'Create') statusMsg = _DriveFileDetails_handleCreate(item.rowData, resultValues);
-          else if (action === 'Clone') statusMsg = _DriveFileDetails_handleClone(item.rowData, resultValues);
-          else if (action === 'Update') statusMsg = _DriveFileDetails_handleUpdate(item.rowData);
-          else if (action === 'Delete') statusMsg = _DriveFileDetails_handleDelete(item.rowData);
+          if (action === 'Create') statusMsg = _DriveFileDetails_handleCreate(item, resultValues);
+          else if (action === 'Clone') statusMsg = _DriveFileDetails_handleClone(item, resultValues);
+          else if (action === 'Update') statusMsg = _DriveFileDetails_handleUpdate(item);
+          else if (action === 'Delete') statusMsg = _DriveFileDetails_handleDelete(item);
 
-          fullSheetData[arrayIndex][DRIVE_SYNC_COL.ACTION] = "";
+          var updates = { 'Action': "" };
+          if (resultValues.id) updates['Item ID'] = resultValues.id;
+          if (resultValues.url) updates['URL'] = resultValues.url;
+          if (resultValues.mime) updates['Mime Type'] = resultValues.mime;
+          if (resultValues.size) updates['Size'] = resultValues.size;
 
-          if (resultValues.id) fullSheetData[arrayIndex][DRIVE_SYNC_COL.ITEM_ID] = resultValues.id;
-          if (resultValues.url) fullSheetData[arrayIndex][DRIVE_SYNC_COL.URL] = resultValues.url;
-          if (resultValues.mime) fullSheetData[arrayIndex][DRIVE_SYNC_COL.MIME] = resultValues.mime;
-          if (resultValues.size) fullSheetData[arrayIndex][DRIVE_SYNC_COL.SIZE] = resultValues.size;
+          Logger.info(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'Row ' + item._rowNumber + ' (' + item['Item Name'] + ')', '✅ ' + statusMsg);
+          log("Row " + item._rowNumber + ": " + statusMsg);
 
-          Logger.info(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'Row ' + rowNum + ' (' + item.rowData[DRIVE_SYNC_COL.NAME] + ')', '✅ ' + statusMsg);
-          log("Row " + rowNum + ": " + statusMsg);
+          return { _rowNumber: item._rowNumber, updates: updates };
 
         } catch (e) {
-          Logger.error(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'Row ' + rowNum + ' (' + item.rowData[DRIVE_SYNC_COL.NAME] + ')', e);
-          log("Row " + rowNum + " Error: " + e.message);
+          Logger.error(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'Row ' + item._rowNumber + ' (' + item['Item Name'] + ')', e);
+          log("Row " + item._rowNumber + " Error: " + e.message);
+          return null;
         }
-      }
+      }, {
+        onBatchComplete: function (results) {
+          var rowNumbers = [];
+          var updatesArr = [];
+          results.forEach(function (res) {
+            if (res && res._rowNumber) {
+              rowNumbers.push(res._rowNumber);
+              updatesArr.push(res.updates);
+            }
+          });
+          if (rowNumbers.length > 0) {
+            SheetManager.batchPatchRows('DRIVE_SYNC', rowNumbers, updatesArr);
+          }
+        }
+      });
 
-      if (pendingRows.length > 0) {
-        sheet.getRange(1, 1, fullSheetData.length, fullSheetData[0].length).setValues(fullSheetData);
-      }
-
-      if (isPartialPush) {
+      if (stats.timeLimitReached) {
         log("Sequence Paused: 5.5-minute time limit approached. Please run again to process remaining items.");
       } else {
         log("Sequence Complete.");
@@ -652,16 +641,16 @@ function _DriveFileDetails_initializeHeaders(sheet) {
 
 // --- Handlers ---
 
-function _DriveFileDetails_handleCreate(row, res) {
-  var name = row[DRIVE_SYNC_COL.NAME];
+function _DriveFileDetails_handleCreate(rowObj, res) {
+  var name = rowObj['Item Name'];
   if (!name) throw new Error("Name is required");
 
-  var desc = row[DRIVE_SYNC_COL.DESC];
-  var starred = row[DRIVE_SYNC_COL.STARRED] === true;
-  var friendlyType = row[DRIVE_SYNC_COL.TYPE];
+  var desc = rowObj['Description'];
+  var starred = rowObj['Starred'] === true || rowObj['Starred'] === 'TRUE';
+  var friendlyType = rowObj['Type'];
 
-  var parentId = row[DRIVE_SYNC_COL.PARENT_ID];
-  var pathStr = row[DRIVE_SYNC_COL.PATH];
+  var parentId = rowObj['Parent ID'];
+  var pathStr = rowObj['Folder Path'];
 
   // Priority: Path > ParentID > Root
   if (pathStr && pathStr.trim() !== "") {
@@ -750,10 +739,10 @@ function _DriveFileDetails_resolveFolderIdFromPath(pathString) {
   return currentId;
 }
 
-function _DriveFileDetails_handleClone(row, res) {
-  var fileId = row[DRIVE_SYNC_COL.ITEM_ID];
-  var nameInCell = row[DRIVE_SYNC_COL.NAME];
-  var parentId = row[DRIVE_SYNC_COL.PARENT_ID];
+function _DriveFileDetails_handleClone(rowObj, res) {
+  var fileId = rowObj['Item ID'];
+  var nameInCell = rowObj['Item Name'];
+  var parentId = rowObj['Parent ID'];
 
   if (!fileId) throw new Error("Cannot Clone: Source Item ID is missing.");
   if (!nameInCell) throw new Error("Cannot Clone: Target Name is missing.");
@@ -772,15 +761,15 @@ function _DriveFileDetails_handleClone(row, res) {
   return "Cloned";
 }
 
-function _DriveFileDetails_handleUpdate(row) {
-  var fileId = row[DRIVE_SYNC_COL.ITEM_ID];
+function _DriveFileDetails_handleUpdate(rowObj) {
+  var fileId = rowObj['Item ID'];
   if (!fileId) throw new Error("Cannot Update: Item ID is missing.");
 
-  var newName = row[DRIVE_SYNC_COL.NAME];
-  var newDesc = row[DRIVE_SYNC_COL.DESC];
-  var newStarred = row[DRIVE_SYNC_COL.STARRED];
-  var newParentId = row[DRIVE_SYNC_COL.PARENT_ID];
-  var pathStr = row[DRIVE_SYNC_COL.PATH];
+  var newName = rowObj['Item Name'];
+  var newDesc = rowObj['Description'];
+  var newStarred = rowObj['Starred'] === true || rowObj['Starred'] === 'TRUE';
+  var newParentId = rowObj['Parent ID'];
+  var pathStr = rowObj['Folder Path'];
   if (pathStr && pathStr.trim() !== "") {
     newParentId = _DriveFileDetails_resolveFolderIdFromPath(pathStr);
   }
@@ -813,9 +802,9 @@ function _DriveFileDetails_handleUpdate(row) {
   }
 
   // Permissions
-  var newEditors = _DriveFileDetails_parseEmailList(row[DRIVE_SYNC_COL.EDITORS]);
-  var newViewers = _DriveFileDetails_parseEmailList(row[DRIVE_SYNC_COL.VIEWERS]);
-  var targetIsPublic = row[DRIVE_SYNC_COL.IS_PUBLIC] === true;
+  var newEditors = _DriveFileDetails_parseEmailList(rowObj['Editors']);
+  var newViewers = _DriveFileDetails_parseEmailList(rowObj['Viewers']);
+  var targetIsPublic = rowObj['Is Public?'] === true || rowObj['Is Public?'] === 'TRUE';
 
   var currentEmailPerms = {};
   var publicPermId = null;
@@ -870,8 +859,8 @@ function _DriveFileDetails_handleUpdate(row) {
   return changes.length > 0 ? "Updated: " + changes.join(", ") : "No Changes Needed";
 }
 
-function _DriveFileDetails_handleDelete(row) {
-  var fileId = row[DRIVE_SYNC_COL.ITEM_ID];
+function _DriveFileDetails_handleDelete(rowObj) {
+  var fileId = rowObj['Item ID'];
   if (!fileId) throw new Error("Cannot Delete: Item ID is missing.");
   _App_callWithBackoff(function () { Drive.Files.update({ trashed: true }, fileId, null, { supportsAllDrives: true }); });
   return "Deleted (Trashed)";

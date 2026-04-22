@@ -4,6 +4,8 @@
 
 var SheetManager = (function() {
 
+    var _headersCache = {};
+
     function _normalizeHeaderKey(header) {
         return String(header || '').toUpperCase().trim();
     }
@@ -24,15 +26,45 @@ var SheetManager = (function() {
         return _App_ensureSheetExists(toolKey);
     }
 
+    /**
+     * Returns the headers for a tool. 
+     * Prioritizes the actual sheet headers to support dynamic columns, 
+     * falls back to SyncEngine metadata if sheet is empty or missing.
+     */
     function getHeaders(toolKey) {
-        return SyncEngine.getTool(toolKey).HEADERS || [];
+        if (_headersCache[toolKey]) return _headersCache[toolKey];
+
+        try {
+            var cfg = SyncEngine.getTool(toolKey);
+            var ss = SpreadsheetApp.getActiveSpreadsheet();
+            var sheet = ss.getSheetByName(cfg.SHEET_NAME);
+            if (sheet) {
+                var lastCol = sheet.getLastColumn();
+                if (lastCol > 0) {
+                    var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+                    // Filter out empty trailing headers
+                    while (headers.length > 0 && (!headers[headers.length - 1] || headers[headers.length - 1] === "")) {
+                        headers.pop();
+                    }
+                    if (headers.length > 0) {
+                        _headersCache[toolKey] = headers;
+                        return headers;
+                    }
+                }
+            }
+        } catch (e) {
+            // Silently fallback
+        }
+
+        var cfg = SyncEngine.getTool(toolKey);
+        return cfg.HEADERS || [];
     }
 
     function getHeaderMap(toolKey) {
         var headers = getHeaders(toolKey);
         var map = {};
         headers.forEach(function(header, index) {
-            map[header] = index + 1;
+            if (header) map[header] = index + 1;
         });
         return map;
     }
@@ -41,7 +73,7 @@ var SheetManager = (function() {
         var headers = getHeaders(toolKey);
         var map = {};
         headers.forEach(function(header, index) {
-            map[_normalizeHeaderKey(header)] = index;
+            if (header) map[_normalizeHeaderKey(header)] = index;
         });
         return map;
     }
@@ -58,7 +90,7 @@ var SheetManager = (function() {
 
     /**
      * Reads all data rows (row 2 onwards) and maps them to an array of objects
-     * using the headers defined in the tool configuration.
+     * using the headers defined in the tool configuration or sheet.
      * @returns {Object[]} Array of row objects mapped by header names
      */
     function readObjects(toolKey) {
@@ -66,8 +98,9 @@ var SheetManager = (function() {
         var lastRow = sheet.getLastRow();
         if (lastRow < 2) return [];
 
-        var cfg = SyncEngine.getTool(toolKey);
-        var headers = cfg.HEADERS;
+        var headers = getHeaders(toolKey);
+        if (headers.length === 0) return [];
+
         var dataRange = sheet.getRange(2, 1, lastRow - 1, headers.length);
         var data = dataRange.getValues();
 
@@ -91,8 +124,7 @@ var SheetManager = (function() {
         if (!objectsArray || objectsArray.length === 0) return;
 
         var sheet = getSheet(toolKey);
-        var cfg = SyncEngine.getTool(toolKey);
-        var headers = cfg.HEADERS;
+        var headers = getHeaders(toolKey);
 
         var data2D = objectsArray.map(function(obj) {
             var row = [];
@@ -112,7 +144,8 @@ var SheetManager = (function() {
         var opts = options || {};
         var sheet = getSheet(toolKey);
         var cfg = SyncEngine.getTool(toolKey);
-        var totalCols = opts.totalCols || (cfg.HEADERS ? cfg.HEADERS.length : sheet.getLastColumn());
+        var headers = getHeaders(toolKey);
+        var totalCols = opts.totalCols || headers.length || sheet.getLastColumn();
         var lastRow = sheet.getLastRow();
 
         if (lastRow >= 2) {
@@ -144,9 +177,10 @@ var SheetManager = (function() {
         var sheet = getSheet(toolKey);
         var lastRow = sheet.getLastRow();
         var cfg = SyncEngine.getTool(toolKey);
-        var headers = cfg.HEADERS;
+        var headers = getHeaders(toolKey);
         if (lastRow >= 2) {
-            sheet.getRange(2, 1, lastRow - 1, headers.length).clearContent();
+            var colCount = headers.length || sheet.getLastColumn();
+            sheet.getRange(2, 1, lastRow - 1, colCount).clearContent();
             if (cfg.FORMAT_CONFIG) {
                 _App_applyBodyFormatting(sheet, 0, cfg.FORMAT_CONFIG);
             }
@@ -154,20 +188,24 @@ var SheetManager = (function() {
     }
 
     /**
-     * Returns only the values in the 'Action' column (Column A) for quick scanning.
+     * Returns only the values in the 'Action' column for quick scanning.
      * Returns an array of strings.
      */
     function getActions(toolKey) {
         var sheet = getSheet(toolKey);
         var lastRow = sheet.getLastRow();
         if (lastRow < 2) return [];
-        var values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+
+        var headerMap = getHeaderMap(toolKey);
+        var actionColIdx = headerMap['Action'] || headerMap['ON/OFF'] || 1;
+
+        var values = sheet.getRange(2, actionColIdx, lastRow - 1, 1).getValues();
         return values.map(function(row) { return row[0]; });
     }
 
     function hasPendingActions(toolKey) {
         return getActions(toolKey).some(function(action) {
-            return action !== '';
+            return action !== '' && action !== false;
         });
     }
 
@@ -261,7 +299,74 @@ var SheetManager = (function() {
     }
 
     function syncDynamicColumns(toolKey, dynamicHeaders, options) {
+        delete _headersCache[toolKey]; // Invalidate cache
         return _App_syncDynamicColumns(toolKey, dynamicHeaders, options);
+    }
+
+    /**
+     * Reads only the rows where the specified 'Action' column is not empty.
+     * This is significantly faster for large sheets with sparse actions.
+     * @param {string} toolKey - Tool key (e.g., 'MAIL_MERGE')
+     * @param {Object} [options] - { useDisplayValues: boolean, actionColName: string }
+     * @returns {Object[]} Array of objects with an additional '_rowNumber' property.
+     */
+    function readPendingObjects(toolKey, options) {
+        var opts = options || {};
+        var actionColName = opts.actionColName || 'Action';
+        var sheet = getSheet(toolKey);
+        var lastRow = sheet.getLastRow();
+        if (lastRow < 2) return [];
+
+        var headers = getHeaders(toolKey);
+        if (headers.length === 0) return [];
+        
+        // 1. Find the Action column index dynamically from sheet headers
+        var headerMap = getHeaderMap(toolKey);
+        var actionColIdx = headerMap[actionColName] || 1; 
+
+        // 2. Read only the Action column to identify pending rows
+        var actionRange = sheet.getRange(2, actionColIdx, lastRow - 1, 1);
+        var actionValues = actionRange.getValues();
+        var pendingIndices = []; // 0-based relative to row 2
+        for (var i = 0; i < actionValues.length; i++) {
+            var val = actionValues[i][0];
+            if (val !== undefined && val !== null && val !== "" && val !== false) {
+                pendingIndices.push(i);
+            }
+        }
+
+        if (pendingIndices.length === 0) return [];
+
+        // 3. Fetch full rows, grouping contiguous rows to minimize API calls
+        var results = [];
+        var startIdx = pendingIndices[0];
+        var endIdx = startIdx;
+
+        var processBlock = function(s, e) {
+            var numRows = e - s + 1;
+            var range = sheet.getRange(s + 2, 1, numRows, headers.length);
+            var data = opts.useDisplayValues ? range.getDisplayValues() : range.getValues();
+            data.forEach(function(row, offset) {
+                var obj = { _rowNumber: s + offset + 2 };
+                for (var j = 0; j < headers.length; j++) {
+                    obj[headers[j]] = row[j];
+                }
+                results.push(obj);
+            });
+        };
+
+        for (var k = 1; k < pendingIndices.length; k++) {
+            if (pendingIndices[k] === endIdx + 1) {
+                endIdx = pendingIndices[k];
+            } else {
+                processBlock(startIdx, endIdx);
+                startIdx = pendingIndices[k];
+                endIdx = startIdx;
+            }
+        }
+        processBlock(startIdx, endIdx);
+
+        return results;
     }
 
     return {
@@ -272,6 +377,7 @@ var SheetManager = (function() {
         getNormalizedHeaderMap: getNormalizedHeaderMap,
         getSheetHeaderMap: getSheetHeaderMap,
         readObjects: readObjects,
+        readPendingObjects: readPendingObjects,
         writeObjects: writeObjects,
         overwriteRows: overwriteRows,
         overwriteObjects: overwriteObjects,

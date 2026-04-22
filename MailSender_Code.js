@@ -1,12 +1,12 @@
 /**
- * MailSender Toolkit
+ * Mail Sender
  * Version: 5.0 (Plugin Architecture — registers with SyncEngine)
  */
 
 SyncEngine.registerTool('MAIL_SENDER', {
     SHEET_NAME: SHEET_NAMES.MAIL_SENDER,
-    TITLE: '📩 Mail Sender Toolkit',
-    MENU_LABEL: '📩 Mail Sender',
+    TITLE: SHEET_NAMES.MAIL_SENDER,
+    MENU_LABEL: SHEET_NAMES.MAIL_SENDER,
     MENU_ENTRYPOINT: 'MailSender_openSidebar',
     MENU_ORDER: 40,
     SIDEBAR_HTML: 'MailSender_Sidebar',
@@ -108,54 +108,35 @@ function _MailSender_mergeEmails(existingStr, newStr) {
 
 function MailSender_executeActions() {
   return Logger.run('MAIL_SENDER', 'Execute Actions', function () {
-    var sheet = _App_assertActiveSheet(SHEET_NAMES.MAIL_SENDER);
-
-    var dataRange = sheet.getDataRange();
-    var data = dataRange.getDisplayValues();
-
-    if (data.length < 2) return "Sheet is empty.";
-
-    var headers = data[0];
-    var allRows = data.slice(1);
-
-    var pendingRows = [];
-    allRows.forEach(function (row, idx) {
-      if (!row[MAIL_SENDER_CFG.COLUMNS.ACTION]) return;
-      var action = row[MAIL_SENDER_CFG.COLUMNS.ACTION].toString().trim().toUpperCase();
-      if (action === "SEND" || action === "DRAFT") {
-        pendingRows.push({ data: row, originalIndex: idx });
-      }
-    });
+    var pendingRows = SheetManager.readPendingObjects('MAIL_SENDER', { useDisplayValues: true });
 
     if (pendingRows.length === 0) return "Nothing to do! No 'SEND' or 'DRAFT' actions pending.";
 
     var stats = _App_BatchProcessor('MAIL_SENDER', pendingRows, function (item, index) {
-      var row = item.data;
-      var originalIdx = item.originalIndex;
       var rowUpdates = {
-        action: row[MAIL_SENDER_CFG.COLUMNS.ACTION],
-        originalIndex: originalIdx
+        action: item['Action'],
+        _rowNumber: item._rowNumber
       };
 
       var action = rowUpdates.action.toString().trim().toUpperCase();
       if (action !== "SEND" && action !== "DRAFT") return null;
 
       try {
-        var targetTo = row[MAIL_SENDER_CFG.COLUMNS.EMAIL_TO];
-        var targetCc = row[MAIL_SENDER_CFG.COLUMNS.CC];
-        var targetBcc = row[MAIL_SENDER_CFG.COLUMNS.BCC];
-        var targetThreadId = row[MAIL_SENDER_CFG.COLUMNS.THREAD_ID];
-        var targetAttachments = row[MAIL_SENDER_CFG.COLUMNS.ATTACHMENTS];
-        var targetPdfHtml = row[MAIL_SENDER_CFG.COLUMNS.PDF_HTML];
-        var targetPdfName = row[MAIL_SENDER_CFG.COLUMNS.PDF_NAME];
+        var targetTo = item['To'];
+        var targetCc = item['CC'];
+        var targetBcc = item['BCC'];
+        var targetThreadId = item['Thread ID or Subject'];
+        var targetAttachments = item['Attachments'];
+        var targetPdfHtml = item['PDF HTML'];
+        var targetPdfName = item['PDF Name'];
 
         if (!targetTo && !targetThreadId) throw new Error("⚠️ Missing Email To");
         if (targetTo && !_MailSender_validateEmails(targetTo)) throw new Error("⚠️ Invalid Email To address");
         if (!_MailSender_validateEmails(targetCc)) throw new Error("⚠️ Invalid CC address");
         if (!_MailSender_validateEmails(targetBcc)) throw new Error("⚠️ Invalid BCC address");
 
-        var emailSubject = row[MAIL_SENDER_CFG.COLUMNS.EMAIL_SUBJECT];
-        var emailBody = row[MAIL_SENDER_CFG.COLUMNS.EMAIL_BODY] ? String(row[MAIL_SENDER_CFG.COLUMNS.EMAIL_BODY]).replace(/\r?\n/g, '<br>') : "";
+        var emailSubject = item['Email Subject'];
+        var emailBody = item['Email Body'] ? String(item['Email Body']).replace(/\r?\n/g, '<br>') : "";
 
         if (!emailSubject && !targetThreadId) throw new Error("⚠️ Missing Email Subject");
         if (!emailBody) throw new Error("⚠️ Missing Email Body");
@@ -273,14 +254,14 @@ function MailSender_executeActions() {
           }
         }
 
-        var reference = 'Row ' + (originalIdx + 2);
+        var reference = 'Row ' + item._rowNumber;
         if (emailSubject) reference += ' (' + emailSubject + ')';
         Logger.info(SyncEngine.getTool('MAIL_SENDER').TITLE, reference, resultStatus);
 
         return rowUpdates;
 
       } catch (e) {
-        var reference = 'Row ' + (originalIdx + 2);
+        var reference = 'Row ' + item._rowNumber;
         Logger.error(SyncEngine.getTool('MAIL_SENDER').TITLE, reference, e);
         return null;
       }
@@ -289,8 +270,8 @@ function MailSender_executeActions() {
         var rowNumbers = [];
         var patchData = [];
         batchResults.forEach(function (res) {
-          if (res && res.originalIndex !== undefined) {
-            rowNumbers.push(res.originalIndex + 2);
+          if (res && res._rowNumber !== undefined) {
+            rowNumbers.push(res._rowNumber);
             patchData.push({ 'Action': res.action });
           }
         });

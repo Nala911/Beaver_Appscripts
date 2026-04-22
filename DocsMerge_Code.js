@@ -1,12 +1,12 @@
 /**
- * Docs Merge Toolkit
+ * Docs Merge
  * Version: 6.0 (Plugin Architecture — registers with SyncEngine)
  */
 
 SyncEngine.registerTool('DOCS_MERGE', {
     SHEET_NAME: SHEET_NAMES.DOCS_MERGE,
-    TITLE: '📄 Docs Merge Toolkit',
-    MENU_LABEL: '📄 Start Docs Merge',
+    TITLE: SHEET_NAMES.DOCS_MERGE,
+    MENU_LABEL: SHEET_NAMES.DOCS_MERGE,
     MENU_ENTRYPOINT: 'DocsMerge_openSidebar',
     MENU_ORDER: 50,
     SIDEBAR_HTML: 'DocsMerge_Sidebar',
@@ -172,9 +172,11 @@ function DocsMerge_syncPlaceholders(templateUrl) {
   });
 }
 
-function _DocsMerge_replacePlaceholders(body, headers, row) {
-  for (var h = 2; h < headers.length; h++) {
-    body.replaceText('{{' + headers[h] + '}}', row[h] !== undefined ? String(row[h]) : "");
+function _DocsMerge_replacePlaceholders(body, headers, rowObj) {
+  // Headers start from Action(0), Doc Name(1), Merged Link(2). Dynamic placeholders start from index 3.
+  for (var h = 3; h < headers.length; h++) {
+    var key = headers[h];
+    body.replaceText('{{' + key + '}}', rowObj[key] !== undefined ? String(rowObj[key]) : "");
   }
 }
 
@@ -208,35 +210,19 @@ function DocsMerge_initExport(config) {
       throw new Error(saveResult.message);
     }
 
-    var sheet = _App_assertActiveSheet(SHEET_NAMES.DOCS_MERGE);
-    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var pendingRows = SheetManager.readPendingObjects('DOCS_MERGE', { useDisplayValues: true });
 
-    var dataRange = sheet.getDataRange();
-    var data = dataRange.getDisplayValues();
-    if (data.length < 2) throw new Error("Sheet is empty.");
+    if (pendingRows.length === 0) {
+      throw new Error("0 rows had 'Generate PDF' or 'Generate Doc' action.");
+    }
+
+    var headers = SheetManager.getHeaders('DOCS_MERGE');
 
     try {
       var templateFile = DriveApp.getFileById(templateId);
       var targetFolder = DriveApp.getFolderById(folderId);
     } catch (e) {
       throw new Error("Permission Error: I can't access the Doc or Folder. Make sure you have 'Editor' access.");
-    }
-
-    var allRows = data.slice(1);
-    var rowsToProcess = [];
-    allRows.forEach(function (row, index) {
-      var action = (row[DOCS_MERGE_CFG.COLUMNS.ACTION] || "").toString();
-      if (action === "Generate PDF" || action === "Generate Doc") {
-        rowsToProcess.push({
-          row: row,
-          index: index,
-          action: action
-        });
-      }
-    });
-
-    if (rowsToProcess.length === 0) {
-      throw new Error("0 rows had 'Generate PDF' or 'Generate Doc' action.");
     }
 
     var masterDocId = null;
@@ -254,7 +240,7 @@ function DocsMerge_initExport(config) {
     }
 
     return _App_ok('Export initialized.', {
-      rowsToProcess: rowsToProcess,
+      rowsToProcess: pendingRows,
       masterDocId: masterDocId,
       templateId: templateId,
       folderId: folderId,
@@ -272,15 +258,15 @@ function DocsMerge_processRow(item, config, masterDocId, templateId, folderId, h
     var rowLinkColName = "Merged File Link";
     var linkColIndex = headers.indexOf(rowLinkColName) + 1; // 1-based index
 
-    var outputFormat = item.action === "Generate PDF" ? "PDF" : "DOC";
+    var outputFormat = item['Action'] === "Generate PDF" ? "PDF" : "DOC";
 
     try {
       if (mode === "SINGLE") {
-        var tempId = templateFile.makeCopy('Temp_' + item.index).getId();
+        var tempId = templateFile.makeCopy('Temp_' + item._rowNumber).getId();
         var tempDoc = DocumentApp.openById(tempId);
         var tempBody = tempDoc.getBody();
 
-        _DocsMerge_replacePlaceholders(tempBody, headers, item.row);
+        _DocsMerge_replacePlaceholders(tempBody, headers, item);
         tempDoc.saveAndClose();
 
         var masterOpened = DocumentApp.openById(masterDocId);
@@ -315,17 +301,17 @@ function DocsMerge_processRow(item, config, masterDocId, templateId, folderId, h
         masterOpened.saveAndClose();
         DriveApp.getFileById(tempId).setTrashed(true);
 
-        Logger.info(SyncEngine.getTool('DOCS_MERGE').TITLE, 'Row ' + (item.index + 2), "✅ Appended to Master");
-        sheet.getRange(item.index + 2, DOCS_MERGE_CFG.COLUMNS.ACTION + 1).setValue("");
+        Logger.info(SyncEngine.getTool('DOCS_MERGE').TITLE, 'Row ' + item._rowNumber, "✅ Appended to Master");
+        sheet.getRange(item._rowNumber, DOCS_MERGE_CFG.COLUMNS.ACTION + 1).setValue("");
 
-        return _App_ok("Row " + (item.index + 1) + " appended.");
+        return _App_ok("Row " + item._rowNumber + " appended.");
 
       } else {
         // INDIVIDUAL
-        var fileName = item.row[DOCS_MERGE_CFG.COLUMNS.DOC_NAME] || 'Document_' + (item.index + 1);
+        var fileName = item['Document Name'] || 'Document_' + item._rowNumber;
         var tempFile = templateFile.makeCopy(fileName);
         var tempDoc = DocumentApp.openById(tempFile.getId());
-        _DocsMerge_replacePlaceholders(tempDoc.getBody(), headers, item.row);
+        _DocsMerge_replacePlaceholders(tempDoc.getBody(), headers, item);
         tempDoc.saveAndClose();
 
         var finalUrl = "";
@@ -341,8 +327,8 @@ function DocsMerge_processRow(item, config, masterDocId, templateId, folderId, h
           finalUrl = tempFile.getUrl();
         }
 
-        Logger.info(SyncEngine.getTool('DOCS_MERGE').TITLE, 'Row ' + (item.index + 2), '✅ ' + outputFormat + ' Created');
-        sheet.getRange(item.index + 2, DOCS_MERGE_CFG.COLUMNS.ACTION + 1).setValue("");
+        Logger.info(SyncEngine.getTool('DOCS_MERGE').TITLE, 'Row ' + item._rowNumber, '✅ ' + outputFormat + ' Created');
+        sheet.getRange(item._rowNumber, DOCS_MERGE_CFG.COLUMNS.ACTION + 1).setValue("");
 
         // Insert rich text link
         var richText = SpreadsheetApp.newRichTextValue()
@@ -350,13 +336,13 @@ function DocsMerge_processRow(item, config, masterDocId, templateId, folderId, h
           .setLinkUrl(finalUrl)
           .build();
 
-        sheet.getRange(item.index + 2, linkColIndex).setRichTextValue(richText);
+        sheet.getRange(item._rowNumber, linkColIndex).setRichTextValue(richText);
 
-        return _App_ok("Created " + outputFormat + " for row " + (item.index + 1));
+        return _App_ok("Created " + outputFormat + " for row " + item._rowNumber);
       }
     } catch (e) {
-      Logger.error(SyncEngine.getTool('DOCS_MERGE').TITLE, 'Row ' + (item.index + 2), e);
-      return _App_fail("Error on row " + (item.index + 1) + ": " + e.message);
+      Logger.error(SyncEngine.getTool('DOCS_MERGE').TITLE, 'Row ' + item._rowNumber, e);
+      return _App_fail("Error on row " + item._rowNumber + ": " + e.message);
     }
   });
 }
@@ -367,8 +353,8 @@ function DocsMerge_finishExport(config, masterDocId, folderId, rowsProcessed) {
       var targetFolder = DriveApp.getFolderById(folderId);
       var sheet = SpreadsheetApp.getActiveSheet();
 
-      var firstAction = (rowsProcessed && rowsProcessed.length > 0) ? rowsProcessed[0].action : "Generate PDF";
-      var isPdf = (firstAction === "Generate PDF");
+      var firstItem = (rowsProcessed && rowsProcessed.length > 0) ? rowsProcessed[0] : null;
+      var isPdf = firstItem && firstItem['Action'] === "Generate PDF";
       var formatName = isPdf ? "PDF" : "Doc";
 
       var masterFile = DriveApp.getFileById(masterDocId);
@@ -393,8 +379,8 @@ function DocsMerge_finishExport(config, masterDocId, folderId, rowsProcessed) {
         .build();
 
       rowsProcessed.forEach(function (item) {
-        sheet.getRange(item.index + 2, linkColIndex).setRichTextValue(richText);
-        Logger.info(SyncEngine.getTool('DOCS_MERGE').TITLE, 'Row ' + (item.index + 2), "✅ Merged into Single " + formatName);
+        sheet.getRange(item._rowNumber, linkColIndex).setRichTextValue(richText);
+        Logger.info(SyncEngine.getTool('DOCS_MERGE').TITLE, 'Row ' + item._rowNumber, "✅ Merged into Single " + formatName);
       });
 
       return _App_ok("Successfully generated and linked Master " + formatName + ".");

@@ -39,6 +39,13 @@ If you are just editing or adding a feature (like Mail Merge, Tasks Sync, etc.),
 - **Core System Utilities:** `_App_UtilityName` (e.g., `_App_launchTool`).
 - **HTML Includes (Partials):** `ToolName_CSS.html` or `ToolName_JS.html`. Use `<?!= _App_include('ToolName_Type'); ?>` to include them.
 
+### 1a. UI Naming Standards (Uniformity)
+To maintain a professional and consistent user experience, the following strings MUST match exactly:
+- **`TITLE`** (in `SyncEngine.registerTool`): Must match `SHEET_NAMES[KEY]` exactly (including emoji).
+- **`MENU_LABEL`** (in `SyncEngine.registerTool`): Must match `SHEET_NAMES[KEY]` exactly (including emoji).
+- **`Blueprint.md` (Bold Tool Name)**: Must match `SHEET_NAMES[KEY]` but without the emoji.
+- **Sidebar Header (`.header-title`)**: Must match the base tool name (without emoji or suffixes like "Toolkit").
+
 ### 2. The SyncEngine Contract
 Every tool backend file must register itself with the engine at the very top of the script using `SyncEngine.registerTool(key, config)`. Do not hardcode columns inside backend logic; rely on the registry's `COL_SCHEMA`.
 

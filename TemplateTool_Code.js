@@ -52,28 +52,38 @@ function TemplateTool_openSidebar() {
 function TemplateTool_processAction(payload) {
     return Logger.run('TEMPLATE_TOOL', 'Process Action', function () {
         
-        // Example: access user properties
-        // var mySavedKey = _App_getProperty(APP_PROPS.SOME_KEY);
+        // 1. Fetch only pending actions (Optimized)
+        var pendingItems = SheetManager.readPendingObjects('TEMPLATE_TOOL');
 
-        // Try extracting spreadsheet data
-        var sheetObj = _App_ensureSheetExists('TEMPLATE_TOOL');
-        var dataRange = sheetObj.getDataRange();
-        var data = dataRange.getValues();
-
-        if (data.length <= 1) {
-            return { success: true, message: "No data to process." };
+        if (pendingItems.length === 0) {
+            return { success: true, message: "No pending actions to process." };
         }
 
-        // Example: External App call with exponential backoff
-        /*
-        _App_callWithBackoff(function() {
-            DriveApp.getFilesByName('some name');
+        // 2. Process in batches (handles timeouts and progress tracking)
+        var stats = _App_BatchProcessor('TEMPLATE_TOOL', pendingItems, function (item) {
+            // Perform logic for each row
+            // Access data via headers: item['Item Name']
+            
+            Logger.info('TEMPLATE_TOOL', 'Row ' + item._rowNumber, 'Processed ' + item['Item Name']);
+
+            // Return updates for this row
+            return { 
+                action: "", 
+                status: "✅ Done", 
+                _rowNumber: item._rowNumber 
+            };
+        }, {
+            onBatchComplete: function (batchResults) {
+                // Write back updates to the sheet efficiently
+                var rowNumbers = batchResults.map(r => r._rowNumber);
+                var patchData = batchResults.map(r => ({ 'Action': r.action, 'Status': r.status }));
+                SheetManager.batchPatchRows('TEMPLATE_TOOL', rowNumbers, patchData);
+            }
         });
-        */
 
         return { 
             success: true, 
-            message: "Successfully executed the template action!" 
+            message: "Successfully processed " + stats.processedCount + " items!" 
         };
     });
 }

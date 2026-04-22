@@ -35,16 +35,17 @@ Each tool has a Backend file, a Frontend sidebar file, and a global Entry Functi
 
 | Tool Name | Backend (`.js`) | Frontend (`.html`) | UI Menu Entry Function |
 |---|---|---|---|
-| **Calendar Sync** | `CalendarSync_Code.js` | `CalendarSync_Sidebar.html` | `CalendarSync_openSidebar` |
-| **Contacts Sync** | `ContactsSync_Code.js` | `ContactsSync_Sidebar.html` | `ContactsSync_openSidebar` |
+| **Google Calendar** | `CalendarSync_Code.js` | `CalendarSync_Sidebar.html` | `CalendarSync_openSidebar` |
+| **Google Contacts** | `ContactsSync_Code.js` | `ContactsSync_Sidebar.html` | `ContactsSync_openSidebar` |
 | **Mail Merge** | `MailMerge_Code.js` | `MailMerge_Sidebar.html` | `MailMerge_openSidebar` |
 | **Mail Sender** | `MailSender_Code.js` | `MailSender_Sidebar.html` | `MailSender_openSidebar` |
 | **Docs Merge** | `DocsMerge_Code.js` | `DocsMerge_Sidebar.html` | `DocsMerge_openSidebar` |
-| **Task Manager** | `TasksSync_Code.js` | `TasksSync_Sidebar.html` | `TasksSync_openSidebar` |
-| **Forms Sync** | `FormsSync_Code.js` | `FormsSync_Sidebar.html` | `FormsSync_openSidebar` |
-| **Bulk Folder** | `BulkFolderCreation_Code.js` | `BulkFolderCreation_Sidebar.html` | `BulkFolderCreation_openSidebar` |
-| **Drive Sync** | `DriveFileDetails_Code.js` | `DriveFileDetails_Sidebar.html` | `DriveFileDetails_openSidebar` |
-| **Pipeline Control** | `PipelineControl_Code.js` | `PipelineControl_Sidebar.html` | `PipelineControl_openSidebar` |
+| **Google Tasks** | `TasksSync_Code.js` | `TasksSync_Sidebar.html` | `TasksSync_openSidebar` |
+| **Google Forms** | `FormsSync_Code.js` | `FormsSync_Sidebar.html` | `FormsSync_openSidebar` |
+| **Bulk Folder Creation** | `BulkFolderCreation_Code.js` | `BulkFolderCreation_Sidebar.html` | `BulkFolderCreation_openSidebar` |
+| **Google Drive** | `DriveFileDetails_Code.js` | `DriveFileDetails_Sidebar.html` | `DriveFileDetails_openSidebar` |
+| **Pipeline** | `PipelineControl_Code.js` | `PipelineControl_Sidebar.html` | `PipelineControl_openSidebar` |
+| **Google Chat Spaces** | `ChatSpaceSync_Code.js` | `ChatSpaceSync_Sidebar.html` | `ChatSpaceSync_showSidebar` |
 | **Developer Log** | `Logger.js`, `SystemAudit.js`, `Logger_SidebarController.js` | `Logger_Sidebar.html` | `Logger_showSidebar` |
 | **Theme Editor** | (Inside `UI.js`) | `ThemeEditor_Sidebar.html` | `UI_openThemeDialog` |
 
@@ -59,16 +60,16 @@ Each tool relies on specific Google APIs. Do NOT use an API in a tool that doesn
 
 | Tool | Google APIs / Services | Advanced Service? |
 |---|---|---|
-| **Calendar Sync** | `CalendarApp`, `Calendar` (Advanced) | Yes — `Calendar API v3` |
-| **Contacts Sync** | `People` (Advanced) | Yes — `People API v1` |
+| **Google Calendar** | `CalendarApp`, `Calendar` (Advanced) | Yes — `Calendar API v3` |
+| **Google Contacts** | `People` (Advanced) | Yes — `People API v1` |
 | **Mail Merge** | `GmailApp`, `DocumentApp` | No |
 | **Mail Sender** | `GmailApp`, `MailApp` | No |
 | **Docs Merge** | `DocumentApp`, `DriveApp` | No |
-| **Task Manager** | `Tasks` (Advanced) | Yes — `Tasks API v1` |
-| **Forms Sync** | `FormApp`, `DriveApp` | No |
-| **Bulk Folder** | `DriveApp` | No |
+| **Google Tasks** | `Tasks` (Advanced) | Yes — `Tasks API v1` |
+| **Google Forms** | `FormApp`, `DriveApp` | No |
+| **Bulk Folder Creation** | `DriveApp` | No |
 | **Pipeline Sync** | `DriveApp`, `Drive` (Advanced) | Yes — `Drive API v3` |
-| **Pipeline Control** | `PropertiesService`, `SpreadsheetApp`, `ScriptApp` | No |
+| **Pipeline** | `PropertiesService`, `SpreadsheetApp`, `ScriptApp` | No |
 | **Developer Log** | `CacheService`, `Session`, `Utilities` | No |
 | **Theme Editor** | `PropertiesService` only | No |
 

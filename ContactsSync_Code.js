@@ -1,13 +1,13 @@
 /**
- * MASTER EDITION: Google Sheets <-> Google Contacts Sync
- * Version: 5.0 (Plugin Architecture — registers with SyncEngine)
+ * Google Contacts
+ * Version: 6.0 (Plugin Architecture — registers with SyncEngine)
  */
 
 SyncEngine.registerTool('CONTACTS_SYNC', {
     REQUIRED_SERVICES: [ { name: 'People API', test: function() { return typeof People !== 'undefined'; } } ],
     SHEET_NAME: SHEET_NAMES.CONTACTS_SYNC,
-    TITLE: '📇 Contacts Sync Master',
-    MENU_LABEL: '☎️ Google Contacts',
+    TITLE: SHEET_NAMES.CONTACTS_SYNC,
+    MENU_LABEL: SHEET_NAMES.CONTACTS_SYNC,
     MENU_ENTRYPOINT: 'ContactsSync_openSidebar',
     MENU_ORDER: 20,
     SIDEBAR_HTML: 'ContactsSync_Sidebar',
@@ -251,13 +251,6 @@ function ContactsSync_pushChanges() {
             throw new Error("⚠️ People API is not enabled. Go to Services -> Add 'People API'.");
         }
 
-        var sheet = _App_assertActiveSheet(SHEET_NAMES.CONTACTS_SYNC);
-
-        var dataRange = sheet.getDataRange();
-        var data = dataRange.getValues();
-        var headers = data[0];
-        var allRows = data.slice(1);
-
         var groupsResponse = People.ContactGroups.list();
         var allGroups = groupsResponse.contactGroups || [];
         var groupNameToId = {};
@@ -265,41 +258,34 @@ function ContactsSync_pushChanges() {
             groupNameToId[g.formattedName || g.name] = g.resourceName;
         });
 
-        var pendingRows = [];
-        allRows.forEach(function (row, idx) {
-            if (row[CONTACTS_SYNC_CFG.COLUMNS.ACTION]) {
-                pendingRows.push({ data: row, originalIndex: idx });
-            }
-        });
+        var pendingRows = SheetManager.readPendingObjects('CONTACTS_SYNC');
 
         if (pendingRows.length === 0) return "No pending actions found.";
 
         var stats = _App_BatchProcessor('CONTACTS_SYNC', pendingRows, function (item) {
-            var row = item.data;
-            var originalIdx = item.originalIndex;
             var rowUpdates = {
-                action: row[CONTACTS_SYNC_CFG.COLUMNS.ACTION],
-                contactId: row[CONTACTS_SYNC_CFG.COLUMNS.CONTACT_ID],
+                action: item['Action'],
+                contactId: item['Contact ID'],
                 status: "",
-                originalIndex: originalIdx
+                _rowNumber: item._rowNumber
             };
 
             try {
                 var action = rowUpdates.action.toString().toUpperCase();
                 var contactData = {
-                    firstName: row[CONTACTS_SYNC_CFG.COLUMNS.FIRST_NAME] !== "" ? String(row[CONTACTS_SYNC_CFG.COLUMNS.FIRST_NAME]) : "",
-                    lastName: row[CONTACTS_SYNC_CFG.COLUMNS.LAST_NAME] !== "" ? String(row[CONTACTS_SYNC_CFG.COLUMNS.LAST_NAME]) : "",
-                    email: row[CONTACTS_SYNC_CFG.COLUMNS.EMAIL] !== "" ? String(row[CONTACTS_SYNC_CFG.COLUMNS.EMAIL]) : "",
-                    phone: row[CONTACTS_SYNC_CFG.COLUMNS.PHONE] !== "" ? String(row[CONTACTS_SYNC_CFG.COLUMNS.PHONE]) : "",
-                    company: row[CONTACTS_SYNC_CFG.COLUMNS.COMPANY] !== "" ? String(row[CONTACTS_SYNC_CFG.COLUMNS.COMPANY]) : "",
-                    title: row[CONTACTS_SYNC_CFG.COLUMNS.JOB_TITLE] !== "" ? String(row[CONTACTS_SYNC_CFG.COLUMNS.JOB_TITLE]) : "",
-                    starred: row[CONTACTS_SYNC_CFG.COLUMNS.STARRED],
-                    street: row[CONTACTS_SYNC_CFG.COLUMNS.STREET] !== "" ? String(row[CONTACTS_SYNC_CFG.COLUMNS.STREET]) : "",
-                    city: row[CONTACTS_SYNC_CFG.COLUMNS.CITY] !== "" ? String(row[CONTACTS_SYNC_CFG.COLUMNS.CITY]) : "",
-                    state: row[CONTACTS_SYNC_CFG.COLUMNS.STATE] !== "" ? String(row[CONTACTS_SYNC_CFG.COLUMNS.STATE]) : "",
-                    zip: row[CONTACTS_SYNC_CFG.COLUMNS.ZIP] !== "" ? String(row[CONTACTS_SYNC_CFG.COLUMNS.ZIP]) : "",
-                    groupsStr: row[CONTACTS_SYNC_CFG.COLUMNS.GROUPS] !== "" ? String(row[CONTACTS_SYNC_CFG.COLUMNS.GROUPS]) : "",
-                    notes: row[CONTACTS_SYNC_CFG.COLUMNS.NOTES] !== "" ? String(row[CONTACTS_SYNC_CFG.COLUMNS.NOTES]) : ""
+                    firstName: item['First Name'] !== "" ? String(item['First Name']) : "",
+                    lastName: item['Last Name'] !== "" ? String(item['Last Name']) : "",
+                    email: item['Email'] !== "" ? String(item['Email']) : "",
+                    phone: item['Phone'] !== "" ? String(item['Phone']) : "",
+                    company: item['Company'] !== "" ? String(item['Company']) : "",
+                    title: item['Job Title'] !== "" ? String(item['Job Title']) : "",
+                    starred: item['Starred'],
+                    street: item['Street'] !== "" ? String(item['Street']) : "",
+                    city: item['City'] !== "" ? String(item['City']) : "",
+                    state: item['State'] !== "" ? String(item['State']) : "",
+                    zip: item['Zip'] !== "" ? String(item['Zip']) : "",
+                    groupsStr: item['Groups/Labels'] !== "" ? String(item['Groups/Labels']) : "",
+                    notes: item['Notes'] !== "" ? String(item['Notes']) : ""
                 };
 
                 if (contactData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactData.email)) {
@@ -392,12 +378,12 @@ function ContactsSync_pushChanges() {
                         rowUpdates.status = "❓ Unknown Action '" + action + "'";
                 }
                 
-                Logger.info(SyncEngine.getTool('CONTACTS_SYNC').TITLE, 'Row ' + (originalIdx + 2), rowUpdates.status);
+                Logger.info(SyncEngine.getTool('CONTACTS_SYNC').TITLE, 'Row ' + item._rowNumber, rowUpdates.status);
                 return rowUpdates;
 
             } catch (e) {
                 rowUpdates.status = "⚠️ " + e.message;
-                Logger.error(SyncEngine.getTool('CONTACTS_SYNC').TITLE, 'Row ' + (originalIdx + 2), e);
+                Logger.error(SyncEngine.getTool('CONTACTS_SYNC').TITLE, 'Row ' + item._rowNumber, e);
                 return rowUpdates;
             }
         }, {
@@ -405,8 +391,8 @@ function ContactsSync_pushChanges() {
                 var rowNumbers = [];
                 var updatesArr = [];
                 batchResults.forEach(function (res) {
-                    if (res && res.originalIndex !== undefined) {
-                        rowNumbers.push(res.originalIndex + 2);
+                    if (res && res._rowNumber !== undefined) {
+                        rowNumbers.push(res._rowNumber);
                         updatesArr.push({ 'Action': res.action, 'Contact ID': res.contactId });
                     }
                 });

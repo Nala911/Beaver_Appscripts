@@ -1,12 +1,12 @@
 /**
- * Mail Merge Toolkit
+ * Mail Merge
  * Version: 5.0 (Plugin Architecture — registers with SyncEngine)
  */
 
 SyncEngine.registerTool('MAIL_MERGE', {
     SHEET_NAME: SHEET_NAMES.MAIL_MERGE,
-    TITLE: '📧 Mail Merge Toolkit',
-    MENU_LABEL: '📧 Mail Merge System',
+    TITLE: SHEET_NAMES.MAIL_MERGE,
+    MENU_LABEL: SHEET_NAMES.MAIL_MERGE,
     MENU_ENTRYPOINT: 'MailMerge_openSidebar',
     MENU_ORDER: 30,
     SIDEBAR_HTML: 'MailMerge_Sidebar',
@@ -175,25 +175,10 @@ function _MailMerge_mergeEmails(existingStr, newStr) {
 
 function MailMerge_executeActions(draftId, startIndex) {
   return Logger.run('MAIL_MERGE', 'Execute Actions', function () {
-    var sheet = _App_assertActiveSheet(SHEET_NAMES.MAIL_MERGE);
-
     var start = startIndex || 0;
     var batchSize = 10; 
 
-    var dataRange = sheet.getDataRange();
-    var data = dataRange.getDisplayValues();
-
-    if (data.length < 2) return _App_ok("Sheet is empty.", { completed: true, message: "Sheet is empty." });
-
-    var headers = data[0];
-    var allRows = data.slice(1);
-
-    var pendingRows = [];
-    allRows.forEach(function (row, idx) {
-      if (row[MAILMERGE_CFG.COLUMNS.ACTION] === "SEND" || row[MAILMERGE_CFG.COLUMNS.ACTION] === "DRAFT") {
-        pendingRows.push({ data: row, originalIndex: idx });
-      }
-    });
+    var pendingRows = SheetManager.readPendingObjects('MAIL_MERGE', { useDisplayValues: true });
 
     if (pendingRows.length === 0) return _App_ok(start > 0 ? "Batch finished!" : "Nothing to do! No 'SEND' or 'DRAFT' actions pending.", { completed: true, message: start > 0 ? "Batch finished!" : "Nothing to do! No 'SEND' or 'DRAFT' actions pending." });
     if (start >= pendingRows.length) return _App_ok("Batch complete!", { completed: true, message: "Batch complete!" });
@@ -216,23 +201,21 @@ function MailMerge_executeActions(draftId, startIndex) {
     }
 
     var stats = _App_BatchProcessor('MAIL_MERGE', batchItems, function (item) {
-      var row = item.data;
-      var originalIdx = item.originalIndex;
       var rowUpdates = {
-        action: row[MAILMERGE_CFG.COLUMNS.ACTION],
+        action: item['Action'],
         status: "",
-        originalIndex: originalIdx
+        _rowNumber: item._rowNumber
       };
 
       var action = rowUpdates.action.toString().trim().toUpperCase();
       if (action !== "SEND" && action !== "DRAFT") return null;
 
       try {
-        var targetTo = row[MAILMERGE_CFG.COLUMNS.EMAIL_TO];
-        var targetCc = row[MAILMERGE_CFG.COLUMNS.CC];
-        var targetBcc = row[MAILMERGE_CFG.COLUMNS.BCC];
-        var targetThreadId = row[MAILMERGE_CFG.COLUMNS.THREAD_ID];
-        var targetAttachments = row[MAILMERGE_CFG.COLUMNS.ATTACHMENTS];
+        var targetTo = item['To'];
+        var targetCc = item['CC'];
+        var targetBcc = item['BCC'];
+        var targetThreadId = item['Thread ID or Subject'];
+        var targetAttachments = item['Attachments'];
 
         if (!targetTo && !targetThreadId) throw new Error("Missing Email To");
         if (targetTo && !_MailMerge_validateEmails(targetTo)) throw new Error("Invalid Email To address");
@@ -242,12 +225,15 @@ function MailMerge_executeActions(draftId, startIndex) {
         var emailBody = template.body;
         var emailSubject = template.subject;
 
+        // Headers for dynamic placeholders
+        var headers = SheetManager.getHeaders('MAIL_MERGE');
+
         for (var colIndex = 6; colIndex < headers.length; colIndex++) {
           var header = headers[colIndex];
           if (!header) continue;
           var safeHeader = _MailMerge_escapeRegExp(header);
           var placeholder = new RegExp('{{' + safeHeader + '}}', 'g');
-          var value = row[colIndex];
+          var value = item[header];
           var valStr = (value === undefined || value === null || value === "") ? "" : String(value);
           var bodyVal = valStr.replace(/\r?\n/g, '<br>');
 
@@ -371,12 +357,12 @@ function MailMerge_executeActions(draftId, startIndex) {
           }
         }
 
-        Logger.info(SyncEngine.getTool('MAIL_MERGE').TITLE, 'Row ' + (originalIdx + 2), rowUpdates.status);
+        Logger.info(SyncEngine.getTool('MAIL_MERGE').TITLE, 'Row ' + item._rowNumber, rowUpdates.status);
         return rowUpdates;
 
       } catch (e) {
         rowUpdates.status = e.message;
-        Logger.error(SyncEngine.getTool('MAIL_MERGE').TITLE, 'Row ' + (originalIdx + 2), e);
+        Logger.error(SyncEngine.getTool('MAIL_MERGE').TITLE, 'Row ' + item._rowNumber, e);
         return rowUpdates;
       }
     }, {
@@ -384,8 +370,8 @@ function MailMerge_executeActions(draftId, startIndex) {
         var rowNumbers = [];
         var updates = [];
         batchResults.forEach(function (res) {
-          if (res && res.originalIndex !== undefined) {
-            rowNumbers.push(res.originalIndex + 2);
+          if (res && res._rowNumber !== undefined) {
+            rowNumbers.push(res._rowNumber);
             updates.push({ 'Action': res.action, 'Status': res.status });
           }
         });

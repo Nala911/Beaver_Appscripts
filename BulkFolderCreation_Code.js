@@ -1,12 +1,12 @@
 /**
- * Bulk Drive Automator
+ * Bulk Folder Creation
  * Version: 5.0 (Plugin Architecture — registers with SyncEngine)
  */
 
 SyncEngine.registerTool('BULK_FOLDER', {
     SHEET_NAME: SHEET_NAMES.BULK_FOLDER,
-    TITLE: '📂 Bulk Drive Automator',
-    MENU_LABEL: '📂 Bulk Folder Creation',
+    TITLE: SHEET_NAMES.BULK_FOLDER,
+    MENU_LABEL: SHEET_NAMES.BULK_FOLDER,
     MENU_ENTRYPOINT: 'BulkFolderCreation_openSidebar',
     MENU_ORDER: 80,
     SIDEBAR_HTML: 'BulkFolderCreation_Sidebar',
@@ -121,55 +121,30 @@ function BulkFolderCreation_runBulkCreationSequence(targetFolderId) {
 
     try {
       _App_resetExecutionTimer();
-      var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-
-      var maxRows = sheet.getMaxRows();
-      if (maxRows < 2) return "No data rows found.";
-
-      var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-      var actionColIdx = headers.indexOf("Action");
-
-      if (actionColIdx === -1) {
-        throw new Error("Missing System Columns: 'Action'");
-      }
-
-      // Find all dynamic Level columns
-      var levelCols = [];
-      for (var i = 0; i < headers.length; i++) {
-        var headerName = String(headers[i] || "").trim().toLowerCase();
-        if (headerName.startsWith("level")) {
-          levelCols.push(i);
-        }
-      }
-
-      var dataRange = sheet.getDataRange();
-      var data = dataRange.getValues();
-      var pendingRows = [];
-
-      for (var i = 1; i < data.length; i++) {
-        if (data[i][actionColIdx] === "Create") {
-          pendingRows.push({ rowData: data[i], rowIndex: i + 1, originalIndex: i - 1 });
-        }
-      }
+      
+      var pendingRows = SheetManager.readPendingObjects('BULK_FOLDER');
 
       if (pendingRows.length === 0) {
         Logger.warn(SyncEngine.getTool('BULK_FOLDER').TITLE, 'Global', "No pending 'Create' actions found.");
         return "No pending 'Create' actions found.";
       }
 
+      var headers = SheetManager.getHeaders('BULK_FOLDER');
+      var levelCols = headers.filter(h => h.toLowerCase().startsWith('level'));
+
       // --- PRE-VALIDATION START ---
       var gapErrors = [];
       var emptyErrors = [];
       for (var k = 0; k < pendingRows.length; k++) {
         var item = pendingRows[k];
-        var rowNum = item.rowIndex;
+        var rowNum = item._rowNumber;
         var hasEmptyLevel = false;
         var hasDataAfterEmpty = false;
         var hasAnyData = false;
 
         for (var c = 0; c < levelCols.length; c++) {
-          var colIndex = levelCols[c];
-          var fName = String(item.rowData[colIndex] || "").trim();
+          var header = levelCols[c];
+          var fName = String(item[header] || "").trim();
 
           if (fName === "") {
             hasEmptyLevel = true;
@@ -205,11 +180,11 @@ function BulkFolderCreation_runBulkCreationSequence(targetFolderId) {
 
       var folderCache = {};
       var stats = _App_BatchProcessor('BULK_FOLDER', pendingRows, function (item) {
-        var rowNum = item.rowIndex;
+        var rowNum = item._rowNumber;
         var folderNames = [];
         for (var c = 0; c < levelCols.length; c++) {
-          var colIndex = levelCols[c];
-          var fName = String(item.rowData[colIndex] || "").trim();
+          var header = levelCols[c];
+          var fName = String(item[header] || "").trim();
           if (fName) {
             folderNames.push(fName.replace(/[\\/?*]/g, "_"));
           }
@@ -222,16 +197,21 @@ function BulkFolderCreation_runBulkCreationSequence(targetFolderId) {
         _BulkFolderCreation_createFolderPath(targetFolderId, folderNames, folderCache);
 
         Logger.success(SyncEngine.getTool('BULK_FOLDER').TITLE, 'Row ' + rowNum, '✅ Created: ' + folderNames.join('/'));
-        return { rowIndex: rowNum };
+        return { _rowNumber: rowNum };
 
       }, {
         onBatchComplete: function (results) {
+          var rowNumbers = [];
+          var updates = [];
           results.forEach(function (res) {
-            if (res && res.rowIndex) {
-              data[res.rowIndex - 1][actionColIdx] = "";
+            if (res && res._rowNumber) {
+              rowNumbers.push(res._rowNumber);
+              updates.push({ 'Action': '' });
             }
           });
-          dataRange.setValues(data);
+          if (rowNumbers.length > 0) {
+            SheetManager.batchPatchRows('BULK_FOLDER', rowNumbers, updates);
+          }
         }
       });
 

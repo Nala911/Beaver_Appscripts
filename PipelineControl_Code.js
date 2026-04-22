@@ -1,12 +1,12 @@
 /**
- * Pipeline Control Center
+ * Pipeline
  * Version: 4.0 (Plugin Architecture — registers with SyncEngine)
  */
 
 SyncEngine.registerTool('PIPELINE', {
     SHEET_NAME: SHEET_NAMES.PIPELINE,
-    TITLE: '⛓ Pipeline Control Center',
-    MENU_LABEL: '⛓  Control Center',
+    TITLE: '⛓ Pipeline',
+    MENU_LABEL: '⛓  Pipeline',
     MENU_ENTRYPOINT: 'PipelineControl_openSidebar',
     MENU_ORDER: 100,
     SIDEBAR_HTML: 'PipelineControl_Sidebar',
@@ -112,28 +112,21 @@ function PipelineControl_processPipelines() {
                 return;
             }
 
-            var sheet = SheetManager.getSheet('PIPELINE');
-            var dataRange = sheet.getDataRange();
-            var data = dataRange.getValues();
+            var pendingPipelines = SheetManager.readPendingObjects('PIPELINE', { actionColName: 'ON/OFF' });
 
-            var pendingPipelines = [];
-            for (var i = PIPELINE_NON_DATA_ROWS; i < data.length; i++) {
-                var row = data[i];
-                var statusVal = row[0];
-                var isEnabled = (String(statusVal).toLowerCase() === 'enabled') || (statusVal === true);
+            var activeScheduled = pendingPipelines.filter(function(p) {
+                return _PipelineControl_shouldRun(p);
+            });
 
-                if (isEnabled && _PipelineControl_shouldRun(row)) {
-                    pendingPipelines.push({ rowData: row, rowIndex: i + 1 });
-                }
-            }
-
-            if (pendingPipelines.length === 0) {
+            if (activeScheduled.length === 0) {
                 Logger.info('PIPELINE', 'Global', "No pipelines scheduled to run.");
                 return;
             }
 
-            _App_BatchProcessor('PIPELINE', pendingPipelines, function (item) {
-                _PipelineControl_runPipeline(sheet, item.rowIndex, item.rowData);
+            var sheet = SheetManager.getSheet('PIPELINE');
+
+            _App_BatchProcessor('PIPELINE', activeScheduled, function (item) {
+                _PipelineControl_runPipeline(sheet, item._rowNumber, item);
                 return { success: true };
             });
         });
@@ -143,24 +136,14 @@ function PipelineControl_processPipelines() {
 function PipelineControl_runAllPipelines() {
     return Logger.run('PIPELINE', 'Run All', function () {
         return _App_withDocumentLock('PIPELINE_RUN_ALL', function () {
-            var sheet = SheetManager.getSheet('PIPELINE');
-            var dataRange = sheet.getDataRange();
-            var data = dataRange.getValues();
-
-            var pendingPipelines = [];
-            for (var i = PIPELINE_NON_DATA_ROWS; i < data.length; i++) {
-                var row = data[i];
-                var statusVal = row[0];
-                var isEnabled = (String(statusVal).toLowerCase() === 'enabled') || (statusVal === true);
-                if (isEnabled) {
-                    pendingPipelines.push({ rowData: row, rowIndex: i + 1 });
-                }
-            }
+            var pendingPipelines = SheetManager.readPendingObjects('PIPELINE', { actionColName: 'ON/OFF' });
 
             if (pendingPipelines.length === 0) return _App_ok('No enabled pipelines to run.');
 
+            var sheet = SheetManager.getSheet('PIPELINE');
+
             var stats = _App_BatchProcessor('PIPELINE', pendingPipelines, function (item) {
-                _PipelineControl_runPipeline(sheet, item.rowIndex, item.rowData);
+                _PipelineControl_runPipeline(sheet, item._rowNumber, item);
                 return { success: true };
             });
 
@@ -171,9 +154,9 @@ function PipelineControl_runAllPipelines() {
     });
 }
 
-function _PipelineControl_shouldRun(row) {
-    var intervalStr = String(row[6]);
-    var lastRun = row[7];
+function _PipelineControl_shouldRun(item) {
+    var intervalStr = String(item['Sync Interval']);
+    var lastRun = item['Last Run Time'];
 
     if (intervalStr === "Manual Only") return false;
     if (!lastRun || lastRun === "") return true;
@@ -202,8 +185,7 @@ function PipelineControl_getPipelineDashboardData() {
         var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAMES.PIPELINE);
         if (!sheet) return null;
 
-        var dataRange = sheet.getDataRange();
-        var data = dataRange.getValues();
+        var dataObjects = SheetManager.readObjects('PIPELINE');
 
         var summary = {
             total: 0,
@@ -213,12 +195,11 @@ function PipelineControl_getPipelineDashboardData() {
         };
         var pipelines = [];
 
-        for (var i = PIPELINE_NON_DATA_ROWS; i < data.length; i++) {
-            var row = data[i];
-            var statusVal = row[0];
+        dataObjects.forEach(function (obj, idx) {
+            var statusVal = obj['ON/OFF'];
             var isEnabled = (String(statusVal).toLowerCase() === 'enabled') || (statusVal === true);
-            var name = row[1];
-            var lastRun = row[7];
+            var name = obj['Pipeline Name'];
+            var lastRun = obj['Last Run Time'];
 
             if (name) { 
                 summary.total++;
@@ -233,14 +214,14 @@ function PipelineControl_getPipelineDashboardData() {
                 }
 
                 pipelines.push({
-                    rowIndex: i + 1,
+                    rowIndex: idx + 2,
                     name: name,
                     isEnabled: isEnabled,
                     lastRun: formattedDate,
                     lastStatus: "Check Logs" 
                 });
             }
-        }
+        });
 
         return {
             summary: summary,
@@ -253,21 +234,26 @@ function PipelineControl_runSelectedPipelines(rowIndexes) {
     return Logger.run('PIPELINE', 'Run Selected', function () {
         return _App_withDocumentLock('PIPELINE_RUN_SELECTED', function () {
             var sheet = SheetManager.getSheet('PIPELINE');
-            var colCount = SyncEngine.getTool('PIPELINE').FORMAT_CONFIG.COL_SCHEMA.length;
+            var headers = SheetManager.getHeaders('PIPELINE');
             
             var items = rowIndexes.map(function(idx) {
                 return { rowIndex: idx };
             });
 
             var stats = _App_BatchProcessor('PIPELINE', items, function (item) {
-                var data = sheet.getRange(item.rowIndex, 1, 1, colCount).getValues()[0];
-                _PipelineControl_runPipeline(sheet, item.rowIndex, data);
+                var range = sheet.getRange(item.rowIndex, 1, 1, headers.length);
+                var rowArray = range.getValues()[0];
+                var rowObj = {};
+                for(var i=0; i<headers.length; i++) {
+                    rowObj[headers[i]] = rowArray[i];
+                }
+                _PipelineControl_runPipeline(sheet, item.rowIndex, rowObj);
 
-                var updatedData = sheet.getRange(item.rowIndex, 1, 1, colCount).getValues()[0];
+                var updatedLastRun = sheet.getRange(item.rowIndex, 8).getValue();
                 return {
                     rowIndex: item.rowIndex,
                     lastStatus: "Check Logs",
-                    lastRun: updatedData[7] ? updatedData[7].toString() : ""
+                    lastRun: updatedLastRun ? updatedLastRun.toString() : ""
                 };
             });
 
@@ -276,11 +262,11 @@ function PipelineControl_runSelectedPipelines(rowIndexes) {
     });
 }
 
-function _PipelineControl_runPipeline(sheet, rowIdx, rowData) {
+function _PipelineControl_runPipeline(sheet, rowIdx, rowObj) {
     var logMessage = "";
     var isSuccess = false;
     var errorObj = null;
-    var pipelineName = rowData[1];
+    var pipelineName = rowObj['Pipeline Name'];
 
     function getSheetFromUrl(url) {
         var match = url.match(/gid=([0-9]+)/);
@@ -296,25 +282,10 @@ function _PipelineControl_runPipeline(sheet, rowIdx, rowData) {
     }
 
     try {
-        var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-        var colMap = {};
-        for (var i = 0; i < headers.length; i++) {
-            if (headers[i]) colMap[headers[i].trim()] = i;
-        }
-
-        var sourceUrlIdx = colMap['Source URL'];
-        var sourceRangeIdx = colMap['Source Range'];
-        var destUrlIdx = colMap['Destination URL'];
-        var destCellIdx = colMap['Destination Cell'];
-
-        if (sourceUrlIdx === undefined || destUrlIdx === undefined || destCellIdx === undefined) {
-            throw new Error("Invalid sheet headers! Please click 'Format Active Sheet' in the sidebar.");
-        }
-
-        var sourceUrl = rowData[sourceUrlIdx];
-        var sourceRangeA1 = rowData[sourceRangeIdx];
-        var destUrl = rowData[destUrlIdx];
-        var destStartCell = rowData[destCellIdx];
+        var sourceUrl = rowObj['Source URL'];
+        var sourceRangeA1 = rowObj['Source Range'];
+        var destUrl = rowObj['Destination URL'];
+        var destStartCell = rowObj['Destination Cell'];
 
         if (!destStartCell || destStartCell.toString().trim() === "") {
             destStartCell = "A1";
@@ -416,6 +387,6 @@ function PipelineControl_formatControlCenter() {
         sheet.getRange("G:G").setBorder(null, true, null, null, null, null, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
         sheet.getRange("H:H").setBorder(null, true, null, null, null, null, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
 
-        return "Formatted Control Center with Dark Theme & Elegant Groups!";
+        return "Formatted Pipeline with Dark Theme & Elegant Groups!";
     });
 }
