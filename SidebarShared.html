@@ -114,10 +114,54 @@
       runner[methodName].apply(runner, args || []);
     }
 
+    /**
+     * Unified pattern: Check for something (e.g. missing labels), 
+     * confirm with user if found, then run the main task.
+     */
+    function confirmAndRun(checkMethod, checkArgs, runMethod, runArgs, options) {
+        var opts = options || {};
+        toggleLoading(true, opts.checkText || 'Validating...');
+        
+        run(checkMethod, checkArgs, {
+            context: opts.checkContext || 'Validation',
+            onSuccess: function(checkResult) {
+                var itemsToConfirm = Array.isArray(checkResult) ? checkResult : [];
+                if (itemsToConfirm.length > 0) {
+                    toggleLoading(false);
+                    var msg = (opts.confirmPrefix || "The following items will be created:\n\n") +
+                              itemsToConfirm.join('\n') +
+                              (opts.confirmSuffix || "\n\nDo you want to proceed?");
+                    if (!window.confirm(msg)) return;
+                    toggleLoading(true, opts.runText || 'Processing...');
+                } else {
+                    toggleLoading(true, opts.runText || 'Processing...');
+                }
+
+                run(runMethod, runArgs, {
+                    context: opts.runContext || 'Execution',
+                    onSuccess: function(res) {
+                        toggleLoading(false);
+                        if (typeof opts.onSuccess === 'function') opts.onSuccess(res);
+                        else if (res && res.message) showToast(res.message);
+                    },
+                    onError: function(err) {
+                        toggleLoading(false);
+                        if (typeof opts.onError === 'function') opts.onError(err);
+                    }
+                });
+            },
+            onError: function(err) {
+                toggleLoading(false);
+                if (typeof opts.onError === 'function') opts.onError(err);
+            }
+        });
+    }
+
     installGlobalErrorHandlers();
 
     return {
       run: run,
+      confirmAndRun: confirmAndRun,
       unwrap: unwrap,
       handleError: handleError,
       logClientError: logClientError,

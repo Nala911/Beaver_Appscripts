@@ -34,7 +34,22 @@ SyncEngine.registerTool('GMAIL_FILTERS', {
             { header: 'Action: Skip the Inbox (Archive it)', type: 'CHECKBOX' },
             { header: 'Action: Mark as read', type: 'CHECKBOX' },
             { header: 'Action: Star it', type: 'CHECKBOX' },
-            { header: 'Action: Labels', type: 'TEXT' },
+            {
+                header: 'Action: Labels', type: 'DROPDOWN', allowInvalid: true, options: function () {
+                    var labels = [];
+                    try {
+                        var response = _App_callWithBackoff(function () { return Gmail.Users.Labels.list('me'); });
+                        var systemLabelIds = ['INBOX', 'UNREAD', 'STARRED', 'TRASH', 'SPAM', 'IMPORTANT', 'CHAT', 'DRAFT', 'GREEN_CIRCLE', 'SENT', 'YELLOW_STAR'];
+                        (response.labels || []).forEach(function (l) {
+                            if (systemLabelIds.indexOf(l.id) === -1 && !l.id.startsWith('CATEGORY_')) {
+                                labels.push(l.name);
+                            }
+                        });
+                        labels.sort();
+                    } catch (e) { }
+                    return labels.length ? labels.slice(0, 499) : ['None'];
+                }
+            },
             { header: 'Action: Forward to', type: 'TEXT' },
             { header: 'Action: Delete it', type: 'CHECKBOX' },
             { header: 'Action: Never send it to Spam', type: 'CHECKBOX' },
@@ -190,6 +205,37 @@ function GmailFilters_processAction() {
         });
 
         return _App_ok("Processed " + stats.processedCount + " filters.");
+    });
+}
+
+/**
+ * Checks for labels in the pending rows that don't exist in Gmail.
+ * Used for pre-push confirmation in the sidebar.
+ */
+function GmailFilters_getMissingLabels() {
+    return Logger.run('GMAIL_FILTERS', 'Check Missing Labels', function () {
+        var pendingItems = SheetManager.readPendingObjects('GMAIL_FILTERS');
+        if (pendingItems.length === 0) return _App_ok('No pending actions.', []);
+
+        var labelsInSheet = [];
+        pendingItems.forEach(function (item) {
+            var action = (item['Action'] || '').toString().toUpperCase();
+            if (action === 'CREATE' || action === 'UPDATE') {
+                var label = item['Action: Labels'] ? item['Action: Labels'].trim() : '';
+                if (label && labelsInSheet.indexOf(label) === -1) {
+                    labelsInSheet.push(label);
+                }
+            }
+        });
+
+        if (labelsInSheet.length === 0) return _App_ok('No labels to check.', []);
+
+        var labelMap = _GmailFilters_getLabelMap();
+        var missing = labelsInSheet.filter(function (name) {
+            return !labelMap.nameToId[name];
+        });
+
+        return _App_ok('Missing labels identified.', missing);
     });
 }
 

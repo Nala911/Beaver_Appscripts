@@ -4,7 +4,7 @@
  */
 
 SyncEngine.registerTool('CONTACTS_SYNC', {
-    REQUIRED_SERVICES: [ { name: 'People API', test: function() { return typeof People !== 'undefined'; } } ],
+    REQUIRED_SERVICES: [{ name: 'People API', test: function () { return typeof People !== 'undefined'; } }],
     SHEET_NAME: SHEET_NAMES.CONTACTS_SYNC,
     TITLE: SHEET_NAMES.CONTACTS_SYNC,
     MENU_LABEL: SHEET_NAMES.CONTACTS_SYNC,
@@ -31,7 +31,25 @@ SyncEngine.registerTool('CONTACTS_SYNC', {
             { header: 'City', type: 'TEXT' },
             { header: 'State', type: 'TEXT' },
             { header: 'Zip', type: 'TEXT' },
-            { header: 'Groups/Labels', type: 'TEXT' },
+            {
+                header: 'Groups/Labels', type: 'DROPDOWN', allowInvalid: true, options: function () {
+                    var groups = [];
+                    try {
+                        var response = _App_callWithBackoff(function () {
+                            return People.ContactGroups.list({ pageSize: 1000 });
+                        });
+                        var excluded = ['Friends', 'Family', 'Coworkers', 'My Contacts', 'All Contacts', 'Chat contacts', 'Starred'];
+                        (response.contactGroups || []).forEach(function (g) {
+                            var name = g.formattedName || g.name;
+                            if (name && !excluded.includes(name)) {
+                                groups.push(name);
+                            }
+                        });
+                        groups.sort();
+                    } catch (e) { }
+                    return groups.length ? groups.slice(0, 499) : ['None'];
+                }
+            },
             { header: 'Notes', type: 'TEXT' },
             { header: 'Contact ID', type: 'ID', italic: true }
         ]
@@ -58,9 +76,9 @@ function _ContactsSync_ensureSheetExistsAndActivate() {
 
 /** Opens the Contacts sidebar and ensures the sheet exists. */
 function ContactsSync_openSidebar() {
-  return Logger.run('CONTACTS_SYNC', 'Open Sidebar', function () {
-    _App_launchTool('CONTACTS_SYNC');
-  });
+    return Logger.run('CONTACTS_SYNC', 'Open Sidebar', function () {
+        _App_launchTool('CONTACTS_SYNC');
+    });
 }
 
 
@@ -382,7 +400,7 @@ function ContactsSync_pushChanges() {
                     default:
                         rowUpdates.status = "❓ Unknown Action '" + action + "'";
                 }
-                
+
                 Logger.info(SyncEngine.getTool('CONTACTS_SYNC').TITLE, 'Row ' + item._rowNumber, rowUpdates.status);
                 return rowUpdates;
 
@@ -408,6 +426,43 @@ function ContactsSync_pushChanges() {
         });
 
         return _App_ok("Sync Complete. Processed: " + stats.processedCount);
+    });
+}
+
+/**
+ * Checks for groups in the pending rows that don't exist in Google Contacts.
+ * Used for pre-push confirmation in the sidebar.
+ */
+function ContactsSync_getMissingGroups() {
+    return Logger.run('CONTACTS_SYNC', 'Check Missing Groups', function () {
+        var pendingItems = SheetManager.readPendingObjects('CONTACTS_SYNC');
+        if (pendingItems.length === 0) return _App_ok('No pending actions.', []);
+
+        var groupsInSheet = [];
+        pendingItems.forEach(function (item) {
+            var action = (item['Action'] || '').toString().toUpperCase();
+            if (action === 'CREATE' || action === 'UPDATE') {
+                var groupsStr = item['Groups/Labels'] ? String(item['Groups/Labels']) : '';
+                if (groupsStr) {
+                    var split = groupsStr.split(',').map(function (s) { return s.trim(); }).filter(function (s) { return s; });
+                    split.forEach(function (g) {
+                        if (groupsInSheet.indexOf(g) === -1) groupsInSheet.push(g);
+                    });
+                }
+            }
+        });
+
+        if (groupsInSheet.length === 0) return _App_ok('No groups to check.', []);
+
+        var groupsResponse = People.ContactGroups.list();
+        var allGroups = groupsResponse.contactGroups || [];
+        var existingNames = allGroups.map(function (g) { return g.formattedName || g.name; });
+
+        var missing = groupsInSheet.filter(function (name) {
+            return existingNames.indexOf(name) === -1;
+        });
+
+        return _App_ok('Missing groups identified.', missing);
     });
 }
 
@@ -459,7 +514,7 @@ function _ContactsSync_setupSheetStructure(sheet) {
         .setHorizontalAlignment(SHEET_THEME.LAYOUT.HEADER_ALIGN_H);
 
     sheet.setFrozenRows(1);
-    
+
     // widths typically managed by APP_REGISTRY, here are fallbacks if needed
     _ContactsSync_applyDataValidationsInternal(sheet);
 }

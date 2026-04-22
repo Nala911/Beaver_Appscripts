@@ -388,16 +388,11 @@
         }
 
         function pushChanges() {
-            SyncSidebar.toggleLoading(true, 'Processing actions...');
-            SyncSidebar.run('GmailFilters_processAction', [], {
-                context: 'Push Actions',
-                onSuccess: function(res) {
-                    SyncSidebar.toggleLoading(false);
-                    SyncSidebar.showToast(res.message);
-                },
-                onError: function() {
-                    SyncSidebar.toggleLoading(false);
-                }
+            SyncSidebar.confirmAndRun('GmailFilters_getMissingLabels', [], 'GmailFilters_processAction', [], {
+                checkText: 'Checking labels...',
+                runText: 'Processing actions...',
+                confirmPrefix: 'The following new labels will be created in Gmail:\n\n',
+                runContext: 'Push Actions'
             });
         }
     </script>

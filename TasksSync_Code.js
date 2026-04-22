@@ -20,7 +20,19 @@ SyncEngine.registerTool('TASKS', {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [
             { header: 'Action', type: 'ACTION' },
-            { header: 'List Name', type: 'TEXT' },
+            {
+                header: 'List Name', type: 'DROPDOWN', allowInvalid: true, options: function () {
+                    var lists = [];
+                    try {
+                        var response = _App_callWithBackoff(function () { return Tasks.Tasklists.list(); });
+                        (response.items || []).forEach(function (l) {
+                            if (l.title) lists.push(l.title);
+                        });
+                        lists.sort();
+                    } catch (e) { }
+                    return lists.length ? lists.slice(0, 499) : ['My Tasks'];
+                }
+            },
             { header: 'Title', type: 'TEXT' },
             { header: 'Notes', type: 'TEXT' },
             { header: 'Due Date', type: 'DATE' },

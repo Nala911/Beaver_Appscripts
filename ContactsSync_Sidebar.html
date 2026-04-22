@@ -677,15 +677,15 @@
         }
 
         function pushData() {
-            toggleLoading(true, 'Pushing changes…');
-            SyncSidebar.run('ContactsSync_pushChanges', [], {
-                context: 'Push Changes',
-                onSuccess: res => {
-                    toggleLoading(false);
+            SyncSidebar.confirmAndRun('ContactsSync_getMissingGroups', [], 'ContactsSync_pushChanges', [], {
+                checkText: 'Checking groups...',
+                runText: 'Pushing changes...',
+                confirmPrefix: 'The following new contact groups will be created:\n\n',
+                runContext: 'Push Changes',
+                onSuccess: function (res) {
                     showToast(res.message, false);
                     refreshGroupsData();
-                },
-                onError: () => { toggleLoading(false); }
+                }
             });
         }
     </script>

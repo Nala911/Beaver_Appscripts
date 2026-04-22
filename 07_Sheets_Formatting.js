@@ -195,12 +195,11 @@ function _App_applyBodyFormatting(sheet, numDataRows, config) {
     }
 
     // Apply Schema-driven validations and formats
-    var validationRows = maxRows - 1;
     if (config.COL_SCHEMA) {
         config.COL_SCHEMA.forEach(function(colDef, index) {
             var colNum = index + 1;
             var range = sheet.getRange(startRow, colNum, actualRows, 1);
-            var valRange = sheet.getRange(startRow, colNum, validationRows, 1);
+            var valRange = range; // Standardize validation range to actualRows
             
             // Fonts
             if (colDef.type === 'ID' || colDef.type === 'URL') {
