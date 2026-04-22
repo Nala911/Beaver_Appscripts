@@ -7,17 +7,17 @@
 
 // --- TOOL REGISTRATION ---
 SyncEngine.registerTool('GMAIL_FILTERS', {
-    REQUIRED_SERVICES: [ { name: 'Gmail API', test: function() { return typeof Gmail !== 'undefined'; } } ],
-    SHEET_NAME: SHEET_NAMES.GMAIL_FILTERS, 
+    REQUIRED_SERVICES: [{ name: 'Gmail API', test: function () { return typeof Gmail !== 'undefined'; } }],
+    SHEET_NAME: SHEET_NAMES.GMAIL_FILTERS,
     TITLE: SHEET_NAMES.GMAIL_FILTERS,
     MENU_LABEL: SHEET_NAMES.GMAIL_FILTERS,
-    MENU_ENTRYPOINT: 'GmailFilters_openSidebar', 
-    MENU_ORDER: 30, 
+    MENU_ENTRYPOINT: 'GmailFilters_openSidebar',
+    MENU_ORDER: 30,
     SIDEBAR_HTML: 'GmailFilters_Sidebar',
     SIDEBAR_WIDTH: 320,
     FROZEN_ROWS: 1,
     FROZEN_COLS: 2,
-    COL_WIDTHS: [100, 150, 150, 150, 150, 150, 200, 200, 100, 200, 200, 200, 100, 100, 100],
+    COL_WIDTHS: [100, 150, 150, 150, 150, 150, 200, 200, 200, 200, 200, 200, 150, 150, 150],
     FORMAT_CONFIG: {
         numReadOnlyColsAtEnd: 0,
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
@@ -58,12 +58,12 @@ function GmailFilters_openSidebar() {
 function GmailFilters_pullFilters() {
     return Logger.run('GMAIL_FILTERS', 'Pull Filters', function () {
         var labels = _GmailFilters_getLabelMap();
-        var filtersResponse = _App_callWithBackoff(function() {
+        var filtersResponse = _App_callWithBackoff(function () {
             return Gmail.Users.Settings.Filters.list('me');
         });
 
         var filters = filtersResponse.filter || [];
-        var rows = filters.map(function(f) {
+        var rows = filters.map(function (f) {
             var criteria = f.criteria || {};
             var action = f.action || {};
 
@@ -115,9 +115,19 @@ function GmailFilters_processAction() {
             try {
                 if (actionType === 'DELETE' || actionType === 'UPDATE') {
                     if (!filterId) throw new Error("Missing Filter ID for " + actionType);
-                    _App_callWithBackoff(function() {
-                        Gmail.Users.Settings.Filters.remove('me', filterId);
-                    });
+                    try {
+                        _App_callWithBackoff(function () {
+                            Gmail.Users.Settings.Filters.remove('me', filterId);
+                        });
+                    } catch (e) {
+                        // Special handling for Apps Script quirk: DELETE/REMOVE often returns 204 (No Content)
+                        // which Apps Script occasionally misinterprets as an "Empty response" error.
+                        if (e.message && e.message.indexOf('Empty response') !== -1) {
+                            console.warn('Ignored "Empty response" for filter delete/update (likely success): ' + filterId);
+                        } else {
+                            throw e;
+                        }
+                    }
                     if (actionType === 'DELETE') {
                         return { action: "", status: "✅ Deleted", _rowNumber: item._rowNumber };
                     }
@@ -125,7 +135,7 @@ function GmailFilters_processAction() {
 
                 if (actionType === 'CREATE' || actionType === 'UPDATE') {
                     var filterResource = _GmailFilters_constructFilterResource(item, labelMap.nameToId);
-                    var createdFilter = _App_callWithBackoff(function() {
+                    var createdFilter = _App_callWithBackoff(function () {
                         return Gmail.Users.Settings.Filters.create(filterResource, 'me');
                     });
                     newFilterId = createdFilter.id;
@@ -137,11 +147,11 @@ function GmailFilters_processAction() {
                 return { action: actionType, status: "❌ " + e.message, _rowNumber: item._rowNumber };
             }
 
-            return { 
-                action: resultAction, 
-                status: resultStatus, 
+            return {
+                action: resultAction,
+                status: resultStatus,
                 'Filter ID': newFilterId,
-                _rowNumber: item._rowNumber 
+                _rowNumber: item._rowNumber
             };
         }, {
             onBatchComplete: function (batchResults) {
@@ -165,14 +175,14 @@ function GmailFilters_processAction() {
  * Fetches Gmail labels and creates mapping objects.
  */
 function _GmailFilters_getLabelMap() {
-    var response = _App_callWithBackoff(function() {
+    var response = _App_callWithBackoff(function () {
         return Gmail.Users.Labels.list('me');
     });
-    
+
     var nameToId = {};
     var idToName = {};
 
-    (response.labels || []).forEach(function(l) {
+    (response.labels || []).forEach(function (l) {
         nameToId[l.name] = l.id;
         idToName[l.id] = l.name;
     });
@@ -185,7 +195,7 @@ function _GmailFilters_getLabelMap() {
  */
 function _GmailFilters_resolveLabelIds(ids, idToName) {
     if (!ids || !Array.isArray(ids)) return '';
-    return ids.map(function(id) {
+    return ids.map(function (id) {
         return idToName[id] || id;
     }).join(', ');
 }
@@ -208,13 +218,13 @@ function _GmailFilters_constructFilterResource(item, nameToId) {
 
     // Process Labels
     if (item['Action: Add Labels']) {
-        item['Action: Add Labels'].split(',').forEach(function(n) {
+        item['Action: Add Labels'].split(',').forEach(function (n) {
             var id = nameToId[n.trim()];
             if (id) addLabelIds.push(id);
         });
     }
     if (item['Action: Remove Labels']) {
-        item['Action: Remove Labels'].split(',').forEach(function(n) {
+        item['Action: Remove Labels'].split(',').forEach(function (n) {
             var id = nameToId[n.trim()];
             if (id) removeLabelIds.push(id);
         });
