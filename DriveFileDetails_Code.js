@@ -412,9 +412,9 @@ function DriveFileDetails_pullFromDrive(targetFolderId, isShallow) {
           msg = "⚠️ Partial Pull: " + msg + " (Execution Time Limit Reached. Run again to continue)";
         }
         Logger.info(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'Pull Complete', msg);
-        return msg;
+        return _App_ok(msg);
       } else {
-        return "Target folder is empty.";
+        return _App_ok("Target folder is empty.");
       }
 
     } finally {

@@ -23,9 +23,10 @@ The system is split into two halves: the Core Engine and the Tool Modules. Agent
 
 **Core Engine Files (Do Not Modify for Feature Work):**
 - `00_Config_Constants.js` through `09_Engine_UI.js`
+- `01_SheetManager.js`
 - `UI.js`
 - `SidebarShared.html`
-- `Logger.js` and `SystemAudit.js`
+- `Logger.js`, `SystemAudit.js`, and `Logger_SidebarController.js`
 
 If you are just editing or adding a feature (like Mail Merge, Tasks Sync, etc.), stick entirely to your tool's `_Code.js` and `_Sidebar.html` files.
 
@@ -93,7 +94,7 @@ Before completing any task, mentally run this checklist. Do not proceed until yo
 - [ ] Did I use `_App_callWithBackoff` around any external Google API calls?
 - [ ] If I added a new setting, is it declared in `APP_PROPS` in `00_Config_Constants.js`?
 - [ ] If my tool processes rows, did I use `_App_BatchProcessor` and `SheetManager.batchPatchRows`?
-- [ ] Is my sidebar strictly including `<?!= include('SidebarShared'); ?>` to inherit standard WorkspaceSync UI libraries?
+- [ ] Is my sidebar strictly including `<?!= _App_include('SidebarShared'); ?>` to inherit standard WorkspaceSync UI libraries?
 
 ## 🚀 Adding a New Tool
 

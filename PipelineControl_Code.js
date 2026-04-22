@@ -5,8 +5,8 @@
 
 SyncEngine.registerTool('PIPELINE', {
     SHEET_NAME: SHEET_NAMES.PIPELINE,
-    TITLE: '⛓ Pipeline',
-    MENU_LABEL: '⛓  Pipeline',
+    TITLE: SHEET_NAMES.PIPELINE,
+    MENU_LABEL: SHEET_NAMES.PIPELINE,
     MENU_ENTRYPOINT: 'PipelineControl_openSidebar',
     MENU_ORDER: 100,
     SIDEBAR_HTML: 'PipelineControl_Sidebar',
@@ -62,7 +62,8 @@ function PipelineControl_openSidebar() {
 function PipelineControl_getSystemStatus() {
     return Logger.run('PIPELINE', 'Get Status', function () {
         var enabled = _App_getProperty(APP_PROPS.SYSTEM_ENABLED);
-        return enabled === null ? 'false' : enabled;
+        var status = enabled === null ? 'false' : enabled;
+        return _App_ok('System status retrieved.', status);
     });
 }
 
@@ -70,7 +71,7 @@ function PipelineControl_setSystemStatus(isEnabled) {
     return Logger.run('PIPELINE', 'Set Status', function () {
         _App_setProperty(APP_PROPS.SYSTEM_ENABLED, isEnabled.toString());
         _PipelineControl_manageTrigger(isEnabled);
-        return isEnabled;
+        return _App_ok('System status updated.', isEnabled);
     });
 }
 

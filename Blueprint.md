@@ -14,6 +14,7 @@ The project consists of `.js` (Google Apps Script server-side code) and `.html` 
 The system logic is split into sequential modules evaluated in order:
 - `00_Config_Constants.js`: Global registries, `SHEET_NAMES`, `APP_PROPS`, and enum structures.
 - `01_Config_Theme.js`: Default theme definitions, colors, and `SHEET_THEME` proxy.
+- `01_SheetManager.js`: Centralized data access object (DAO). Uses `SyncEngine` configurations to map sheet data to JavaScript objects and vice-versa.
 - `02_Config_Storage.js`: Unified properties service wrappers (`setAppProp`, `getAppProp`).
 - `03_Core_Utils.js`: Core utilities (`_App_throttle`, `_App_callWithBackoff`, `_App_setProgress`, etc.).
 - `04_Core_Validators.js`: Validation helpers for types and constraints.
@@ -24,7 +25,6 @@ The system logic is split into sequential modules evaluated in order:
 - `09_Engine_UI.js`: UI abstractions for opening sidebars and dialogs.
 - `UI.js`: The central UI orchestrator. Responsible for creating the custom "🦫 WorkspaceSync Tools" menu (`onOpen`), providing the global wrapper for the Theme Editor sidebar, and connecting user actions to the tools.
 - `SidebarShared.html`: Shared HTML, CSS, and JS components to eliminate redundant sidebar code and infinite spinners.
-- `01_SheetManager.js`: Centralized data access object (DAO). Uses `SyncEngine` configurations to map sheet data to JavaScript objects and vice-versa.
 - `Logger.js`: Unified logging system. Provides `Logger.info`, `Logger.error`, etc., using a buffered transporter architecture with `CacheService` and `LockService` for performant, concurrent-safe logging. Registers itself with `SyncEngine`.
 - `SystemAudit.js`: Runs comprehensive audits across all registered tools, verifying sheet integrity, API access, and schema setup, and generates AI debug output logs.
 - `Logger_SidebarController.js`: Backend controller for the Developer Log sidebar, handling client-to-server interactions like fetching logs and running system audits.
@@ -46,6 +46,7 @@ Each tool has a Backend file, a Frontend sidebar file, and a global Entry Functi
 | **Google Drive** | `DriveFileDetails_Code.js` | `DriveFileDetails_Sidebar.html` | `DriveFileDetails_openSidebar` |
 | **Pipeline** | `PipelineControl_Code.js` | `PipelineControl_Sidebar.html` | `PipelineControl_openSidebar` |
 | **Google Chat Spaces** | `ChatSpaceSync_Code.js` | `ChatSpaceSync_Sidebar.html` | `ChatSpaceSync_showSidebar` |
+| **Gmail Filters** | `GmailFilters_Code.js` | `GmailFilters_Sidebar.html` | `GmailFilters_openSidebar` |
 | **Developer Log** | `Logger.js`, `SystemAudit.js`, `Logger_SidebarController.js` | `Logger_Sidebar.html` | `Logger_showSidebar` |
 | **Theme Editor** | (Inside `UI.js`) | `ThemeEditor_Sidebar.html` | `UI_openThemeDialog` |
 
@@ -68,7 +69,9 @@ Each tool relies on specific Google APIs. Do NOT use an API in a tool that doesn
 | **Google Tasks** | `Tasks` (Advanced) | Yes — `Tasks API v1` |
 | **Google Forms** | `FormApp`, `DriveApp` | No |
 | **Bulk Folder Creation** | `DriveApp` | No |
-| **Pipeline Sync** | `DriveApp`, `Drive` (Advanced) | Yes — `Drive API v3` |
+| **Google Drive** | `DriveApp`, `Drive` (Advanced) | Yes — `Drive API v3` |
+| **Google Chat Spaces** | `Chat` (Advanced) | Yes — `Chat API v1` |
+| **Gmail Filters** | `Gmail` (Advanced) | Yes — `Gmail API v1` |
 | **Pipeline** | `PropertiesService`, `SpreadsheetApp`, `ScriptApp` | No |
 | **Developer Log** | `CacheService`, `Session`, `Utilities` | No |
 | **Theme Editor** | `PropertiesService` only | No |

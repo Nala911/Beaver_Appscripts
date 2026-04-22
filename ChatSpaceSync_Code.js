@@ -82,7 +82,10 @@ function ChatSpaceSync_getLoadData() {
 }
 
 function ChatSpaceSync_savePreferences(spaceIds) {
-  if (spaceIds) _App_setProperty(APP_PROPS.CHAT_SELECTED_SPACES, spaceIds);
+  return Logger.run('CHAT_SYNC', 'Save Preferences', function () {
+    if (spaceIds) _App_setProperty(APP_PROPS.CHAT_SELECTED_SPACES, spaceIds);
+    return _App_ok('Preferences saved.');
+  });
 }
 
 // --- THE "PULL" WORKFLOW ---
@@ -158,7 +161,9 @@ function ChatSpaceSync_pullMembers(request) {
 }
 
 function ChatSpaceSync_checkForUnsavedChanges() {
-  return SheetManager.hasPendingActions('CHAT_SYNC');
+  return Logger.run('CHAT_SYNC', 'Check Unsaved', function () {
+    return _App_ok('Check complete.', SheetManager.hasPendingActions('CHAT_SYNC'));
+  });
 }
 
 // --- THE "PUSH" WORKFLOW ---
@@ -167,7 +172,7 @@ function ChatSpaceSync_pushChanges() {
   return Logger.run('CHAT_SYNC', 'Push Changes', function () {
     var pendingItems = SheetManager.readPendingObjects('CHAT_SYNC');
 
-    if (pendingItems.length === 0) return "No pending actions found.";
+    if (pendingItems.length === 0) return _App_ok("No pending actions found.");
 
     Logger.info(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Global', 'Push started — processing ' + pendingItems.length + ' pending row(s)');
 

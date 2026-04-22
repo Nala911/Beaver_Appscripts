@@ -310,7 +310,7 @@ function _FormsSync_syncToForm() {
                 }
             });
 
-            return { success: true, message: "Sync Complete. Processed: " + stats.processedCount };
+            return _App_ok("Sync Complete. Processed: " + stats.processedCount);
         } catch (e) {
             throw e;
         }
@@ -459,11 +459,15 @@ function FormsSync_getForms() {
 }
 
 function FormsSync_pullForm(formInput) {
-    return _FormsSync_pullForm(formInput);
+    return Logger.run('FORMS_SYNC', 'Pull Form', function () {
+        return _FormsSync_pullForm(formInput);
+    });
 }
 
 function FormsSync_syncToForm() {
-    return _FormsSync_syncToForm();
+    return Logger.run('FORMS_SYNC', 'Sync to Form', function () {
+        return _FormsSync_syncToForm();
+    });
 }
 
 function FormsSync_getFormLinks() {

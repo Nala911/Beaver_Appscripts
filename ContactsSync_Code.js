@@ -101,7 +101,10 @@ function ContactsSync_getLoadData() {
 }
 
 function ContactsSync_savePreferences(groupIds) {
-    if (groupIds) _App_setProperty(APP_PROPS.CONTACTS_SELECTED_GROUPS, groupIds);
+    return Logger.run('CONTACTS_SYNC', 'Save Preferences', function () {
+        if (groupIds) _App_setProperty(APP_PROPS.CONTACTS_SELECTED_GROUPS, groupIds);
+        return _App_ok('Preferences saved.');
+    });
 }
 
 function _ContactsSync_getPrimary(array) {
@@ -242,7 +245,9 @@ function _ContactsSync_highlightDuplicates(sheet) {
 }
 
 function ContactsSync_checkForUnsavedChanges() {
-    return SheetManager.hasPendingActions('CONTACTS_SYNC');
+    return Logger.run('CONTACTS_SYNC', 'Check Unsaved', function () {
+        return _App_ok('Check complete.', SheetManager.hasPendingActions('CONTACTS_SYNC'));
+    });
 }
 
 function ContactsSync_pushChanges() {
@@ -260,7 +265,7 @@ function ContactsSync_pushChanges() {
 
         var pendingRows = SheetManager.readPendingObjects('CONTACTS_SYNC');
 
-        if (pendingRows.length === 0) return "No pending actions found.";
+        if (pendingRows.length === 0) return _App_ok("No pending actions found.");
 
         var stats = _App_BatchProcessor('CONTACTS_SYNC', pendingRows, function (item) {
             var rowUpdates = {
@@ -540,6 +545,6 @@ function ContactsSync_deleteContactGroup(resourceName) {
         _App_callWithBackoff(function () {
             People.ContactGroups.remove(resourceName, { deleteContacts: false });
         });
-        return true;
+        return _App_ok('Contact group deleted.');
     });
 }

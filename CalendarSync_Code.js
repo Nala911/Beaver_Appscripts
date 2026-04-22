@@ -96,9 +96,12 @@ function CalendarSync_getLoadData() {
 }
 
 function CalendarSync_savePreferences(calIds, startStr, endStr) {
-  if (calIds) _App_setProperty(APP_PROPS.CAL_SELECTED_IDS, calIds);
-  if (startStr !== undefined) _App_setProperty(APP_PROPS.CAL_START_DATE, startStr);
-  if (endStr !== undefined) _App_setProperty(APP_PROPS.CAL_END_DATE, endStr);
+  return Logger.run('CALENDAR_SYNC', 'Save Preferences', function () {
+    if (calIds) _App_setProperty(APP_PROPS.CAL_SELECTED_IDS, calIds);
+    if (startStr !== undefined) _App_setProperty(APP_PROPS.CAL_START_DATE, startStr);
+    if (endStr !== undefined) _App_setProperty(APP_PROPS.CAL_END_DATE, endStr);
+    return _App_ok('Preferences saved.');
+  });
 }
 
 // --- PART 2: THE "PULL" WORKFLOW ---
@@ -157,7 +160,9 @@ function CalendarSync_pullEvents(request) {
 }
 
 function CalendarSync_checkForUnsavedChanges() {
-  return SheetManager.hasPendingActions('CALENDAR_SYNC');
+  return Logger.run('CALENDAR_SYNC', 'Check Unsaved', function () {
+    return _App_ok('Check complete.', SheetManager.hasPendingActions('CALENDAR_SYNC'));
+  });
 }
 
 // --- PART 2: THE "PUSH" WORKFLOW ---
@@ -166,7 +171,7 @@ function CalendarSync_pushChanges() {
   return Logger.run('CALENDAR_SYNC', 'Push Changes', function () {
     var pendingItems = SheetManager.readPendingObjects('CALENDAR_SYNC');
 
-    if (pendingItems.length === 0) return "No pending actions found.";
+    if (pendingItems.length === 0) return _App_ok("No pending actions found.");
 
     Logger.info(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Global', 'Push started — processing ' + pendingItems.length + ' pending row(s)');
 

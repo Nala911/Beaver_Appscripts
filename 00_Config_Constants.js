@@ -15,6 +15,7 @@ var SHEET_NAMES = {
     DRIVE_SYNC: '💾 Google Drive',
     PIPELINE: '⛓  Pipeline',
     CHAT_SPACE_SYNC: '💬 Google Chat Spaces',
+    GMAIL_FILTERS: '🗂️ Gmail Filters',
     LOGS: '🛠️ Developer Log'
 };
 

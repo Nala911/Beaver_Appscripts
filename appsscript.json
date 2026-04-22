@@ -26,6 +26,11 @@
         "userSymbol": "Chat",
         "serviceId": "chat",
         "version": "v1"
+      },
+      {
+        "userSymbol": "Gmail",
+        "serviceId": "gmail",
+        "version": "v1"
       }
     ]
   },

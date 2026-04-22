@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <?!= _App_include('SidebarShared'); ?>
+
+    <style>
+        .tool-body {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding: 12px;
+        }
+
+        .action-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .action-card h3 {
+            margin-top: 0;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #3c4043;
+        }
+
+        .action-card p {
+            font-size: 12px;
+            color: #5f6368;
+            margin-bottom: 12px;
+        }
+
+        .btn-full {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar-header">
+        <div class="header-title">🗂️ Gmail Filters</div>
+        <div class="header-subtitle">Bulk Filter Management</div>
+    </div>
+
+    <div class="tool-body">
+        
+        <div class="action-card">
+            <h3>📥 Step 1: Pull Filters</h3>
+            <p>Fetch all existing filters from your Gmail account into this spreadsheet.</p>
+            <button onclick="pullFilters()" class="btn btn-secondary btn-full">
+                Pull from Gmail
+            </button>
+        </div>
+
+        <div class="action-card">
+            <h3>📤 Step 2: Push Changes</h3>
+            <p>Create, Update, or Delete filters based on the "Action" column in the sheet.</p>
+            <button onclick="pushChanges()" class="btn btn-primary btn-full">
+                Push to Gmail
+            </button>
+        </div>
+
+        <div class="section-description">
+            <p><strong>Instructions:</strong></p>
+            <ul style="font-size: 11px; color: #5f6368; padding-left: 20px;">
+                <li>Set <strong>Action</strong> to CREATE for new filters.</li>
+                <li>Set <strong>Action</strong> to UPDATE to modify existing ones.</li>
+                <li>Set <strong>Action</strong> to DELETE to remove them.</li>
+                <li>Label names are case-sensitive.</li>
+            </ul>
+        </div>
+
+    </div>
+
+    <div id="status-div"></div>
+
+    <script>
+        function pullFilters() {
+            uiUtils.showLoading('Fetching filters...');
+            google.script.run
+                .withSuccessHandler(function(response) {
+                    if (response && response.success) {
+                        uiUtils.showSuccess(response.message);
+                    } else {
+                        uiUtils.showError(response ? response.message : 'Pull failed.');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    uiUtils.showError(error.message);
+                })
+                .GmailFilters_pullFilters();
+        }
+
+        function pushChanges() {
+            uiUtils.showLoading('Processing actions...');
+            google.script.run
+                .withSuccessHandler(function(response) {
+                    if (response && response.success) {
+                        uiUtils.showSuccess(response.message);
+                    } else {
+                        uiUtils.showError(response ? response.message : 'Push failed.');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    uiUtils.showError(error.message);
+                })
+                .GmailFilters_processAction();
+        }
+    </script>
+</body>
+</html>

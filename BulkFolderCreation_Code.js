@@ -47,7 +47,7 @@ function BulkFolderCreation_openSidebar() {
 }
 
 /** Alias for menu compatibility. */
-function BulkFolderCreation_showSidebarbulkcreation() {
+function BulkFolderCreation_openSidebar_Compat() {
   BulkFolderCreation_openSidebar();
 }
 
@@ -111,7 +111,9 @@ function BulkFolderCreation_getDriveNavData(folderId) {
 // --- BATCH CREATION LOGIC ---
 
 function BulkFolderCreation_getProgress() {
-  return _App_getProgress('BULK_FOLDER');
+  return Logger.run('BULK_FOLDER', 'Get Progress', function () {
+    return _App_ok('Progress', _App_getProgress('BULK_FOLDER'));
+  });
 }
 
 function BulkFolderCreation_runBulkCreationSequence(targetFolderId) {
@@ -126,7 +128,7 @@ function BulkFolderCreation_runBulkCreationSequence(targetFolderId) {
 
       if (pendingRows.length === 0) {
         Logger.warn(SyncEngine.getTool('BULK_FOLDER').TITLE, 'Global', "No pending 'Create' actions found.");
-        return "No pending 'Create' actions found.";
+        return _App_ok("No pending 'Create' actions found.");
       }
 
       var headers = SheetManager.getHeaders('BULK_FOLDER');
@@ -174,7 +176,7 @@ function BulkFolderCreation_runBulkCreationSequence(targetFolderId) {
         }
         var fullError = "⚠️ Validation Error:\n" + errMsgs.join("\n");
         Logger.warn(SyncEngine.getTool('BULK_FOLDER').TITLE, 'Pre-Validation', fullError);
-        return fullError + "\nPlease fix and try again.";
+        return _App_fail(fullError + "\nPlease fix and try again.");
       }
       // --- PRE-VALIDATION END ---
 
@@ -219,7 +221,7 @@ function BulkFolderCreation_runBulkCreationSequence(targetFolderId) {
       if (stats.errorCount > 0) finalMsg += " (" + stats.errorCount + " errors)";
       if (stats.timeLimitReached) finalMsg = "⏳ Time limit reached. " + finalMsg;
 
-      return finalMsg;
+      return _App_ok(finalMsg);
 
     } finally {
       lock.releaseLock();
@@ -271,7 +273,7 @@ function _BulkFolderCreation_createFolderPath(baseFolderId, folderNamesArr, fold
 
 
 /** @deprecated — Use _App_ensureSheetExists('BULK_FOLDER') instead; it now handles setup. */
-function BulkFolder_setupSheet_bulkcreation(sheet) {
+function BulkFolderCreation_setupSheet(sheet) {
   if (!sheet) {
     return _App_ensureSheetExists('BULK_FOLDER');
   }

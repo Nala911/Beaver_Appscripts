@@ -56,7 +56,8 @@ function MailSender_openSidebar() {
 
 function MailSender_getQuota() {
   return Logger.run('MAIL_SENDER', 'Get Quota', function () {
-    return MailApp.getRemainingDailyQuota();
+    var quota = MailApp.getRemainingDailyQuota();
+    return _App_ok('Remaining quota: ' + quota, quota);
   });
 }
 
@@ -110,7 +111,7 @@ function MailSender_executeActions() {
   return Logger.run('MAIL_SENDER', 'Execute Actions', function () {
     var pendingRows = SheetManager.readPendingObjects('MAIL_SENDER', { useDisplayValues: true });
 
-    if (pendingRows.length === 0) return "Nothing to do! No 'SEND' or 'DRAFT' actions pending.";
+    if (pendingRows.length === 0) return _App_ok("Nothing to do! No 'SEND' or 'DRAFT' actions pending.");
 
     var stats = _App_BatchProcessor('MAIL_SENDER', pendingRows, function (item, index) {
       var rowUpdates = {
@@ -283,10 +284,12 @@ function MailSender_executeActions() {
 
     var finalResult = stats.processedCount + " actions processed!";
     Logger.info(SyncEngine.getTool('MAIL_SENDER').TITLE, "Execute Actions", finalResult);
-    return finalResult;
+    return _App_ok(finalResult);
   });
 }
 
 function MailSender_getProgress() {
-  return _App_getProgress('MAIL_SENDER');
+  return Logger.run('MAIL_SENDER', 'Get Progress', function () {
+    return _App_ok('Progress', _App_getProgress('MAIL_SENDER'));
+  });
 }
