@@ -48,7 +48,7 @@ To maintain a professional and consistent user experience, the following strings
 - **Sidebar Header (`.header-title`)**: Must match the base tool name (without emoji or suffixes like "Toolkit").
 
 ### 2. The SyncEngine Contract
-Every tool backend file must register itself with the engine at the very top of the script using `SyncEngine.registerTool(key, config)`. Do not hardcode columns inside backend logic; rely on the registry's `COL_SCHEMA`.
+Every tool backend file must register itself with the engine at the very top of the script using `SyncEngine.registerTool(key, config)`. Do not hardcode columns inside backend logic; rely on the registry's `FORMAT_CONFIG.COL_SCHEMA`.
 
 ### 3. The Logger.run Contract
 Every public function called from a sidebar or the Ribbon UI must use the `Logger.run` execution wrapper to ensure errors are caught and recorded. DO NOT manually try/catch to write error strings into cells. 

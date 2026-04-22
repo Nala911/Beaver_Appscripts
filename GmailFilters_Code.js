@@ -81,7 +81,7 @@ function GmailFilters_pullFilters() {
             return Gmail.Users.Settings.Filters.list('me');
         });
 
-        var filters = filtersResponse.filter || [];
+        var filters = (filtersResponse && filtersResponse.filter) || [];
         var rows = filters.map(function (f) {
             var criteria = f.criteria || {};
             var action = f.action || {};

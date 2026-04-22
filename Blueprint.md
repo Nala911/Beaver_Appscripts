@@ -105,7 +105,7 @@ The codebase follows a strict and predictable design pattern across all tools:
 The project uses a decentralized registration pattern to manage tools.
 - **`SyncEngine`**: A singleton in `08_Engine_Core.js` that handles tool registration (`registerTool`) and retrieval (`getTool`).
 - **Self-Registration**: Each tool module registers its own configuration block at the top of its file.
-- **Registry Metadata**: Configuration includes `SHEET_NAME`, `TITLE`, `SIDEBAR_HTML`, `COL_WIDTHS`, and a `COL_SCHEMA` for declarative column validations and types.
+- **Registry Metadata**: Configuration includes `REQUIRED_SERVICES`, `SHEET_NAME`, `TITLE`, `MENU_LABEL`, `MENU_ENTRYPOINT`, `MENU_ORDER`, `SIDEBAR_HTML`, `SIDEBAR_WIDTH`, `FROZEN_ROWS`, `FROZEN_COLS`, `COL_WIDTHS`, and a `FORMAT_CONFIG` object (containing `numReadOnlyColsAtEnd`, `conditionalRules`, and `COL_SCHEMA` for declarative column validations and types).
 
 ### 2. Unified Utilities (`_App_`)
 Core logic is abstracted into `_App_` prefixed functions spread across `03_Core_Utils.js` to `09_Engine_UI.js`.
