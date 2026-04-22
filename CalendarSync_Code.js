@@ -26,7 +26,7 @@ SyncEngine.registerTool('CALENDAR_SYNC', {
             { header: 'End Time', type: 'TEXT' },
             { header: 'Description', type: 'TEXT' },
             { header: 'Location', type: 'TEXT' },
-            { header: 'Add Meet?', type: 'DROPDOWN', options: ['Yes', 'No'] },
+            { header: 'Add Meet?', type: 'CHECKBOX' },
             { header: 'Guests', type: 'EMAIL_LIST' },
             { header: 'Color', type: 'DROPDOWN', options: function() { try { return ['Default'].concat(Object.keys(CalendarApp.EventColor)); } catch(e){ return ['Default']; } } },
             { header: 'Visibility', type: 'DROPDOWN', options: ['Default', 'Public', 'Private'] },
@@ -133,7 +133,7 @@ function CalendarSync_pullEvents(request) {
             'End Time': Utilities.formatDate(e.getEndTime(), Session.getScriptTimeZone(), "MM/dd/yyyy HH:mm:ss"),
             'Description': e.getDescription(),
             'Location': e.getLocation(),
-            'Add Meet?': "",
+            'Add Meet?': false,
             'Guests': e.getGuestList().map(function (g) { return g.getEmail(); }).join(","),
             'Color': "Default",
             'Visibility': "Default",
@@ -238,7 +238,7 @@ function CalendarSync_pushChanges() {
             });
 
             var optionErr = _CalendarSync_applyEventOptions(newEvent, eventData);
-            if (eventData.meet === 'Yes') {
+            if (eventData.meet === true || eventData.meet === 'TRUE') {
               try { _CalendarSync_addMeetLinkToEvent(targetCalId, newEvent.getId()); }
               catch (meetErr) { optionErr = optionErr ? optionErr + ", Meet: " + meetErr.message : "Meet: " + meetErr.message; }
             }
@@ -270,7 +270,7 @@ function CalendarSync_pushChanges() {
             });
 
             var updateOptionErr = _CalendarSync_applyEventOptions(eventToUpdate, eventData);
-            if (eventData.meet === 'Yes') {
+            if (eventData.meet === true || eventData.meet === 'TRUE') {
               try { _CalendarSync_addMeetLinkToEvent(rowUpdates.calId || eventToUpdate.getOriginalCalendarId(), rowUpdates.eventId); }
               catch (meetErr) { updateOptionErr = updateOptionErr ? updateOptionErr + ", Meet: " + meetErr.message : "Meet: " + meetErr.message; }
             }
@@ -369,7 +369,7 @@ function _CalendarSync_processMove(rowUpdates, calObjMap, targetCalId, eventData
   _CalendarSync_applyEventOptions(newEvent, eventData);
 
   var meetWarning = "";
-  if (eventData.meet === 'Yes') {
+  if (eventData.meet === true || eventData.meet === 'TRUE') {
     try { _CalendarSync_addMeetLinkToEvent(targetCalId, newEvent.getId()); }
     catch (meetErr) { meetWarning = " (⚠️ Meet: " + meetErr.message + ")"; }
   }

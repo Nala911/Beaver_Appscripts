@@ -26,7 +26,7 @@ SyncEngine.registerTool('CONTACTS_SYNC', {
             { header: 'Phone', type: 'TEXT' },
             { header: 'Company', type: 'TEXT' },
             { header: 'Job Title', type: 'TEXT' },
-            { header: 'Starred', type: 'DROPDOWN', options: ['Yes', 'No'] },
+            { header: 'Starred', type: 'CHECKBOX' },
             { header: 'Street', type: 'TEXT' },
             { header: 'City', type: 'TEXT' },
             { header: 'State', type: 'TEXT' },
@@ -181,7 +181,7 @@ function ContactsSync_pullContacts(request) {
 
                     var notes = person.biographies && person.biographies.length > 0 ? (person.biographies[0].value || "") : "";
 
-                    var isStarred = pGroups.includes('contactGroups/starred') ? "Yes" : "No";
+                    var isStarred = pGroups.includes('contactGroups/starred');
 
                     var street = "", city = "", state = "", zip = "";
                     if (person.addresses && person.addresses.length > 0) {
@@ -323,7 +323,7 @@ function ContactsSync_pushChanges() {
                         var createdPerson = People.People.createContact(person);
                         rowUpdates.contactId = createdPerson.resourceName;
                         if (contactData.groupsStr) _ContactsSync_applyGroups(createdPerson.resourceName, contactData.groupsStr, groupNameToId);
-                        if (contactData.starred === "Yes") {
+                        if (contactData.starred === true || contactData.starred === 'TRUE') {
                             People.ContactGroups.Members.modify({ resourceNamesToAdd: [createdPerson.resourceName] }, 'contactGroups/starred');
                         }
                         rowUpdates.status = "✅ Created";
@@ -365,7 +365,7 @@ function ContactsSync_pushChanges() {
 
                         People.People.updateContact(person, rowUpdates.contactId, { updatePersonFields: 'names,emailAddresses,phoneNumbers,organizations,biographies,addresses' });
                         if (contactData.groupsStr) _ContactsSync_applyGroups(rowUpdates.contactId, contactData.groupsStr, groupNameToId);
-                        if (contactData.starred === "Yes") {
+                        if (contactData.starred === true || contactData.starred === 'TRUE') {
                             try { People.ContactGroups.Members.modify({ resourceNamesToAdd: [rowUpdates.contactId] }, 'contactGroups/starred'); } catch (e) { }
                         }
                         rowUpdates.status = "✅ Updated";
@@ -470,9 +470,6 @@ function _ContactsSync_applyDataValidationsInternal(sheet) {
 
     var ruleAction = SpreadsheetApp.newDataValidation().requireValueInList(["CREATE", "UPDATE", "REMOVE"], true).build();
     sheet.getRange(2, CONTACTS_SYNC_CFG.COLUMNS.ACTION + 1, maxRows - 1).setDataValidation(ruleAction);
-
-    var ruleStarred = SpreadsheetApp.newDataValidation().requireValueInList(["Yes", "No"], true).build();
-    sheet.getRange(2, CONTACTS_SYNC_CFG.COLUMNS.STARRED + 1, maxRows - 1).setDataValidation(ruleStarred);
 }
 
 function ContactsSync_modifyGroupInActiveRow(groupName, action) {

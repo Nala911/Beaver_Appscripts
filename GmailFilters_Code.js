@@ -17,7 +17,7 @@ SyncEngine.registerTool('GMAIL_FILTERS', {
     SIDEBAR_WIDTH: 320,
     FROZEN_ROWS: 1,
     FROZEN_COLS: 2,
-    COL_WIDTHS: [100, 150, 150, 150, 150, 150, 200, 200, 200, 200, 200, 200, 150, 150, 150],
+    COL_WIDTHS: [150, 150, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200],
     FORMAT_CONFIG: {
         numReadOnlyColsAtEnd: 0,
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
@@ -30,13 +30,17 @@ SyncEngine.registerTool('GMAIL_FILTERS', {
             { header: 'Criteria: Subject', type: 'TEXT' },
             { header: 'Criteria: Includes Words', type: 'TEXT' },
             { header: 'Criteria: Excludes Words', type: 'TEXT' },
-            { header: 'Criteria: Has Attachment', type: 'BOOLEAN' },
-            { header: 'Action: Add Labels', type: 'TEXT' },
-            { header: 'Action: Remove Labels', type: 'TEXT' },
-            { header: 'Action: Forward To', type: 'TEXT' },
-            { header: 'Action: Mark Read', type: 'BOOLEAN' },
-            { header: 'Action: Mark Important', type: 'BOOLEAN' },
-            { header: 'Action: Delete', type: 'BOOLEAN' }
+            { header: 'Criteria: Has Attachment', type: 'CHECKBOX' },
+            { header: 'Action: Skip the Inbox (Archive it)', type: 'CHECKBOX' },
+            { header: 'Action: Mark as read', type: 'CHECKBOX' },
+            { header: 'Action: Star it', type: 'CHECKBOX' },
+            { header: 'Action: Labels', type: 'TEXT' },
+            { header: 'Action: Forward to', type: 'TEXT' },
+            { header: 'Action: Delete it', type: 'CHECKBOX' },
+            { header: 'Action: Never send it to Spam', type: 'CHECKBOX' },
+            { header: 'Action: Always mark it as important', type: 'CHECKBOX' },
+            { header: 'Action: Never mark it as important', type: 'CHECKBOX' },
+            { header: 'Action: Also apply filter to previous mails', type: 'CHECKBOX' }
         ]
     }
 });
@@ -66,6 +70,15 @@ function GmailFilters_pullFilters() {
         var rows = filters.map(function (f) {
             var criteria = f.criteria || {};
             var action = f.action || {};
+            var addLabelIds = action.addLabelIds || [];
+            var removeLabelIds = action.removeLabelIds || [];
+
+            // Filter out system labels for the "Labels" column (Take only the first custom label)
+            var systemLabelIds = ['INBOX', 'UNREAD', 'STARRED', 'TRASH', 'SPAM', 'IMPORTANT'];
+            var userLabelIds = addLabelIds.filter(function (id) {
+                return systemLabelIds.indexOf(id) === -1 && !id.startsWith('CATEGORY_');
+            });
+            var singleLabelId = userLabelIds.length > 0 ? userLabelIds[0] : null;
 
             return {
                 'Action': '',
@@ -77,12 +90,16 @@ function GmailFilters_pullFilters() {
                 'Criteria: Includes Words': criteria.query || '',
                 'Criteria: Excludes Words': criteria.negatedQuery || '',
                 'Criteria: Has Attachment': !!criteria.hasAttachment,
-                'Action: Add Labels': _GmailFilters_resolveLabelIds(action.addLabelIds, labels.idToName),
-                'Action: Remove Labels': _GmailFilters_resolveLabelIds(action.removeLabelIds, labels.idToName),
-                'Action: Forward To': action.forward || '',
-                'Action: Mark Read': action.removeLabelIds && action.removeLabelIds.indexOf('UNREAD') !== -1,
-                'Action: Mark Important': action.addLabelIds && action.addLabelIds.indexOf('IMPORTANT') !== -1,
-                'Action: Delete': action.addLabelIds && action.addLabelIds.indexOf('TRASH') !== -1
+                'Action: Skip the Inbox (Archive it)': removeLabelIds.indexOf('INBOX') !== -1,
+                'Action: Mark as read': removeLabelIds.indexOf('UNREAD') !== -1,
+                'Action: Star it': addLabelIds.indexOf('STARRED') !== -1,
+                'Action: Labels': singleLabelId ? labels.idToName[singleLabelId] || singleLabelId : '',
+                'Action: Forward to': action.forward || '',
+                'Action: Delete it': addLabelIds.indexOf('TRASH') !== -1,
+                'Action: Never send it to Spam': removeLabelIds.indexOf('SPAM') !== -1,
+                'Action: Always mark it as important': addLabelIds.indexOf('IMPORTANT') !== -1,
+                'Action: Never mark it as important': removeLabelIds.indexOf('IMPORTANT') !== -1,
+                'Action: Also apply filter to previous mails': false
             };
         });
 
@@ -140,6 +157,13 @@ function GmailFilters_processAction() {
                     });
                     newFilterId = createdFilter.id;
                     resultStatus = (actionType === 'UPDATE') ? "✅ Updated" : "✅ Created";
+
+                    // Handle retroactive application
+                    if (item['Action: Also apply filter to previous mails']) {
+                        var searchQuery = _GmailFilters_buildSearchQuery(filterResource.criteria);
+                        _GmailFilters_applyToExistingMessages(searchQuery, filterResource.action.addLabelIds || [], filterResource.action.removeLabelIds || []);
+                        resultStatus += " (+ Applied to existing)";
+                    }
                 }
 
             } catch (e) {
@@ -216,34 +240,73 @@ function _GmailFilters_constructFilterResource(item, nameToId) {
     var addLabelIds = [];
     var removeLabelIds = [];
 
-    // Process Labels
-    if (item['Action: Add Labels']) {
-        item['Action: Add Labels'].split(',').forEach(function (n) {
-            var id = nameToId[n.trim()];
-            if (id) addLabelIds.push(id);
-        });
-    }
-    if (item['Action: Remove Labels']) {
-        item['Action: Remove Labels'].split(',').forEach(function (n) {
-            var id = nameToId[n.trim()];
-            if (id) removeLabelIds.push(id);
-        });
+    // Process Boolean Flags -> addLabelIds
+    if (item['Action: Star it']) addLabelIds.push('STARRED');
+    if (item['Action: Delete it']) addLabelIds.push('TRASH');
+    if (item['Action: Always mark it as important']) addLabelIds.push('IMPORTANT');
+
+    // Process Boolean Flags -> removeLabelIds
+    if (item['Action: Skip the Inbox (Archive it)']) removeLabelIds.push('INBOX');
+    if (item['Action: Mark as read']) removeLabelIds.push('UNREAD');
+    if (item['Action: Never send it to Spam']) removeLabelIds.push('SPAM');
+    if (item['Action: Never mark it as important']) removeLabelIds.push('IMPORTANT');
+
+    // Process Label with Auto-Creation (Treat as single label)
+    if (item['Action: Labels']) {
+        var labelName = item['Action: Labels'].trim();
+        if (labelName) {
+            var id = nameToId[labelName];
+            if (!id) {
+                // Auto-create missing label
+                var newLabel = _App_callWithBackoff(function () {
+                    return Gmail.Users.Labels.create({ name: labelName }, 'me');
+                });
+                id = newLabel.id;
+                nameToId[labelName] = id; // Update map for subsequent rows in same batch
+            }
+            if (addLabelIds.indexOf(id) === -1) addLabelIds.push(id);
+        }
     }
 
-    // Process Boolean Flags
-    if (item['Action: Mark Read']) {
-        if (removeLabelIds.indexOf('UNREAD') === -1) removeLabelIds.push('UNREAD');
-    }
-    if (item['Action: Mark Important']) {
-        if (addLabelIds.indexOf('IMPORTANT') === -1) addLabelIds.push('IMPORTANT');
-    }
-    if (item['Action: Delete']) {
-        if (addLabelIds.indexOf('TRASH') === -1) addLabelIds.push('TRASH');
-    }
-
-    if (item['Action: Forward To']) action.forward = item['Action: Forward To'];
+    if (item['Action: Forward to']) action.forward = item['Action: Forward to'];
     if (addLabelIds.length > 0) action.addLabelIds = addLabelIds;
     if (removeLabelIds.length > 0) action.removeLabelIds = removeLabelIds;
 
     return { criteria: criteria, action: action };
+}
+
+/**
+ * Builds a Gmail search query string from filter criteria.
+ */
+function _GmailFilters_buildSearchQuery(criteria) {
+    var queryParts = [];
+    if (criteria.from) queryParts.push('from:(' + criteria.from + ')');
+    if (criteria.to) queryParts.push('to:(' + criteria.to + ')');
+    if (criteria.subject) queryParts.push('subject:(' + criteria.subject + ')');
+    if (criteria.query) queryParts.push(criteria.query);
+    if (criteria.negatedQuery) queryParts.push('-(' + criteria.negatedQuery + ')');
+    if (criteria.hasAttachment) queryParts.push('has:attachment');
+    return queryParts.join(' ').trim();
+}
+
+/**
+ * Applies labels to up to 1000 existing messages matching the query.
+ */
+function _GmailFilters_applyToExistingMessages(query, addLabelIds, removeLabelIds) {
+    if (!query) return;
+
+    var response = _App_callWithBackoff(function () {
+        return Gmail.Users.Messages.list('me', { q: query, maxResults: 1000 });
+    });
+
+    if (response.messages && response.messages.length > 0) {
+        var messageIds = response.messages.map(function (m) { return m.id; });
+        _App_callWithBackoff(function () {
+            Gmail.Users.Messages.batchModify({
+                ids: messageIds,
+                addLabelIds: addLabelIds.length > 0 ? addLabelIds : undefined,
+                removeLabelIds: removeLabelIds.length > 0 ? removeLabelIds : undefined
+            }, 'me');
+        });
+    }
 }
