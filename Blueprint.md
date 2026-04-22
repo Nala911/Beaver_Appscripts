@@ -45,9 +45,9 @@ Each tool has a Backend file, a Frontend sidebar file, and a global Entry Functi
 | **Bulk Folder Creation** | `BulkFolderCreation_Code.js` | `BulkFolderCreation_Sidebar.html` | `BulkFolderCreation_openSidebar` |
 | **Google Drive** | `DriveFileDetails_Code.js` | `DriveFileDetails_Sidebar.html` | `DriveFileDetails_openSidebar` |
 | **Pipeline** | `PipelineControl_Code.js` | `PipelineControl_Sidebar.html` | `PipelineControl_openSidebar` |
-| **Google Chat Spaces** | `ChatSpaceSync_Code.js` | `ChatSpaceSync_Sidebar.html` | `ChatSpaceSync_showSidebar` |
+| **Google Chat Spaces** | `ChatSpaceSync_Code.js` | `ChatSpaceSync_Sidebar.html` | `ChatSpaceSync_openSidebar` |
 | **Gmail Filters** | `GmailFilters_Code.js` | `GmailFilters_Sidebar.html` | `GmailFilters_openSidebar` |
-| **Developer Log** | `Logger.js`, `SystemAudit.js`, `Logger_SidebarController.js` | `Logger_Sidebar.html` | `Logger_showSidebar` |
+| **Developer Log** | `Logger.js`, `SystemAudit.js`, `Logger_SidebarController.js` | `Logger_Sidebar.html` | `Logger_openSidebar` |
 | **Theme Editor** | (Inside `UI.js`) | `ThemeEditor_Sidebar.html` | `UI_openThemeDialog` |
 
 > [!CAUTION]
@@ -116,8 +116,8 @@ To avoid naming collisions and facilitate AI interaction, functions use `ToolNam
 ### 4. Global Entry Points
 Entry functions for the UI menu generally look like:
 ```javascript
-function ToolName_showSidebar() {
-  _App_openSidebar('TOOL_KEY');
+function ToolName_openSidebar() {
+  _App_launchTool('TOOL_KEY');
 }
 ```
 

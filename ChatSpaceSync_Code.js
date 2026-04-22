@@ -8,7 +8,7 @@ SyncEngine.registerTool('CHAT_SYNC', {
     SHEET_NAME: SHEET_NAMES.CHAT_SPACE_SYNC,
     TITLE: SHEET_NAMES.CHAT_SPACE_SYNC,
     MENU_LABEL: SHEET_NAMES.CHAT_SPACE_SYNC,
-    MENU_ENTRYPOINT: 'ChatSpaceSync_showSidebar',
+    MENU_ENTRYPOINT: 'ChatSpaceSync_openSidebar',
     MENU_ORDER: 15,
     SIDEBAR_HTML: 'ChatSpaceSync_Sidebar',
     SIDEBAR_WIDTH: 400,
@@ -33,90 +33,57 @@ SyncEngine.registerTool('CHAT_SYNC', {
 // --- MENU & UI HANDLERS ---
 
 /** Opens the Chat Sync sidebar and ensures the sheet exists. */
-function ChatSpaceSync_showSidebar() {
+function ChatSpaceSync_openSidebar() {
   return Logger.run('CHAT_SYNC', 'Open Sidebar', function () {
     _App_launchTool('CHAT_SYNC');
   });
 }
 
-// --- API FOR SIDEBAR ---
-
-function ChatSpaceSync_getLoadData() {
-  return Logger.run('CHAT_SYNC', 'Load Data', function () {
-    try {
-      var spacesList = [];
-      var pageToken = null;
-      
-      // Fetch all spaces the user is a member of
-      do {
-        var response = _App_callWithBackoff(function() {
-            return Chat.Spaces.list({
-              pageToken: pageToken
-            });
-        });
-        
-        if (response.spaces) {
-          spacesList = spacesList.concat(response.spaces);
-        }
-        pageToken = response.nextPageToken;
-      } while (pageToken);
-
-      var uniqueSpaces = spacesList.map(function(s) {
-        return {
-          id: s.name, // Space names are their unique IDs in Chat API (e.g. "spaces/12345")
-          name: s.displayName || s.name
-        };
-      });
-
-      var savedSpaceIds = _App_getProperty(APP_PROPS.CHAT_SELECTED_SPACES);
-      if (!Array.isArray(savedSpaceIds)) savedSpaceIds = [];
-
-      return _App_ok('Spaces loaded.', {
-        spaces: uniqueSpaces,
-        savedSpaceIds: savedSpaceIds
-      });
-    } catch (err) {
-      throw new Error('Unable to load spaces. ' + err.message);
-    }
-  });
-}
-
-function ChatSpaceSync_savePreferences(spaceIds) {
-  return Logger.run('CHAT_SYNC', 'Save Preferences', function () {
-    if (spaceIds) _App_setProperty(APP_PROPS.CHAT_SELECTED_SPACES, spaceIds);
-    return _App_ok('Preferences saved.');
-  });
-}
-
 // --- THE "PULL" WORKFLOW ---
 
-function ChatSpaceSync_pullMembers(request) {
+function ChatSpaceSync_pullMembers() {
   return Logger.run('CHAT_SYNC', 'Pull Members', function () {
     var TARGET_SHEET_NAME = SHEET_NAMES.CHAT_SPACE_SYNC;
     var sheet = _App_ensureSheetExists('CHAT_SYNC');
 
-    Logger.info(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Pull Members', 'Pull started — spaces: [' + request.spaceIds.join(', ') + ']');
+    Logger.info(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Pull Members', 'Pull started — fetching all accessible spaces');
 
     var outputObjects = [];
+    var spacesList = [];
+    var pageToken = null;
+    
+    // Fetch all spaces the user is a member of
+    do {
+      var response = _App_callWithBackoff(function() {
+          return Chat.Spaces.list({
+            pageToken: pageToken
+          });
+      });
+      
+      if (response.spaces) {
+        spacesList = spacesList.concat(response.spaces);
+      }
+      pageToken = response.nextPageToken;
+    } while (pageToken);
 
-    request.spaceIds.forEach(function (spaceNameId) {
+    spacesList.forEach(function (space) {
       try {
-        var space = _App_callWithBackoff(function () { return Chat.Spaces.get(spaceNameId); });
-        if (!space) return;
-
-        var pageToken = null;
+        var spaceNameId = space.name;
+        var spaceDisplayName = space.displayName || space.name;
+        var memberPageToken = null;
         var members = [];
+
         do {
-            var response = _App_callWithBackoff(function() {
+            var memberResponse = _App_callWithBackoff(function() {
                 return Chat.Spaces.Members.list(spaceNameId, {
-                    pageToken: pageToken
+                    pageToken: memberPageToken
                 });
             });
-            if (response.memberships) {
-                members = members.concat(response.memberships);
+            if (memberResponse.memberships) {
+                members = members.concat(memberResponse.memberships);
             }
-            pageToken = response.nextPageToken;
-        } while (pageToken);
+            memberPageToken = memberResponse.nextPageToken;
+        } while (memberPageToken);
 
         members.forEach(function (m) {
           var memberEmail = "";
@@ -135,22 +102,26 @@ function ChatSpaceSync_pullMembers(request) {
 
           outputObjects.push({
             'Action': "",
-            'Space Name': space.displayName || space.name,
+            'Space Name': spaceDisplayName,
             'Member Email': memberEmail,
             'Role': m.role === 'ROLE_MANAGER' ? 'ROLE_MANAGER' : 'ROLE_MEMBER',
             'Type': memberType,
-            'Space ID': space.name,
+            'Space ID': spaceNameId,
             'Membership ID': m.name
           });
         });
-        Logger.info(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Pull Members', 'Pulled ' + members.length + ' member(s) from space: ' + (space.displayName || space.name));
+        Logger.info(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Pull Members', 'Pulled ' + members.length + ' member(s) from space: ' + spaceDisplayName);
       } catch (err) {
-        Logger.error(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Pull Members — ' + spaceNameId, err);
+        Logger.error(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Pull Members — ' + space.name, err);
       }
     });
 
+    // Sort by Space Name alphabetically
+    outputObjects.sort(function(a, b) {
+        return a['Space Name'].localeCompare(b['Space Name']);
+    });
+
     SheetManager.overwriteObjects('CHAT_SYNC', outputObjects);
-    ChatSpaceSync_savePreferences(request.spaceIds);
     
     var summary = 'Successfully imported ' + outputObjects.length + " members into '" + TARGET_SHEET_NAME + "'.";
     Logger.info(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Pull Members', summary);

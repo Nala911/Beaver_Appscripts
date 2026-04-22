@@ -138,175 +138,6 @@
       box-shadow: var(--shadow-md);
     }
 
-    .card-title {
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-secondary);
-      margin-bottom: 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    /* ── Space List (Expandable) ── */
-    .cal-section {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-    }
-
-    .cal-section>.card {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      overflow: hidden;
-    }
-
-    .cal-list-container {
-      flex: 1;
-      overflow-y: auto;
-      border: 1px solid var(--border-light);
-      border-radius: var(--radius-sm);
-      margin-bottom: 14px;
-      min-height: 0;
-    }
-
-    .cal-list-container::-webkit-scrollbar {
-      width: 5px;
-    }
-
-    .cal-list-container::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    .cal-list-container::-webkit-scrollbar-thumb {
-      background: rgba(16, 185, 129, 0.18);
-      border-radius: 10px;
-    }
-
-    .cal-list-container::-webkit-scrollbar-thumb:hover {
-      background: rgba(16, 185, 129, 0.35);
-    }
-
-    .cal-item {
-      display: flex;
-      align-items: center;
-      padding: 10px 14px;
-      gap: 10px;
-      border-bottom: 1px solid var(--border-light);
-      cursor: pointer;
-      transition: all 0.15s ease;
-      animation: listFadeIn 0.25s ease both;
-    }
-
-    .cal-item:last-child {
-      border-bottom: none;
-    }
-
-    .cal-item:hover {
-      background: var(--primary-bg);
-    }
-
-    @keyframes listFadeIn {
-      from {
-        opacity: 0;
-        transform: translateX(-6px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateX(0);
-      }
-    }
-
-    .cal-name {
-      font-size: 13px;
-      font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      color: var(--text);
-      flex: 1;
-    }
-
-    /* ── Custom Checkbox ── */
-    .cal-checkbox,
-    input[type="checkbox"] {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 18px;
-      height: 18px;
-      border: 2px solid var(--border);
-      border-radius: 5px;
-      cursor: pointer;
-      flex-shrink: 0;
-      position: relative;
-      transition: all 0.2s ease;
-      background: var(--surface);
-    }
-
-    .cal-checkbox:checked,
-    input[type="checkbox"]:checked {
-      background: var(--gradient-pull);
-      border-color: var(--primary);
-    }
-
-    .cal-checkbox:checked::after,
-    input[type="checkbox"]:checked::after {
-      content: '';
-      position: absolute;
-      top: 2px;
-      left: 5px;
-      width: 4px;
-      height: 8px;
-      border: solid white;
-      border-width: 0 2px 2px 0;
-      transform: rotate(45deg);
-      animation: checkPop 0.2s ease;
-    }
-
-    @keyframes checkPop {
-      0% {
-        transform: rotate(45deg) scale(0);
-      }
-
-      60% {
-        transform: rotate(45deg) scale(1.2);
-      }
-
-      100% {
-        transform: rotate(45deg) scale(1);
-      }
-    }
-
-    .cal-checkbox:hover,
-    input[type="checkbox"]:hover {
-      border-color: var(--primary-light);
-      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-    }
-
-    /* ── Select All / Deselect Button ── */
-    .select-all-btn {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--primary);
-      cursor: pointer;
-      padding: 3px 10px;
-      border-radius: 20px;
-      background: var(--primary-bg);
-      transition: all 0.2s ease;
-      border: none;
-    }
-
-    .select-all-btn:hover {
-      background: var(--primary);
-      color: white;
-    }
-
     /* ── Buttons ── */
     .btn {
       width: 100%;
@@ -468,27 +299,6 @@
         transform: translateX(-50%) scale(0.95);
       }
     }
-
-    /* ── Error & Empty State ── */
-    .error-text {
-      color: var(--danger);
-      text-align: center;
-      font-size: 12px;
-      font-weight: 500;
-      padding: 20px 10px;
-    }
-
-    .empty-state {
-      padding: 30px 15px;
-      text-align: center;
-      color: var(--text-secondary);
-      font-size: 13px;
-      font-weight: 500;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-    }
   </style>
 </head>
 
@@ -503,26 +313,18 @@
   <!-- Main Content -->
   <div class="container">
 
-    <!-- Space Selector (Expandable) -->
-    <div class="cal-section">
+    <!-- Import Actions -->
+    <div>
       <div class="section-label">
-        <span class="material-icons-outlined">group</span> Import Settings
+        <span class="material-icons-outlined">cloud_download</span> Import Members
       </div>
       <div class="card">
-        <div class="card-title">
-          <span>Chat Spaces</span>
-          <span class="select-all-btn" id="toggleSelect" onclick="toggleSelectAll()">Select All</span>
-        </div>
-
-        <div class="cal-list-container" id="spaceList">
-          <div class="empty-state">
-            <div class="spinner"></div>
-          </div>
-        </div>
-
+        <p style="color: var(--text-secondary); margin-bottom: 14px; line-height: 1.5;">
+          Fetch all members from every Chat Space you belong to and import them into the sheet.
+        </p>
         <button class="btn btn-primary" onclick="runPull()">
           <span class="material-icons-outlined">cloud_download</span>
-          Pull Members
+          Pull All Members
         </button>
       </div>
     </div>
@@ -530,7 +332,7 @@
     <!-- Sync Actions -->
     <div>
       <div class="section-label">
-        <span class="material-icons-outlined">sync</span> Sync Actions
+        <span class="material-icons-outlined">sync</span> Sync Changes
       </div>
       <div class="card">
         <button class="btn btn-success" onclick="runPush()">
@@ -551,70 +353,6 @@
 
   <?!= _App_include('SidebarShared'); ?>
   <script>
-
-    let allSelected = false;
-
-    window.onload = function () {
-      loadData();
-    };
-
-    function loadData() {
-      SyncSidebar.run('ChatSpaceSync_getLoadData', [], {
-        context: 'Load Data',
-        onSuccess: populateUI,
-        onError: err => {
-          document.getElementById('spaceList').innerHTML = `<div class="error-text">${err.message}</div>`;
-        }
-      });
-    }
-
-    function populateUI(data) {
-      const container = document.getElementById('spaceList');
-      container.innerHTML = '';
-
-      if (!data || !data.spaces || data.spaces.length === 0) {
-        container.innerHTML = '<div class="empty-state"><span class="material-icons-outlined" style="font-size:28px; color:var(--text-secondary);">speaker_notes_off</span>No spaces found.</div>';
-        return;
-      }
-
-      data.spaces.forEach((space, idx) => {
-        const item = document.createElement('div');
-        item.className = 'cal-item';
-        item.style.animationDelay = (idx * 0.04) + 's';
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.className = 'cal-checkbox';
-        checkbox.value = space.id;
-
-        if (data.savedSpaceIds && data.savedSpaceIds.includes(space.id)) checkbox.checked = true;
-
-        checkbox.onchange = updateSelectAllButton;
-        item.onclick = (e) => {
-          if (e.target !== checkbox) {
-            checkbox.checked = !checkbox.checked;
-            updateSelectAllButton();
-          }
-        };
-
-        const label = document.createElement('span');
-        label.className = 'cal-name';
-        label.innerText = space.name;
-
-        item.appendChild(checkbox);
-        item.appendChild(label);
-        container.appendChild(item);
-      });
-
-      updateSelectAllButton();
-    }
-
-    function toggleSelectAll() {
-      const checkboxes = document.querySelectorAll('.cal-checkbox');
-      allSelected = !allSelected;
-      checkboxes.forEach(cb => cb.checked = allSelected);
-      updateSelectAllButton();
-    }
 
     function toggleLoading(show, text) {
       SyncSidebar.toggleLoading(show, text);
@@ -639,35 +377,16 @@
     }
 
     function executePull() {
-      const checkboxes = document.querySelectorAll('.cal-checkbox:checked');
-      const spaceIds = Array.from(checkboxes).map(c => c.value);
-
-      if (spaceIds.length === 0) return showToast("Select at least one space", true);
-
-      toggleLoading(true, "Importing…");
-      SyncSidebar.run('ChatSpaceSync_pullMembers', [{ spaceIds }], {
+      toggleLoading(true, "Importing all members…");
+      SyncSidebar.run('ChatSpaceSync_pullMembers', [], {
         context: 'Pull Members',
         onSuccess: res => { toggleLoading(false); showToast(res.message, false); },
         onError: () => { toggleLoading(false); }
       });
     }
 
-    function updateSelectAllButton() {
-      const allCheckboxes = document.querySelectorAll('.cal-checkbox');
-      const checkedCheckboxes = document.querySelectorAll('.cal-checkbox:checked');
-      const btn = document.getElementById('toggleSelect');
-
-      if (checkedCheckboxes.length === allCheckboxes.length && allCheckboxes.length > 0) {
-        allSelected = true;
-        btn.innerText = "Deselect";
-      } else {
-        allSelected = false;
-        btn.innerText = "Select All";
-      }
-    }
-
     function runPush() {
-      toggleLoading(true, "Syncing…");
+      toggleLoading(true, "Syncing changes…");
       SyncSidebar.run('ChatSpaceSync_pushChanges', [], {
         context: 'Push Changes',
         onSuccess: res => { toggleLoading(false); showToast(res.message, false); },

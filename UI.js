@@ -28,7 +28,7 @@ function onInstall(e) {
 // Theme Dialog Server-Side Functions
 // ==========================================
 
-function Logger_showSidebar() {
+function Logger_openSidebar() {
   return Logger.run('LOGS', 'Open Sidebar', function () {
     _App_launchTool('LOGS');
   });

@@ -113,9 +113,9 @@ function TasksSync_getTaskLists() {
   });
 }
 
-function TasksSync_pullRPC(selectedListIds, includeCompleted) {
+function TasksSync_pullRPC(includeCompleted) {
   return Logger.run('TASKS', 'Pull Tasks', function () {
-    _TasksSync_pullTasks(selectedListIds, includeCompleted);
+    _TasksSync_pullTasks(includeCompleted);
     return _App_ok('Tasks pulled successfully!');
   });
 }
@@ -131,25 +131,25 @@ function TasksSync_pushRPC() {
 // 4. PULL LOGIC
 // ==========================================
 
-function _TasksSync_pullTasks(selectedListIds, includeCompleted) {
+function _TasksSync_pullTasks(includeCompleted) {
   var sheet = _TasksSync_ensureSheetExistsAndActivate();
 
   if (sheet.getLastRow() > 1 && SheetManager.hasPendingActions('TASKS')) {
     throw new Error('Unsaved actions detected! Push your changes first or clear the Action column manually.');
   }
 
-  var allListTasks = _TasksSync_fetchSelectedTasks(selectedListIds, includeCompleted);
+  var allListTasks = _TasksSync_fetchSelectedTasks(includeCompleted);
   var rows = _TasksSync_transformForSheet(allListTasks);
   _TasksSync_renderSheet(sheet, rows);
 }
 
-function _TasksSync_fetchSelectedTasks(selectedIds, includeCompleted) {
+function _TasksSync_fetchSelectedTasks(includeCompleted) {
   var taskLists = Tasks.Tasklists.list().items || [];
 
-  if (selectedIds && selectedIds.length > 0) {
-    var idSet = new Set(selectedIds);
-    taskLists = taskLists.filter(function (l) { return idSet.has(l.id); });
-  }
+  // Sort lists alphabetically by title
+  taskLists.sort(function(a, b) {
+    return (a.title || '').localeCompare(b.title || '');
+  });
 
   var result = [];
 

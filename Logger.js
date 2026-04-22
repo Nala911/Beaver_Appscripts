@@ -7,7 +7,7 @@ SyncEngine.registerTool('LOGS', {
     SHEET_NAME: SHEET_NAMES.LOGS,
     TITLE: SHEET_NAMES.LOGS,
     MENU_LABEL: SHEET_NAMES.LOGS,
-    MENU_ENTRYPOINT: 'Logger_showSidebar',
+    MENU_ENTRYPOINT: 'Logger_openSidebar',
     MENU_ORDER: 110,
     SIDEBAR_HTML: 'Logger_Sidebar',
     SIDEBAR_WIDTH: 360,

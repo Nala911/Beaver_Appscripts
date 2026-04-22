@@ -581,21 +581,6 @@
     <!-- Main Content -->
     <div class="main">
 
-        <!-- List Selector -->
-        <div class="list-section">
-            <div class="section-label">
-                <i data-lucide="list" style="width:13px;"></i> Task Lists
-            </div>
-            <div id="loading-lists" class="loading-placeholder">
-                <div class="loader"></div> Loading lists…
-            </div>
-            <div id="list-area" class="card" style="display:none;">
-                <div class="list-area">
-                    <div class="list-scroll" id="list-selector"></div>
-                </div>
-            </div>
-        </div>
-
         <!-- Options -->
         <div>
             <div class="section-label">
@@ -628,7 +613,7 @@
 
     <!-- Console -->
     <div id="console" class="console">
-        <div class="log-entry">Welcome. Select lists and pull tasks.</div>
+        <div class="log-entry">Welcome. Ready to sync tasks.</div>
     </div>
 
     <?!= _App_include('SidebarShared'); ?>
@@ -636,73 +621,10 @@
         // ── Init ──
         window.onload = function () {
             lucide.createIcons();
-            SyncSidebar.run('TasksSync_getTaskLists', [], {
-                onSuccess: function (data) {
-                    renderLists(data.lists);
-                },
-                toast: false
-            });
         };
-
-        // ── Render Task Lists ──
-        function renderLists(lists) {
-            var container = document.getElementById('list-selector');
-            var loader = document.getElementById('loading-lists');
-            var area = document.getElementById('list-area');
-            container.innerHTML = '';
-
-            if (!lists || lists.length === 0) {
-                container.innerHTML = '<div class="empty-state"><i data-lucide="inbox" style="width:28px; color:var(--text-secondary);"></i>No lists found.</div>';
-                lucide.createIcons();
-            } else {
-                // Select All
-                var allDiv = document.createElement('div');
-                allDiv.className = 'list-item select-all';
-                allDiv.innerHTML =
-                    '<input type="checkbox" id="select-all" checked onchange="toggleAll(this)">' +
-                    '<label for="select-all">Select All</label>';
-                container.appendChild(allDiv);
-
-                lists.forEach(function (list, idx) {
-                    var div = document.createElement('div');
-                    div.className = 'list-item';
-                    div.style.animationDelay = (idx * 0.04) + 's';
-                    div.innerHTML =
-                        '<input type="checkbox" class="list-check" id="' + list.id + '" value="' + list.id + '" checked onchange="checkSelectAll()">' +
-                        '<label for="' + list.id + '">' + list.title + '</label>';
-                    container.appendChild(div);
-                });
-            }
-
-            loader.style.display = 'none';
-            area.style.display = 'flex';
-        }
-
-        function toggleAll(src) {
-            var boxes = document.querySelectorAll('.list-check');
-            for (var i = 0; i < boxes.length; i++) boxes[i].checked = src.checked;
-        }
-
-        function checkSelectAll() {
-            var boxes = document.querySelectorAll('.list-check');
-            var allChecked = true;
-            for (var i = 0; i < boxes.length; i++) {
-                if (!boxes[i].checked) {
-                    allChecked = false;
-                    break;
-                }
-            }
-            var selectAll = document.getElementById('select-all');
-            if (selectAll) selectAll.checked = allChecked;
-        }
 
         // ── Pull ──
         function runPull() {
-            var boxes = document.querySelectorAll('.list-check:checked');
-            var ids = [];
-            for (var i = 0; i < boxes.length; i++) ids.push(boxes[i].value);
-            if (ids.length === 0) { log('Select at least one list.', 'error'); return; }
-
             var incl = document.getElementById('include-completed').checked;
             setStatus('working');
             log('Pulling tasks…');
@@ -713,7 +635,7 @@
                     log(res.message, res.success ? 'success' : 'error');
                 })
                 .withFailureHandler(handleError)
-                .TasksSync_pullRPC(ids, incl);
+                .TasksSync_pullRPC(incl);
         }
 
         // ── Push ──

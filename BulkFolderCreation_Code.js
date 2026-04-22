@@ -46,11 +46,6 @@ function BulkFolderCreation_openSidebar() {
   });
 }
 
-/** Alias for menu compatibility. */
-function BulkFolderCreation_openSidebar_Compat() {
-  BulkFolderCreation_openSidebar();
-}
-
 // --- EXPLORER LOGIC ---
 
 function BulkFolderCreation_getDriveNavData(folderId) {
