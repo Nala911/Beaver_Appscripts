@@ -109,20 +109,18 @@ function CalendarSync_savePreferences(calIds, startStr, endStr) {
 function CalendarSync_pullEvents(request) {
   return Logger.run('CALENDAR_SYNC', 'Pull Events', function () {
     var TARGET_SHEET_NAME = SHEET_NAMES.CALENDAR_SYNC;
-    var sheet = _CalendarSync_ensureSheetExistsAndActivate();
+    _CalendarSync_ensureSheetExistsAndActivate();
 
-    Logger.info(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Pull Events', 'Pull started — calendars: [' + request.calIds.join(', ') + '] from ' + request.startDate + ' to ' + request.endDate);
+    var allCals = _App_callWithBackoff(function () { return CalendarApp.getAllCalendars(); });
+    Logger.info(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Pull Events', 'Pull started — processing ' + allCals.length + ' calendars from ' + request.startDate + ' to ' + request.endDate);
 
     // Fetch Events
     var start = new Date(request.startDate);
     var end = new Date(request.endDate);
     var outputObjects = [];
 
-    request.calIds.forEach(function (calId) {
+    allCals.forEach(function (cal) {
       try {
-        var cal = _App_callWithBackoff(function () { return CalendarApp.getCalendarById(calId); });
-        if (!cal) return;
-
         var events = _App_callWithBackoff(function () { return cal.getEvents(start, end); });
         events.forEach(function (e) {
           outputObjects.push({
@@ -141,16 +139,27 @@ function CalendarSync_pullEvents(request) {
             'Original Calendar ID': cal.getId()
           });
         });
-        Logger.info(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Pull Events', 'Pulled ' + events.length + ' event(s) from calendar: ' + cal.getName());
+        if (events.length > 0) {
+          Logger.info(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Pull Events', 'Pulled ' + events.length + ' event(s) from: ' + cal.getName());
+        }
       } catch (err) {
-        Logger.error(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Pull Events — ' + calId, err);
+        Logger.error(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Pull Events — ' + cal.getName(), err);
       }
+    });
+
+    // Sort by Calendar Name
+    outputObjects.sort(function (a, b) {
+      var nameA = (a['Target Calendar Name'] || "").toLowerCase();
+      var nameB = (b['Target Calendar Name'] || "").toLowerCase();
+      if (nameA < nameB) return -1;
+      if (nameA > nameB) return 1;
+      return 0;
     });
 
     // Populate Sheet via DAO
     SheetManager.overwriteObjects('CALENDAR_SYNC', outputObjects);
 
-    CalendarSync_savePreferences(request.calIds, request.startDate, request.endDate);
+    CalendarSync_savePreferences(null, request.startDate, request.endDate);
     var summary = 'Successfully imported ' + outputObjects.length + " events into '" + TARGET_SHEET_NAME + "'.";
     Logger.info(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Pull Events', summary);
     return _App_ok(summary);
