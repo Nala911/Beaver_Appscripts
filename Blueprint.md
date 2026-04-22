@@ -4,7 +4,7 @@
 This file serves as the absolute Architectural Map for AI agents working on the "WorkspaceSync Appscripts" workspace. It contains details on file connections, global state management, and module structures.
 
 > [!NOTE]
-> Workflow rules and procedural instructions for agents are strictly located in `AGENTS.md`. Refer to that file before making any changes.
+> Workflow rules and procedural instructions for agents are strictly located in `Gemini.md`. Refer to that file before making any changes.
 
 ## 📂 File System Structure
 
@@ -132,8 +132,19 @@ Tools that require background execution should manage their own triggers program
 3. **Execution**: Sidebar calls `google.script.run` -> Backend function -> `Logger.run()` for automatic logging/error tracking.
 4. **Response**: Backend returns `{ success: true, message: "..." }`.
 
-## 🛠️ Developer Logging Architecture
+### 🛠️ Developer Logging Architecture
 The project employs a robust, asynchronous-style logging system.
 - **Transporter Pattern**: Logs are first queued into `CacheService`.
 - **Orchestration**: `Logger.run()` serves as an execution supervisor.
 - **Concurrency Safety**: Uses `LockService.getDocumentLock()` during the "flush" phase.
+
+### 🔄 Unified Batch Processing (`_App_BatchProcessor`)
+To ensure consistency and performance across all tools, row-by-row operations must use the centralized processor in `03_Core_Utils.js`.
+- **Automatic Retries**: Wraps each item in `_App_callWithBackoff` to handle transient API errors.
+- **Progress Tracking**: Automatically updates `CacheService` with progress data for sidebar polling.
+- **Time-Limit Guarding**: Monitors the Google Apps Script 6-minute limit and pauses execution at 5.5 minutes, allowing for safe partial completions.
+- **Batch Updates**: Encourages the use of `SheetManager.batchPatchRows` within the `onBatchComplete` hook to minimize Spreadsheet API calls.
+
+### ⏳ Execution Time Management
+Global timing is managed via `_App_resetExecutionTimer()` and `_App_isExecutionLimitApproaching()`. Tools with long-running recursive or iterative tasks should check this limit frequently to prevent hard script timeouts.
+

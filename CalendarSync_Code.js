@@ -165,12 +165,18 @@ function CalendarSync_checkForUnsavedChanges() {
 function CalendarSync_pushChanges() {
   return Logger.run('CALENDAR_SYNC', 'Push Changes', function () {
     var dataObjects = SheetManager.readObjects('CALENDAR_SYNC');
-    
-    if (dataObjects.length === 0) {
-      return "No data to sync.";
-    }
+    if (dataObjects.length === 0) return "No data to sync.";
 
-    Logger.info(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Global', 'Push started — processing ' + dataObjects.length + ' row(s)');
+    var pendingItems = [];
+    dataObjects.forEach(function (obj, idx) {
+      if (obj['Action']) {
+        pendingItems.push({ data: obj, originalIndex: idx });
+      }
+    });
+
+    if (pendingItems.length === 0) return "No pending actions found.";
+
+    Logger.info(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Global', 'Push started — processing ' + pendingItems.length + ' pending row(s)');
 
     var allCals = CalendarApp.getAllCalendars();
     var calMap = new Map();
@@ -181,18 +187,16 @@ function CalendarSync_pushChanges() {
       calObjMap.set(c.getId(), c);
     });
 
-    var hasChanges = false;
-
-    var updates = dataObjects.map(function (rowObj, index) {
-      var caughtRowError = null;
+    var stats = _App_BatchProcessor('CALENDAR_SYNC', pendingItems, function (item) {
+      var rowObj = item.data;
+      var originalIdx = item.originalIndex;
       var rowUpdates = {
         action: rowObj['Action'],
         eventId: rowObj['Event ID'] ? String(rowObj['Event ID']) : null,
         calId: rowObj['Original Calendar ID'] ? String(rowObj['Original Calendar ID']) : null,
-        status: ""
+        status: "",
+        originalIndex: originalIdx
       };
-
-      if (!rowUpdates.action) return rowObj;
 
       try {
         var action = rowUpdates.action.toString().toUpperCase();
@@ -227,10 +231,10 @@ function CalendarSync_pushChanges() {
         switch (action) {
           case "CREATE":
             if (!targetCalName) throw new Error("⚠️ Data Error: Missing Target Calendar Name");
-            if (!targetCalId) throw new Error("⚠️ Data Error: Calendar '" + targetCalName + "' not found (Access Denied or Typo?)");
+            if (!targetCalId) throw new Error("⚠️ Data Error: Calendar '" + targetCalName + "' not found");
 
             var createCal = calObjMap.get(targetCalId);
-            if (!createCal) throw new Error("❌ API Error: Target calendar object is null (Internal Access Issue)");
+            if (!createCal) throw new Error("❌ API Error: Target calendar object is null");
 
             var newEvent = _App_callWithBackoff(function () {
               return createCal.createEvent(eventData.title, eventData.start, eventData.end, {
@@ -241,7 +245,6 @@ function CalendarSync_pushChanges() {
             });
 
             var optionErr = _CalendarSync_applyEventOptions(newEvent, eventData);
-
             if (eventData.meet === 'Yes') {
               try { _CalendarSync_addMeetLinkToEvent(targetCalId, newEvent.getId()); }
               catch (meetErr) { optionErr = optionErr ? optionErr + ", Meet: " + meetErr.message : "Meet: " + meetErr.message; }
@@ -264,11 +267,7 @@ function CalendarSync_pushChanges() {
             var updateCal = calObjMap.get(rowUpdates.calId);
             var eventToUpdate = _CalendarSync_findEvent(updateCal, true, rowUpdates.eventId, eventData);
 
-            if (!eventToUpdate) {
-              var err = new Error("⚠️ Data Error: Event ID not found on calendar (it may have been deleted externally)");
-              err.localContext = { searchedEventId: rowUpdates.eventId, searchedCalId: rowUpdates.calId || targetCalId, action: action };
-              throw err;
-            }
+            if (!eventToUpdate) throw new Error("⚠️ Data Error: Event ID not found on calendar");
 
             _App_callWithBackoff(function () {
               eventToUpdate.setTitle(eventData.title);
@@ -278,7 +277,6 @@ function CalendarSync_pushChanges() {
             });
 
             var updateOptionErr = _CalendarSync_applyEventOptions(eventToUpdate, eventData);
-
             if (eventData.meet === 'Yes') {
               try { _CalendarSync_addMeetLinkToEvent(rowUpdates.calId || eventToUpdate.getOriginalCalendarId(), rowUpdates.eventId); }
               catch (meetErr) { updateOptionErr = updateOptionErr ? updateOptionErr + ", Meet: " + meetErr.message : "Meet: " + meetErr.message; }
@@ -289,14 +287,9 @@ function CalendarSync_pushChanges() {
 
             currentGuests.forEach(function (guestObj) {
               var email = guestObj.getEmail();
-              if (targetGuests.indexOf(email) === -1) {
-                eventToUpdate.removeGuest(email);
-              }
+              if (targetGuests.indexOf(email) === -1) eventToUpdate.removeGuest(email);
             });
-
-            targetGuests.forEach(function (email) {
-              eventToUpdate.addGuest(email);
-            });
+            targetGuests.forEach(function (email) { eventToUpdate.addGuest(email); });
 
             rowUpdates.status = "✅ Updated" + (updateOptionErr ? " (⚠️ " + updateOptionErr + ")" : "");
             rowUpdates.action = "";
@@ -310,10 +303,7 @@ function CalendarSync_pushChanges() {
           case "REMOVE":
             if (!rowUpdates.eventId) throw new Error("⚠️ Data Error: Missing Event ID for REMOVE");
             var delCal = calObjMap.get(rowUpdates.calId);
-            if (!delCal) {
-              rowUpdates.status = "⚠️ Data Error: Original Calendar unaccessible";
-              break;
-            }
+            if (!delCal) throw new Error("⚠️ Data Error: Original Calendar inaccessible");
 
             var eventToDel = _CalendarSync_findEvent(delCal, false, rowUpdates.eventId, eventData);
             if (eventToDel) {
@@ -322,7 +312,7 @@ function CalendarSync_pushChanges() {
               rowUpdates.action = "";
             } else {
               rowUpdates.status = "⚠️ Already Deleted (Event not found)";
-              rowUpdates.action = ""; 
+              rowUpdates.action = "";
             }
             break;
 
@@ -330,32 +320,38 @@ function CalendarSync_pushChanges() {
             rowUpdates.status = "❓ Unknown Action '" + action + "'";
         }
 
+        var isError = rowUpdates.status && (rowUpdates.status.indexOf('❌') > -1 || rowUpdates.status.indexOf('⚠️') > -1);
+        if (isError) Logger.error(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Row ' + (originalIdx + 2), rowUpdates.status);
+        else if (rowUpdates.status) Logger.info(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Row ' + (originalIdx + 2), rowUpdates.status);
+
+        return rowUpdates;
+
       } catch (e) {
         rowUpdates.status = e.message;
-        caughtRowError = e;
+        Logger.error(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Row ' + (originalIdx + 2), e);
+        return rowUpdates;
       }
-
-      rowObj['Action'] = rowUpdates.action;
-      if (rowUpdates.eventId) rowObj['Event ID'] = rowUpdates.eventId;
-      if (rowUpdates.calId) rowObj['Original Calendar ID'] = rowUpdates.calId;
-
-      var isError = rowUpdates.status && (rowUpdates.status.indexOf('❌') > -1 || rowUpdates.status.indexOf('⚠️') > -1);
-      var rowNum = index + 2;
-      if (isError) {
-        Logger.error(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Row ' + rowNum, caughtRowError || rowUpdates.status, { rowData: rowObj, updates: rowUpdates });
-      } else if (rowUpdates.status) {
-        Logger.info(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Row ' + rowNum, rowUpdates.status || 'N/A', { rowData: rowObj });
+    }, {
+      onBatchComplete: function (batchResults) {
+        var rowNumbers = [];
+        var patchData = [];
+        batchResults.forEach(function (res) {
+          if (res && res.originalIndex !== undefined) {
+            rowNumbers.push(res.originalIndex + 2);
+            patchData.push({
+              'Action': res.action,
+              'Event ID': res.eventId,
+              'Original Calendar ID': res.calId
+            });
+          }
+        });
+        if (rowNumbers.length > 0) {
+          SheetManager.batchPatchRows('CALENDAR_SYNC', rowNumbers, patchData);
+        }
       }
-      
-      hasChanges = true;
-      return rowObj;
     });
 
-    if (hasChanges) {
-       SheetManager.writeObjects('CALENDAR_SYNC', updates, 2);
-    }
-
-    return _App_ok("Sync Complete.");
+    return _App_ok("Sync Complete. Processed: " + stats.processedCount);
   });
 }
 

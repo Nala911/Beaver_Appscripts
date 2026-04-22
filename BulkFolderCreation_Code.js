@@ -32,14 +32,6 @@ var BULKFOLDER_COL = {
   ACTION: 0
 };
 
-// Global Time Limit (Google Apps Script has 6 min limit, we stop at 5.5 min)
-var BULKFOLDER_START_TIME = 0;
-var BULKFOLDER_MAX_EXECUTION_TIME = 330 * 1000; // 5.5 minutes
-
-function _BulkFolderCreation_isTimeLimitReached() {
-  return (Date.now() - BULKFOLDER_START_TIME > BULKFOLDER_MAX_EXECUTION_TIME);
-}
-
 // --- MENU & UI HANDLERS ---
 
 /** @deprecated — Use _App_ensureSheetExists('BULK_FOLDER') instead. */
@@ -128,7 +120,7 @@ function BulkFolderCreation_runBulkCreationSequence(targetFolderId) {
     if (!lock.tryLock(5000)) throw new Error("⚠️ System is busy. Please try again.");
 
     try {
-      BULKFOLDER_START_TIME = Date.now();
+      _App_resetExecutionTimer();
       var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
 
       var maxRows = sheet.getMaxRows();
@@ -156,7 +148,7 @@ function BulkFolderCreation_runBulkCreationSequence(targetFolderId) {
 
       for (var i = 1; i < data.length; i++) {
         if (data[i][actionColIdx] === "Create") {
-          pendingRows.push({ rowData: data[i], rowIndex: i + 1 });
+          pendingRows.push({ rowData: data[i], rowIndex: i + 1, originalIndex: i - 1 });
         }
       }
 
@@ -211,59 +203,41 @@ function BulkFolderCreation_runBulkCreationSequence(targetFolderId) {
       }
       // --- PRE-VALIDATION END ---
 
-      _App_setProgress('BULK_FOLDER', 0, pendingRows.length);
-
-      var processedCount = 0;
-      var errorCount = 0;
       var folderCache = {};
-      var timeLimitReached = false;
-
-      for (var k = 0; k < pendingRows.length; k++) {
-        if (_BulkFolderCreation_isTimeLimitReached()) {
-          timeLimitReached = true;
-          break;
-        }
-
-        var item = pendingRows[k];
+      var stats = _App_BatchProcessor('BULK_FOLDER', pendingRows, function (item) {
         var rowNum = item.rowIndex;
-        var rowStartTime = new Date();
-
-        try {
-          var folderNames = [];
-          for (var c = 0; c < levelCols.length; c++) {
-            var colIndex = levelCols[c];
-            var fName = String(item.rowData[colIndex] || "").trim();
-            if (fName) {
-              folderNames.push(fName.replace(/[\\/?*]/g, "_"));
-            }
+        var folderNames = [];
+        for (var c = 0; c < levelCols.length; c++) {
+          var colIndex = levelCols[c];
+          var fName = String(item.rowData[colIndex] || "").trim();
+          if (fName) {
+            folderNames.push(fName.replace(/[\\/?*]/g, "_"));
           }
-
-          if (folderNames.length === 0) {
-            throw new Error("No folder names specified in Level columns.");
-          }
-
-          var resultId = _BulkFolderCreation_createFolderPath(targetFolderId, folderNames, folderCache);
-
-          // Update data matrix successfully
-          data[rowNum - 1][actionColIdx] = "";
-          Logger.success(SyncEngine.getTool('BULK_FOLDER').TITLE, 'Row ' + rowNum, '✅ Created: ' + folderNames.join('/'));
-          processedCount++;
-
-        } catch (e) {
-          errorCount++;
-          Logger.error(SyncEngine.getTool('BULK_FOLDER').TITLE, 'Row ' + rowNum, e);
         }
 
-        _App_setProgress('BULK_FOLDER', k + 1, pendingRows.length);
-      }
+        if (folderNames.length === 0) {
+          throw new Error("No folder names specified in Level columns.");
+        }
 
-      // Write ALL modified data back to the sheet in a single batch call
-      dataRange.setValues(data);
-      _App_clearProgress('BULK_FOLDER');
+        _BulkFolderCreation_createFolderPath(targetFolderId, folderNames, folderCache);
 
-      var finalMsg = "Successfully processed " + processedCount + " folders.";
-      if (errorCount > 0) finalMsg += " (" + errorCount + " errors)";
-      if (timeLimitReached) finalMsg = "⏳ Time limit reached. " + finalMsg;
+        Logger.success(SyncEngine.getTool('BULK_FOLDER').TITLE, 'Row ' + rowNum, '✅ Created: ' + folderNames.join('/'));
+        return { rowIndex: rowNum };
+
+      }, {
+        onBatchComplete: function (results) {
+          results.forEach(function (res) {
+            if (res && res.rowIndex) {
+              data[res.rowIndex - 1][actionColIdx] = "";
+            }
+          });
+          dataRange.setValues(data);
+        }
+      });
+
+      var finalMsg = "Successfully processed " + stats.processedCount + " folders.";
+      if (stats.errorCount > 0) finalMsg += " (" + stats.errorCount + " errors)";
+      if (stats.timeLimitReached) finalMsg = "⏳ Time limit reached. " + finalMsg;
 
       return finalMsg;
 

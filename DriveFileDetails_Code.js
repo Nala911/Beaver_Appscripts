@@ -50,16 +50,6 @@ var DRIVE_SYNC_COL = {
   SIZE: 9, OWNER: 10, MIME: 11, MODIFIED: 12, ITEM_ID: 13, PARENT_ID: 14, URL: 15
 };
 
-// Global Time Limit (Google Apps Script has 6 min limit, we stop at 5.5 min)
-var DRIVE_SYNC_START_TIME = 0;
-var DRIVE_SYNC_MAX_EXECUTION_TIME = 330 * 1000; // 5.5 minutes
-
-function _DriveFileDetails_checkTimeLimit() {
-  if (Date.now() - DRIVE_SYNC_START_TIME > DRIVE_SYNC_MAX_EXECUTION_TIME) {
-    throw new Error("⏳ Time limit approaching. Operation paused safely.");
-  }
-}
-
 // --- SIDEBAR & SHEET SETUP ---
 
 /** @deprecated — Use _App_ensureSheetExists('DRIVE_SYNC') instead. */
@@ -245,7 +235,7 @@ function DriveFileDetails_pullFromDrive(targetFolderId, isShallow) {
     if (!lock.tryLock(5000)) return "⚠️ System is busy. Please try again.";
 
     try {
-      DRIVE_SYNC_START_TIME = Date.now();
+      _App_resetExecutionTimer();
       targetFolderId = targetFolderId || "root";
 
       var sheet = _DriveFileDetails_ensureSheetExistsAndActivate();
@@ -265,7 +255,9 @@ function DriveFileDetails_pullFromDrive(targetFolderId, isShallow) {
 
       // Recursive Fetch with Error Guard
       function recursiveFetch(parentId) {
-        _DriveFileDetails_checkTimeLimit();
+        if (_App_isExecutionLimitApproaching()) {
+          throw new Error("⏳ Time limit approaching. Operation paused safely.");
+        }
         try {
           var query = "'" + parentId + "' in parents and trashed = false";
           var fields = "files(id, name, description, starred, mimeType, parents, modifiedTime, webViewLink, size, permissions(type, role, emailAddress))";

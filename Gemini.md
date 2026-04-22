@@ -1,4 +1,4 @@
-# WorkspaceSync Appscripts - AGENTS Guide
+# WorkspaceSync Appscripts - Gemini Guide
 
 Read this before changing any `.js` or `.html` file in this repository. **This project is maintained 100% by AI agents.** Human coders do not actively edit this codebase. Therefore, all architectural rules, patterns, and conventions must be strictly preserved to maintain systematic scalability.
 
@@ -15,7 +15,7 @@ This project uses **Clasp** (Command Line Apps Script Projects) for local develo
 - Treat `BLUEPRINT.md` as the ultimate architectural map. It contains connection flows and the scope of external APIs.
 - Treat `00_Config_Constants.js` as the source of truth for global state keys and sheet names.
 - **Do not invent new patterns.** If a tool needs local storage, use the properties registry. If a tool needs to modify the spreadsheet UI, it must use the `_App_` ecosystem.
-- Before adding a new tool, duplicate `Template_Tool_Code.js` and `Template_Tool_Sidebar.html` and modify them, rather than writing a tool from scratch.
+- Before adding a new tool, duplicate `TemplateTool_Code.js` and `TemplateTool_Sidebar.html` and modify them, rather than writing a tool from scratch.
 
 ## ⛔ "Do Not Touch" Core Modules
 
@@ -64,17 +64,17 @@ Never use `PropertiesService.getDocumentProperties()` directly in a tool.
 - Define your new key strictly in `APP_PROPS` inside `00_Config_Constants.js`.
 - Use `_App_getProperty` and `_App_setProperty` from `02_Config_Storage.js`.
 
-### 7. Tool Launch Restrictions
-Tools must use `_App_launchTool('KEY')` (or `_App_openSidebar`) as their main menu entrypoint. Do not write custom `HtmlService.createHtmlOutput` code in your public showSidebar function unless it's a completely bespoke dialog exception.
+### 8. Batch Processing & Time Limits
+Row-by-row data processing must use `_App_BatchProcessor` from `03_Core_Utils.js`. This utility handles progress tracking, backoff retries, and protects against the 6-minute script timeout. Use `SheetManager.batchPatchRows` for efficient data writing within the batch complete hook.
 
-## 🤖 AI Agent Workflow Rules
+## 🤖 Gemini Workflow Rules
 
 1. **Minimize file reads**: ONLY read the specific tool files needed.
 2. **Consult Core Modules first**: Global configuration and logic are defined in `00_Config_Constants.js` through `09_Engine_UI.js`.
 3. **Use `Logger.run()`**: Wrap primary tool operations in `Logger.run('TOOL_KEY', 'Context', () => { ... })` for consistent logging.
 4. **Follow `SyncEngine`**: When modifying sheet structure, update the registration metadata in the tool's backend file, which registers with `SyncEngine`.
 
-## 📋 AI Agent Pre-Flight Checklist
+## 📋 Gemini Pre-Flight Checklist
 
 Before completing any task, mentally run this checklist. Do not proceed until you have verified all points:
 
@@ -85,6 +85,7 @@ Before completing any task, mentally run this checklist. Do not proceed until yo
 - [ ] Does my public function return exactly `{ success: boolean, message: string }`?
 - [ ] Did I use `_App_callWithBackoff` around any external Google API calls?
 - [ ] If I added a new setting, is it declared in `APP_PROPS` in `00_Config_Constants.js`?
+- [ ] If my tool processes rows, did I use `_App_BatchProcessor` and `SheetManager.batchPatchRows`?
 - [ ] Is my sidebar strictly including `<?!= include('SidebarShared'); ?>` to inherit standard WorkspaceSync UI libraries?
 
 ## 🚀 Adding a New Tool

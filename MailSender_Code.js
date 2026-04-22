@@ -118,23 +118,24 @@ function MailSender_executeActions() {
     var headers = data[0];
     var allRows = data.slice(1);
 
-    var validRowsCount = allRows.filter(function (row) {
-      if (!row[MAIL_SENDER_CFG.COLUMNS.ACTION]) return false;
+    var pendingRows = [];
+    allRows.forEach(function (row, idx) {
+      if (!row[MAIL_SENDER_CFG.COLUMNS.ACTION]) return;
       var action = row[MAIL_SENDER_CFG.COLUMNS.ACTION].toString().trim().toUpperCase();
-      return action === "SEND" || action === "DRAFT";
-    }).length;
+      if (action === "SEND" || action === "DRAFT") {
+        pendingRows.push({ data: row, originalIndex: idx });
+      }
+    });
 
-    var updatesCount = 0;
+    if (pendingRows.length === 0) return "Nothing to do! No 'SEND' or 'DRAFT' actions pending.";
 
-    _App_setProgress('MAIL_SENDER', 0, validRowsCount);
-
-    var updates = allRows.map(function (row, index) {
+    var stats = _App_BatchProcessor('MAIL_SENDER', pendingRows, function (item, index) {
+      var row = item.data;
+      var originalIdx = item.originalIndex;
       var rowUpdates = {
         action: row[MAIL_SENDER_CFG.COLUMNS.ACTION],
-        status: ""
+        originalIndex: originalIdx
       };
-
-      if (!rowUpdates.action) return null;
 
       var action = rowUpdates.action.toString().trim().toUpperCase();
       if (action !== "SEND" && action !== "DRAFT") return null;
@@ -178,6 +179,7 @@ function MailSender_executeActions() {
           finalAttachments.push(pdfBlob);
         }
 
+        var resultStatus = "";
         if (action === "SEND") {
           var options = {
             htmlBody: emailBody,
@@ -186,17 +188,13 @@ function MailSender_executeActions() {
 
           if (targetThreadId) {
             var thread = null;
-            try {
-              thread = GmailApp.getThreadById(targetThreadId);
-            } catch (ignore) { }
+            try { thread = GmailApp.getThreadById(targetThreadId); } catch (ignore) { }
 
             if (!thread) {
               var safeSubject = targetThreadId.toString().replace(/['"]/g, '');
               var query = 'subject:("' + safeSubject + '")';
               var threads = GmailApp.search(query, 0, 1);
-              if (threads && threads.length > 0) {
-                thread = threads[0];
-              }
+              if (threads && threads.length > 0) thread = threads[0];
             }
             if (!thread) throw new Error("⚠️ Thread not found for ID or Subject");
 
@@ -219,14 +217,13 @@ function MailSender_executeActions() {
             var draftReply = lastMessage.createDraftReplyAll("", replyOptions);
             draftReply.update(newTo || "", emailSubject, "", replyOptions);
             draftReply.send();
-
           } else {
             options.cc = targetCc;
             options.bcc = targetBcc;
             GmailApp.sendEmail(targetTo, emailSubject, "", options);
           }
 
-          rowUpdates.status = "✅ Sent (" + new Date().toLocaleString() + ")";
+          resultStatus = "✅ Sent (" + new Date().toLocaleString() + ")";
           rowUpdates.action = "";
         } else if (action === "DRAFT") {
           var options = {
@@ -236,17 +233,13 @@ function MailSender_executeActions() {
 
           if (targetThreadId) {
             var thread = null;
-            try {
-              thread = GmailApp.getThreadById(targetThreadId);
-            } catch (ignore) { }
+            try { thread = GmailApp.getThreadById(targetThreadId); } catch (ignore) { }
 
             if (!thread) {
               var safeSubject = targetThreadId.toString().replace(/['"]/g, '');
               var query = 'subject:("' + safeSubject + '")';
               var threads = GmailApp.search(query, 0, 1);
-              if (threads && threads.length > 0) {
-                thread = threads[0];
-              }
+              if (threads && threads.length > 0) thread = threads[0];
             }
             if (!thread) throw new Error("⚠️ Thread not found for ID or Subject");
 
@@ -269,60 +262,46 @@ function MailSender_executeActions() {
             var draftReply = lastMessage.createDraftReplyAll("", replyOptions);
             draftReply.update(newTo || "", emailSubject, "", replyOptions);
 
-            rowUpdates.status = "📝 Reply Draft Created";
+            resultStatus = "📝 Reply Draft Created";
             rowUpdates.action = "";
           } else {
             options.cc = targetCc;
             options.bcc = targetBcc;
             GmailApp.createDraft(targetTo, emailSubject, "", options);
-            rowUpdates.status = "📝 Draft Created";
+            resultStatus = "📝 Draft Created";
             rowUpdates.action = "";
           }
         }
 
-        var reference = 'Row ' + (index + 2);
+        var reference = 'Row ' + (originalIdx + 2);
         if (emailSubject) reference += ' (' + emailSubject + ')';
-        Logger.info(SyncEngine.getTool('MAIL_SENDER').TITLE, reference, rowUpdates.status);
+        Logger.info(SyncEngine.getTool('MAIL_SENDER').TITLE, reference, resultStatus);
 
-        updatesCount++;
-        _App_setProgress('MAIL_SENDER', updatesCount, validRowsCount);
+        return rowUpdates;
 
       } catch (e) {
-        rowUpdates.status = e.message;
-        var reference = 'Row ' + (index + 2);
+        var reference = 'Row ' + (originalIdx + 2);
         Logger.error(SyncEngine.getTool('MAIL_SENDER').TITLE, reference, e);
+        return null;
       }
-
-      return rowUpdates;
-    });
-
-    var firstUpdatedRow = Infinity;
-    var lastUpdatedRow = -Infinity;
-
-    updates.forEach(function (u, i) {
-      if (u) {
-        var rowNum = i + 2;
-        if (rowNum < firstUpdatedRow) firstUpdatedRow = rowNum;
-        if (rowNum > lastUpdatedRow) lastUpdatedRow = rowNum;
-      }
-    });
-
-    if (firstUpdatedRow <= lastUpdatedRow) {
-      var rangeToUpdate = sheet.getRange(firstUpdatedRow, MAIL_SENDER_CFG.COLUMNS.ACTION + 1, lastUpdatedRow - firstUpdatedRow + 1, 1);
-      var currentValues = rangeToUpdate.getValues();
-      updates.forEach(function (u, i) {
-        if (u) {
-          var arrayIdx = (i + 2) - firstUpdatedRow;
-          currentValues[arrayIdx][0] = u.action;
+    }, {
+      onBatchComplete: function (batchResults) {
+        var rowNumbers = [];
+        var patchData = [];
+        batchResults.forEach(function (res) {
+          if (res && res.originalIndex !== undefined) {
+            rowNumbers.push(res.originalIndex + 2);
+            patchData.push({ 'Action': res.action });
+          }
+        });
+        if (rowNumbers.length > 0) {
+          SheetManager.batchPatchRows('MAIL_SENDER', rowNumbers, patchData);
         }
-      });
-      rangeToUpdate.setValues(currentValues);
       }
+    });
 
-      _App_clearProgress('MAIL_SENDER');
-
-      var finalResult = updatesCount + " actions processed!";
-      Logger.info(SyncEngine.getTool('MAIL_SENDER').TITLE, "Execute Actions", finalResult);
+    var finalResult = stats.processedCount + " actions processed!";
+    Logger.info(SyncEngine.getTool('MAIL_SENDER').TITLE, "Execute Actions", finalResult);
     return finalResult;
   });
 }

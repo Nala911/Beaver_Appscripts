@@ -255,7 +255,8 @@ function ContactsSync_pushChanges() {
 
         var dataRange = sheet.getDataRange();
         var data = dataRange.getValues();
-        data.shift(); // Remove header
+        var headers = data[0];
+        var allRows = data.slice(1);
 
         var groupsResponse = People.ContactGroups.list();
         var allGroups = groupsResponse.contactGroups || [];
@@ -264,15 +265,24 @@ function ContactsSync_pushChanges() {
             groupNameToId[g.formattedName || g.name] = g.resourceName;
         });
 
-        var updates = data.map(function (row, index) {
+        var pendingRows = [];
+        allRows.forEach(function (row, idx) {
+            if (row[CONTACTS_SYNC_CFG.COLUMNS.ACTION]) {
+                pendingRows.push({ data: row, originalIndex: idx });
+            }
+        });
+
+        if (pendingRows.length === 0) return "No pending actions found.";
+
+        var stats = _App_BatchProcessor('CONTACTS_SYNC', pendingRows, function (item) {
+            var row = item.data;
+            var originalIdx = item.originalIndex;
             var rowUpdates = {
                 action: row[CONTACTS_SYNC_CFG.COLUMNS.ACTION],
                 contactId: row[CONTACTS_SYNC_CFG.COLUMNS.CONTACT_ID],
                 status: "",
-                errorObj: null
+                originalIndex: originalIdx
             };
-
-            if (!rowUpdates.action) return null;
 
             try {
                 var action = rowUpdates.action.toString().toUpperCase();
@@ -296,9 +306,7 @@ function ContactsSync_pushChanges() {
                     throw new Error("⚠️ Invalid email format");
                 }
 
-                var person = {
-                    names: [], emailAddresses: [], phoneNumbers: [], organizations: [], biographies: [], addresses: []
-                };
+                var person = { names: [], emailAddresses: [], phoneNumbers: [], organizations: [], biographies: [], addresses: [] };
 
                 if (contactData.firstName || contactData.lastName) {
                     person.names.push({ givenName: contactData.firstName || "", familyName: contactData.lastName || "" });
@@ -321,149 +329,94 @@ function ContactsSync_pushChanges() {
 
                 switch (action) {
                     case "CREATE":
-                        var createdPerson = _App_callWithBackoff(function () {
-                            return People.People.createContact(person);
-                        });
+                        var createdPerson = People.People.createContact(person);
                         rowUpdates.contactId = createdPerson.resourceName;
                         if (contactData.groupsStr) _ContactsSync_applyGroups(createdPerson.resourceName, contactData.groupsStr, groupNameToId);
-
-                        // Handle Starred for Create
                         if (contactData.starred === "Yes") {
-                            _App_callWithBackoff(function () {
-                                People.ContactGroups.Members.modify({ resourceNamesToAdd: [createdPerson.resourceName] }, 'contactGroups/starred');
-                            });
+                            People.ContactGroups.Members.modify({ resourceNamesToAdd: [createdPerson.resourceName] }, 'contactGroups/starred');
                         }
-
                         rowUpdates.status = "✅ Created";
                         rowUpdates.action = "";
                         break;
 
                     case "UPDATE":
                         if (!rowUpdates.contactId) throw new Error("⚠️ Missing Contact ID");
-
-                        // We must fetch the EXISTING contact to preserve arrays (like secondary emails/phones)
-                        // Because People API does a full overwrite of the array if we just pass a new one.
-                        var existingPerson = _App_callWithBackoff(function () {
-                            return People.People.get(rowUpdates.contactId, {
-                                personFields: 'names,emailAddresses,phoneNumbers,organizations,biographies,addresses'
-                            });
-                        });
-
+                        var existingPerson = People.People.get(rowUpdates.contactId, { personFields: 'names,emailAddresses,phoneNumbers,organizations,biographies,addresses' });
                         person.etag = existingPerson.etag;
 
-                        // MERGE LOGIC (Prevent Data Loss for Secondary Items)
                         if (existingPerson.emailAddresses && existingPerson.emailAddresses.length > 0) {
                             var primaryMailIndex = existingPerson.emailAddresses.findIndex(function (e) { return e.metadata && e.metadata.primary; });
-                            if (primaryMailIndex === -1) primaryMailIndex = 0; // Fallback to index 0 to prevent ghost duplicate
+                            if (primaryMailIndex === -1) primaryMailIndex = 0;
                             var existingMails = existingPerson.emailAddresses;
-                            if (contactData.email) { // Update primary
-                                if (primaryMailIndex > -1) existingMails[primaryMailIndex].value = contactData.email;
-                                else existingMails.push({ value: contactData.email, metadata: { primary: true } });
-                            }
+                            if (contactData.email) existingMails[primaryMailIndex].value = contactData.email;
                             person.emailAddresses = existingMails;
                         }
 
                         if (existingPerson.phoneNumbers && existingPerson.phoneNumbers.length > 0) {
                             var primaryPhoneIndex = existingPerson.phoneNumbers.findIndex(function (p) { return p.metadata && p.metadata.primary; });
-                            if (primaryPhoneIndex === -1) primaryPhoneIndex = 0; // Fallback to index 0
+                            if (primaryPhoneIndex === -1) primaryPhoneIndex = 0;
                             var existingPhones = existingPerson.phoneNumbers;
-                            if (contactData.phone) { // Update primary
-                                if (primaryPhoneIndex > -1) existingPhones[primaryPhoneIndex].value = contactData.phone;
-                                else existingPhones.push({ value: contactData.phone, metadata: { primary: true } });
-                            }
+                            if (contactData.phone) existingPhones[primaryPhoneIndex].value = contactData.phone;
                             person.phoneNumbers = existingPhones;
                         }
 
-                        // Merge Address Logic
                         if (existingPerson.addresses && existingPerson.addresses.length > 0) {
                             var primaryAddressIndex = existingPerson.addresses.findIndex(function (a) { return a.metadata && a.metadata.primary; });
-                            if (primaryAddressIndex === -1) primaryAddressIndex = 0; // Fallback to index 0
+                            if (primaryAddressIndex === -1) primaryAddressIndex = 0;
                             var existingAddresses = existingPerson.addresses;
-
-                            var hasNewAddressData = contactData.street || contactData.city || contactData.state || contactData.zip;
-                            if (hasNewAddressData) {
-                                var newAddr = {
-                                    streetAddress: contactData.street || "",
-                                    city: contactData.city || "",
-                                    region: contactData.state || "",
-                                    postalCode: contactData.zip || ""
-                                };
-                                if (primaryAddressIndex > -1) {
-                                    newAddr.metadata = existingAddresses[primaryAddressIndex].metadata;
-                                    existingAddresses[primaryAddressIndex] = newAddr;
-                                } else {
-                                    newAddr.metadata = { primary: true };
-                                    existingAddresses.push(newAddr);
-                                }
+                            if (contactData.street || contactData.city || contactData.state || contactData.zip) {
+                                var newAddr = { streetAddress: contactData.street || "", city: contactData.city || "", region: contactData.state || "", postalCode: contactData.zip || "" };
+                                if (primaryAddressIndex > -1) { newAddr.metadata = existingAddresses[primaryAddressIndex].metadata; existingAddresses[primaryAddressIndex] = newAddr; }
+                                else { newAddr.metadata = { primary: true }; existingAddresses.push(newAddr); }
                             }
                             person.addresses = existingAddresses;
                         }
 
-                        _App_callWithBackoff(function () {
-                            People.People.updateContact(person, rowUpdates.contactId, {
-                                updatePersonFields: 'names,emailAddresses,phoneNumbers,organizations,biographies,addresses'
-                            });
-                        });
-
+                        People.People.updateContact(person, rowUpdates.contactId, { updatePersonFields: 'names,emailAddresses,phoneNumbers,organizations,biographies,addresses' });
                         if (contactData.groupsStr) _ContactsSync_applyGroups(rowUpdates.contactId, contactData.groupsStr, groupNameToId);
-
                         if (contactData.starred === "Yes") {
-                            try {
-                                _App_callWithBackoff(function () {
-                                    People.ContactGroups.Members.modify({ resourceNamesToAdd: [rowUpdates.contactId] }, 'contactGroups/starred');
-                                });
-                            } catch (e) { } // May already be starred
-                            try {
-                                _App_callWithBackoff(function () {
-                                    People.ContactGroups.Members.modify({ resourceNamesToRemove: [rowUpdates.contactId] }, 'contactGroups/starred');
-                                });
-                            } catch (e) { } // May not be starred
+                            try { People.ContactGroups.Members.modify({ resourceNamesToAdd: [rowUpdates.contactId] }, 'contactGroups/starred'); } catch (e) { }
                         }
-
                         rowUpdates.status = "✅ Updated";
                         rowUpdates.action = "";
                         break;
 
                     case "REMOVE":
                         if (!rowUpdates.contactId) throw new Error("⚠️ Missing Contact ID");
-                        try {
-                            _App_callWithBackoff(function () {
-                                People.People.deleteContact(rowUpdates.contactId);
-                            });
-                            rowUpdates.status = "🗑️ Removed";
-                            rowUpdates.action = "";
-                        } catch (delErr) {
-                            rowUpdates.status = "⚠️ Resource missing";
-                            rowUpdates.action = "";
-                        }
+                        try { People.People.deleteContact(rowUpdates.contactId); } catch (e) { }
+                        rowUpdates.status = "🗑️ Removed";
+                        rowUpdates.action = "";
                         break;
 
                     default:
                         rowUpdates.status = "❓ Unknown Action '" + action + "'";
                 }
+                
+                Logger.info(SyncEngine.getTool('CONTACTS_SYNC').TITLE, 'Row ' + (originalIdx + 2), rowUpdates.status);
+                return rowUpdates;
+
             } catch (e) {
                 rowUpdates.status = "⚠️ " + e.message;
-                rowUpdates.errorObj = e;
+                Logger.error(SyncEngine.getTool('CONTACTS_SYNC').TITLE, 'Row ' + (originalIdx + 2), e);
+                return rowUpdates;
             }
-            return rowUpdates;
-        });
-
-        updates.forEach(function (u, i) {
-            if (u) {
-                var rowNum = i + 2;
-                sheet.getRange(rowNum, CONTACTS_SYNC_CFG.COLUMNS.ACTION + 1).setValue(u.action);
-                if (u.contactId) sheet.getRange(rowNum, CONTACTS_SYNC_CFG.COLUMNS.CONTACT_ID + 1).setValue(u.contactId);
-
-                var isError = u.status && (u.status.indexOf('❌') > -1 || u.status.indexOf('⚠️') > -1);
-                if (isError) {
-                    Logger.error(SyncEngine.getTool('CONTACTS_SYNC').TITLE, 'Row ' + rowNum, u.errorObj || u.status || 'N/A');
-                } else if (u.status) {
-                    Logger.info(SyncEngine.getTool('CONTACTS_SYNC').TITLE, 'Row ' + rowNum, u.status || 'N/A');
+        }, {
+            onBatchComplete: function (batchResults) {
+                var rowNumbers = [];
+                var updatesArr = [];
+                batchResults.forEach(function (res) {
+                    if (res && res.originalIndex !== undefined) {
+                        rowNumbers.push(res.originalIndex + 2);
+                        updatesArr.push({ 'Action': res.action, 'Contact ID': res.contactId });
+                    }
+                });
+                if (rowNumbers.length > 0) {
+                    SheetManager.batchPatchRows('CONTACTS_SYNC', rowNumbers, updatesArr);
                 }
             }
         });
 
-        return _App_ok("Sync Complete. Check Developer Logs for details.");
+        return _App_ok("Sync Complete. Processed: " + stats.processedCount);
     });
 }
 

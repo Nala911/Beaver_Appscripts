@@ -113,19 +113,29 @@ function PipelineControl_processPipelines() {
             }
 
             var sheet = SheetManager.getSheet('PIPELINE');
-            var data = sheet.getDataRange().getValues();
+            var dataRange = sheet.getDataRange();
+            var data = dataRange.getValues();
 
+            var pendingPipelines = [];
             for (var i = PIPELINE_NON_DATA_ROWS; i < data.length; i++) {
                 var row = data[i];
                 var statusVal = row[0];
                 var isEnabled = (String(statusVal).toLowerCase() === 'enabled') || (statusVal === true);
 
-                if (!isEnabled) continue;
-
-                if (_PipelineControl_shouldRun(row)) {
-                    _PipelineControl_runPipeline(sheet, i + 1, row);
+                if (isEnabled && _PipelineControl_shouldRun(row)) {
+                    pendingPipelines.push({ rowData: row, rowIndex: i + 1 });
                 }
             }
+
+            if (pendingPipelines.length === 0) {
+                Logger.info('PIPELINE', 'Global', "No pipelines scheduled to run.");
+                return;
+            }
+
+            _App_BatchProcessor('PIPELINE', pendingPipelines, function (item) {
+                _PipelineControl_runPipeline(sheet, item.rowIndex, item.rowData);
+                return { success: true };
+            });
         });
     });
 }
@@ -134,18 +144,29 @@ function PipelineControl_runAllPipelines() {
     return Logger.run('PIPELINE', 'Run All', function () {
         return _App_withDocumentLock('PIPELINE_RUN_ALL', function () {
             var sheet = SheetManager.getSheet('PIPELINE');
-            var data = sheet.getDataRange().getValues();
+            var dataRange = sheet.getDataRange();
+            var data = dataRange.getValues();
 
+            var pendingPipelines = [];
             for (var i = PIPELINE_NON_DATA_ROWS; i < data.length; i++) {
                 var row = data[i];
                 var statusVal = row[0];
                 var isEnabled = (String(statusVal).toLowerCase() === 'enabled') || (statusVal === true);
-
                 if (isEnabled) {
-                    _PipelineControl_runPipeline(sheet, i + 1, row);
+                    pendingPipelines.push({ rowData: row, rowIndex: i + 1 });
                 }
             }
-            return _App_ok('Execution complete');
+
+            if (pendingPipelines.length === 0) return _App_ok('No enabled pipelines to run.');
+
+            var stats = _App_BatchProcessor('PIPELINE', pendingPipelines, function (item) {
+                _PipelineControl_runPipeline(sheet, item.rowIndex, item.rowData);
+                return { success: true };
+            });
+
+            var resultMsg = 'Execution complete. Processed ' + stats.processedCount + ' pipelines.';
+            if (stats.timeLimitReached) resultMsg = '⏳ Time limit reached. ' + resultMsg;
+            return _App_ok(resultMsg);
         });
     });
 }
@@ -233,21 +254,24 @@ function PipelineControl_runSelectedPipelines(rowIndexes) {
         return _App_withDocumentLock('PIPELINE_RUN_SELECTED', function () {
             var sheet = SheetManager.getSheet('PIPELINE');
             var colCount = SyncEngine.getTool('PIPELINE').FORMAT_CONFIG.COL_SCHEMA.length;
-            var results = [];
+            
+            var items = rowIndexes.map(function(idx) {
+                return { rowIndex: idx };
+            });
 
-            for (var i = 0; i < rowIndexes.length; i++) {
-                var rowIdx = rowIndexes[i];
-                var data = sheet.getRange(rowIdx, 1, 1, colCount).getValues()[0];
-                _PipelineControl_runPipeline(sheet, rowIdx, data);
+            var stats = _App_BatchProcessor('PIPELINE', items, function (item) {
+                var data = sheet.getRange(item.rowIndex, 1, 1, colCount).getValues()[0];
+                _PipelineControl_runPipeline(sheet, item.rowIndex, data);
 
-                var updatedData = sheet.getRange(rowIdx, 1, 1, colCount).getValues()[0];
-                results.push({
-                    rowIndex: rowIdx,
+                var updatedData = sheet.getRange(item.rowIndex, 1, 1, colCount).getValues()[0];
+                return {
+                    rowIndex: item.rowIndex,
                     lastStatus: "Check Logs",
                     lastRun: updatedData[7] ? updatedData[7].toString() : ""
-                });
-            }
-            return _App_ok('Selected pipelines completed', results);
+                };
+            });
+
+            return _App_ok('Selected pipelines completed', stats.results);
         });
     });
 }

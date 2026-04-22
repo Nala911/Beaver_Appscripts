@@ -176,11 +176,19 @@ function _FormsSync_syncToForm() {
                 return { success: true, message: "No data to sync." };
             }
 
-            var rowUpdates = [];
-
-            // Loop through data starting after header
+            var pendingRows = [];
             for (var i = FORMSSYNC_CFG.HEADER_ROW; i < data.length; i++) {
-                var row = data[i];
+                var action = (data[i][FORMSSYNC_CFG.COLUMNS.ACTION - 1] || "").toString().trim().toUpperCase();
+                if (action === "CREATE" || action === "UPDATE" || action === "REMOVE") {
+                    pendingRows.push({ data: data[i], originalIndex: i });
+                }
+            }
+
+            if (pendingRows.length === 0) return { success: true, message: "No pending actions found." };
+
+            var stats = _App_BatchProcessor('FORMS_SYNC', pendingRows, function (item) {
+                var row = item.data;
+                var originalIdx = item.originalIndex;
                 var action = (row[FORMSSYNC_CFG.COLUMNS.ACTION - 1] || "").toString().trim().toUpperCase();
                 var id = (row[FORMSSYNC_CFG.COLUMNS.ID - 1] || "").toString().trim();
                 var title = (row[FORMSSYNC_CFG.COLUMNS.TITLE - 1] || "").toString();
@@ -191,20 +199,15 @@ function _FormsSync_syncToForm() {
 
                 var updateObj = {
                     action: action,
-                    id: id
+                    id: id,
+                    originalIndex: originalIdx
                 };
-
-                if (!action || (action !== "CREATE" && action !== "UPDATE" && action !== "REMOVE")) {
-                    rowUpdates.push(updateObj);
-                    continue;
-                }
 
                 var optionsArr = [];
                 var gridRows = [];
                 var gridCols = [];
 
                 if (type === "GRID" || type === "CHECKBOX_GRID") {
-                    // Parse "Row1\nRow2\n||\nCol1\nCol2" format
                     var gridParts = optionsRaw.split("||");
                     gridRows = (gridParts[0] || "").split("\n").map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });
                     gridCols = (gridParts[1] || "").split("\n").map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });
@@ -230,10 +233,7 @@ function _FormsSync_syncToForm() {
                             else if (type === "SCALE") targetItem = form.addScaleItem();
                             else if (type === "GRID") targetItem = form.addGridItem();
                             else if (type === "CHECKBOX_GRID") targetItem = form.addCheckboxGridItem();
-                            else {
-                                targetItem = form.addTextItem();
-                                type = "TEXT";
-                            }
+                            else { targetItem = form.addTextItem(); type = "TEXT"; }
                         });
 
                         _App_callWithBackoff(function () {
@@ -243,8 +243,8 @@ function _FormsSync_syncToForm() {
                         });
 
                         updateObj.id = targetItem.getId().toString();
-                        Logger.info(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Item: ' + title, '✅ Created');
                         updateObj.action = "";
+                        Logger.info(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Item: ' + title, '✅ Created');
                     }
                     else if (action === "UPDATE") {
                         if (!id) throw new Error("Missing ID");
@@ -254,7 +254,6 @@ function _FormsSync_syncToForm() {
                         var currentType = updItem.getType().toString();
 
                         if (currentType === type) {
-                            // Type matches, safely apply properties
                             _App_callWithBackoff(function () {
                                 updItem.setTitle(title);
                                 updItem.setHelpText(helpText);
@@ -262,8 +261,6 @@ function _FormsSync_syncToForm() {
                             });
                             Logger.info(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Item: ' + title, '✅ Updated');
                         } else {
-                            // Type changed! Google Forms API doesn't allow changing types of existing items.
-                            // We must cache the index, delete the old, and create a new item of the target type.
                             var targetIndex = updItem.getIndex();
                             _App_callWithBackoff(function () { form.deleteItem(updItem); });
 
@@ -281,17 +278,13 @@ function _FormsSync_syncToForm() {
                                 else if (type === "SCALE") newItem = form.addScaleItem();
                                 else if (type === "GRID") newItem = form.addGridItem();
                                 else if (type === "CHECKBOX_GRID") newItem = form.addCheckboxGridItem();
-                                else {
-                                    newItem = form.addTextItem();
-                                    type = "TEXT";
-                                }
+                                else { newItem = form.addTextItem(); type = "TEXT"; }
                             });
 
                             _App_callWithBackoff(function () {
                                 newItem.setTitle(title);
                                 newItem.setHelpText(helpText);
                                 _applyItemProperties(newItem, type, required, optionsArr, gridRows, gridCols);
-                                // Move the newly created item to the old item's exact position
                                 form.moveItem(newItem.getIndex(), targetIndex);
                             });
 
@@ -312,20 +305,27 @@ function _FormsSync_syncToForm() {
                         updateObj.action = "";
                     }
                 } catch (err) {
-                    Logger.error(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Row ' + i, err);
+                    Logger.error(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Row ' + (originalIdx + 1), err);
                 }
 
-                rowUpdates.push(updateObj);
-            }
-
-            // Write updates back to sheet
-            rowUpdates.forEach(function (upd, idx) {
-                var rowNum = FORMSSYNC_CFG.HEADER_ROW + 1 + idx;
-                sheet.getRange(rowNum, FORMSSYNC_CFG.COLUMNS.ACTION).setValue(upd.action);
-                if (upd.id) sheet.getRange(rowNum, FORMSSYNC_CFG.COLUMNS.ID).setValue(upd.id);
+                return updateObj;
+            }, {
+                onBatchComplete: function (batchResults) {
+                    var rowNumbers = [];
+                    var patchData = [];
+                    batchResults.forEach(function (res) {
+                        if (res && res.originalIndex !== undefined) {
+                            rowNumbers.push(res.originalIndex + 1);
+                            patchData.push({ 'Action': res.action, 'Item ID': res.id });
+                        }
+                    });
+                    if (rowNumbers.length > 0) {
+                        SheetManager.batchPatchRows('FORMS_SYNC', rowNumbers, patchData);
+                    }
+                }
             });
 
-            return { success: true, message: "Sync Complete. Check the Developer Log for details." };
+            return { success: true, message: "Sync Complete. Processed: " + stats.processedCount };
         } catch (e) {
             throw e;
         }

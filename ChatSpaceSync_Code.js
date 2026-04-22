@@ -166,31 +166,34 @@ function ChatSpaceSync_checkForUnsavedChanges() {
 function ChatSpaceSync_pushChanges() {
   return Logger.run('CHAT_SYNC', 'Push Changes', function () {
     var dataObjects = SheetManager.readObjects('CHAT_SYNC');
-    
-    if (dataObjects.length === 0) {
-      return "No data to sync.";
-    }
+    if (dataObjects.length === 0) return "No data to sync.";
 
-    Logger.info(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Global', 'Push started — processing ' + dataObjects.length + ' row(s)');
+    var pendingItems = [];
+    dataObjects.forEach(function (obj, idx) {
+      if (obj['Action']) {
+        pendingItems.push({ data: obj, originalIndex: idx });
+      }
+    });
 
-    var hasChanges = false;
+    if (pendingItems.length === 0) return "No pending actions found.";
 
-    var updates = dataObjects.map(function (rowObj, index) {
-      var caughtRowError = null;
+    Logger.info(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Global', 'Push started — processing ' + pendingItems.length + ' pending row(s)');
+
+    var stats = _App_BatchProcessor('CHAT_SYNC', pendingItems, function (item) {
+      var rowObj = item.data;
+      var originalIdx = item.originalIndex;
       var rowUpdates = {
         action: rowObj['Action'],
-        spaceId: rowObj['Space ID'] ? String(rowObj['Space ID']) : null,
         membershipId: rowObj['Membership ID'] ? String(rowObj['Membership ID']) : null,
-        status: ""
+        status: "",
+        originalIndex: originalIdx
       };
-
-      if (!rowUpdates.action) return rowObj;
 
       try {
         var action = rowUpdates.action.toString().toUpperCase();
         var targetEmail = rowObj['Member Email'];
         var targetRole = rowObj['Role'] || 'ROLE_MEMBER';
-        var spaceId = rowUpdates.spaceId;
+        var spaceId = rowObj['Space ID'];
 
         if (!spaceId) throw new Error("⚠️ Data Error: Missing Space ID");
 
@@ -200,7 +203,7 @@ function ChatSpaceSync_pushChanges() {
             
             var membership = {
               member: {
-                name: "users/" + targetEmail, // 'users/email@example.com' or 'users/12345'
+                name: "users/" + targetEmail,
                 type: "HUMAN"
               },
               role: targetRole
@@ -230,30 +233,33 @@ function ChatSpaceSync_pushChanges() {
             rowUpdates.status = "❓ Unknown Action '" + action + "'";
         }
 
+        Logger.info(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Row ' + (originalIdx + 2), rowUpdates.status);
+        return rowUpdates;
+
       } catch (e) {
         rowUpdates.status = e.message;
-        caughtRowError = e;
+        Logger.error(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Row ' + (originalIdx + 2), e);
+        return rowUpdates;
       }
-
-      rowObj['Action'] = rowUpdates.action;
-      if (rowUpdates.membershipId) rowObj['Membership ID'] = rowUpdates.membershipId;
-
-      var isError = rowUpdates.status && (rowUpdates.status.indexOf('❌') > -1 || rowUpdates.status.indexOf('⚠️') > -1);
-      var rowNum = index + 2;
-      if (isError) {
-        Logger.error(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Row ' + rowNum, caughtRowError || rowUpdates.status, { rowData: rowObj, updates: rowUpdates });
-      } else if (rowUpdates.status) {
-        Logger.info(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Row ' + rowNum, rowUpdates.status || 'N/A', { rowData: rowObj });
+    }, {
+      onBatchComplete: function (batchResults) {
+        var rowNumbers = [];
+        var patchData = [];
+        batchResults.forEach(function (res) {
+          if (res && res.originalIndex !== undefined) {
+            rowNumbers.push(res.originalIndex + 2);
+            patchData.push({
+              'Action': res.action,
+              'Membership ID': res.membershipId
+            });
+          }
+        });
+        if (rowNumbers.length > 0) {
+          SheetManager.batchPatchRows('CHAT_SYNC', rowNumbers, patchData);
+        }
       }
-      
-      hasChanges = true;
-      return rowObj;
     });
 
-    if (hasChanges) {
-       SheetManager.writeObjects('CHAT_SYNC', updates, 2);
-    }
-
-    return _App_ok("Sync Complete.");
+    return _App_ok("Sync Complete. Processed: " + stats.processedCount);
   });
 }

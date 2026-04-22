@@ -273,129 +273,118 @@ function _TasksSync_pushTasks() {
     });
   }
 
+  var pendingItems = [];
+  for (var i = 0; i < values.length; i++) {
+    if (values[i][map['ACTION']]) {
+      pendingItems.push({ data: values[i], originalIndex: i });
+    }
+  }
+
+  if (pendingItems.length === 0) return;
+
   var counter = { apiCalls: 0 };
-  var processedCount = 0;
   var taskCache = {};
 
-  for (var i = 0; i < values.length; i++) {
-    var row = values[i];
-    var rowIndex = i + 2;
+  var stats = _App_BatchProcessor('TASKS', pendingItems, function (item) {
+    var row = item.data;
+    var originalIdx = item.originalIndex;
+    var rowIndex = originalIdx + 2;
     var action = row[map['ACTION']];
 
-    if (!action) continue;
+    var listName = row[map['LIST NAME']];
+    var targetListId = listNameToId[listName];
+    var taskId = row[map['TASK ID']];
+
+    var rawTitle = String(row[map['TITLE']] || '');
+    var cleanTitle = rawTitle.replace(/^(\s*↳\s*)+/, '').trim();
+
+    var taskResource = {
+      title: cleanTitle,
+      notes: row[map['NOTES']],
+      status: row[map['TASK STATUS']]
+    };
+
+    if (map['DUE DATE'] !== undefined) {
+      if (row[map['DUE DATE']]) {
+        var d = new Date(row[map['DUE DATE']]);
+        if (!isNaN(d.getTime())) taskResource.due = d.toISOString();
+      } else {
+        taskResource.due = null;
+      }
+    }
+
+    if (!targetListId && listName && action !== 'Remove') {
+      var newList = Tasks.Tasklists.insert({ title: listName });
+      targetListId = newList.id;
+      listNameToId[listName] = targetListId;
+      _TasksSync_throttle(counter, 1);
+    }
+    if (!targetListId) throw new Error('List not found: ' + listName);
 
     var logMsg = '';
-    var isError = false;
-    var errorObj = null;
+    if (action === 'Create') {
+      if (!cleanTitle) throw new Error('Title is empty');
+      var parentId = map['PARENT ID'] !== undefined ? row[map['PARENT ID']] : null;
+      var opt = parentId ? { parent: parentId } : {};
 
-    try {
-      var listName = row[map['LIST NAME']];
-      var targetListId = listNameToId[listName];
-      var taskId = row[map['TASK ID']];
+      var inserted = Tasks.Tasks.insert(taskResource, targetListId, opt);
+      _TasksSync_throttle(counter, 1);
 
-      var rawTitle = String(row[map['TITLE']] || '');
-      var cleanTitle = rawTitle.replace(/^(\s*↳\s*)+/, '').trim();
+      row[map['TASK ID']] = inserted.id;
+      row[map['VERSION TOKEN']] = inserted.etag;
+      row[map['LAST SYNC']] = new Date();
+      logMsg = 'Created successfully';
+    }
+    else if (action === 'Update') {
+      if (!taskId) throw new Error('Missing Task ID');
 
-      var taskResource = {
-        title: cleanTitle,
-        notes: row[map['NOTES']],
-        status: row[map['TASK STATUS']]
-      };
-
-      if (map['DUE DATE'] !== undefined) {
-        if (row[map['DUE DATE']]) {
-          var d = new Date(row[map['DUE DATE']]);
-          if (!isNaN(d.getTime())) {
-            taskResource.due = d.toISOString();
-          }
-        } else {
-          taskResource.due = null;
+      var storedEtag = map['VERSION TOKEN'] !== undefined ? row[map['VERSION TOKEN']] : null;
+      if (storedEtag) {
+        try {
+          var live = Tasks.Tasks.get(targetListId, taskId);
+          _TasksSync_throttle(counter, 1);
+          if (live.etag !== storedEtag) throw new Error('Conflict: Remote task changed. Pull to refresh.');
+        } catch (e) {
+          if (e.message && e.message.includes('Not Found')) throw new Error('Task not found on server.');
+          throw e;
         }
       }
 
-      if (!targetListId && listName && action !== 'Remove') {
-        var newList = Tasks.Tasklists.insert({ title: listName });
-        targetListId = newList.id;
-        listNameToId[listName] = targetListId;
-        _TasksSync_throttle(counter, 1);
-      }
-      if (!targetListId) throw new Error('List not found: ' + listName);
+      var updated = Tasks.Tasks.patch(taskResource, targetListId, taskId);
+      _TasksSync_throttle(counter, 1);
 
-      if (action === 'Create') {
-        if (!cleanTitle) throw new Error('Title is empty');
+      row[map['VERSION TOKEN']] = updated.etag;
+      row[map['LAST SYNC']] = new Date();
+      logMsg = 'Updated successfully';
+    }
+    else if (action === 'Remove') {
+      if (!taskId) throw new Error('Missing Task ID');
+      Tasks.Tasks.remove(targetListId, taskId);
+      _TasksSync_throttle(counter, 1);
+      logMsg = 'Removed successfully';
+    }
+    else if (action === 'Move') {
+      if (!taskId) throw new Error('Missing Task ID');
+      var sourceListId = taskIdToListId[taskId];
+      if (!sourceListId) throw new Error('Source list unknown. Pull first.');
+
+      if (sourceListId === targetListId) {
         var parentId = map['PARENT ID'] !== undefined ? row[map['PARENT ID']] : null;
-        var opt = parentId ? { parent: parentId } : {};
+        var moveParams = {};
+        if (parentId) moveParams.parent = parentId;
+        Tasks.Tasks.patch(taskResource, targetListId, taskId);
+        Tasks.Tasks.move(targetListId, taskId, moveParams);
+        _TasksSync_throttle(counter, 2);
+        logMsg = 'Moved (In-List) successfully';
+      } else {
+        var oldToNewMap = {};
+        var insertedId = _TasksSync_deepMoveTask(sourceListId, taskId, targetListId, null, counter, taskCache, oldToNewMap);
 
-        var inserted = Tasks.Tasks.insert(taskResource, targetListId, opt);
-        _TasksSync_throttle(counter, 1);
-
-        values[i][map['TASK ID']] = inserted.id;
-        values[i][map['VERSION TOKEN']] = inserted.etag;
-        values[i][map['LAST SYNC']] = new Date();
-        logMsg = 'Created successfully';
-      }
-      else if (action === 'Update') {
-        if (!taskId) throw new Error('Missing Task ID');
-
-        var storedEtag = map['VERSION TOKEN'] !== undefined ? row[map['VERSION TOKEN']] : null;
-        if (storedEtag) {
-          try {
-            var live = Tasks.Tasks.get(targetListId, taskId);
-            _TasksSync_throttle(counter, 1);
-            if (live.etag !== storedEtag) {
-              throw new Error('Conflict: Remote task changed. Pull to refresh.');
-            }
-          } catch (e) {
-            if (e.message && e.message.includes('Not Found')) throw new Error('Task not found on server.');
-            throw e;
-          }
-        }
-
-        var updated = Tasks.Tasks.patch(taskResource, targetListId, taskId);
-        _TasksSync_throttle(counter, 1);
-
-        values[i][map['VERSION TOKEN']] = updated.etag;
-        values[i][map['LAST SYNC']] = new Date();
-        logMsg = 'Updated successfully';
-      }
-      else if (action === 'Remove') {
-        if (!taskId) throw new Error('Missing Task ID');
-        Tasks.Tasks.remove(targetListId, taskId);
-        _TasksSync_throttle(counter, 1);
-        logMsg = 'Removed successfully';
-      }
-      else if (action === 'Move') {
-        if (!taskId) throw new Error('Missing Task ID');
-        var sourceListId = taskIdToListId[taskId];
-        if (!sourceListId) throw new Error('Source list unknown. Pull first.');
-
-        if (sourceListId === targetListId) {
-          var parentId = map['PARENT ID'] !== undefined ? row[map['PARENT ID']] : null;
-          var moveParams = {};
-          if (parentId) {
-            moveParams.parent = parentId;
-          }
-          Tasks.Tasks.patch(taskResource, targetListId, taskId);
-          Tasks.Tasks.move(targetListId, taskId, moveParams);
-          _TasksSync_throttle(counter, 2);
-          logMsg = 'Moved (In-List) successfully';
+        if (!insertedId) {
+          logMsg = 'Skipped (Parent moved)';
         } else {
-          var oldToNewMap = {}; // Capture all ID migrations from the recursive move
-          var insertedId = _TasksSync_deepMoveTask(sourceListId, taskId, targetListId, null, counter, taskCache, oldToNewMap);
-
-          if (!insertedId) {
-            logMsg = 'Skipped (Parent moved)';
-            if (map['STATUS'] !== undefined) {
-              values[i][map['STATUS']] = logMsg;
-            }
-            if (map['ACTION'] !== undefined) {
-              values[i][map['ACTION']] = '';
-            }
-            continue; // Prevent querying Tasks API with null
-          }
-
-          // ** Desync Fix **: Update all downstream rows in the array in-memory so they don't break
-          for (var j = i + 1; j < values.length; j++) {
+          // Update all downstream rows in the local array to keep references consistent
+          for (var j = 0; j < values.length; j++) {
             if (map['TASK ID'] !== undefined && oldToNewMap[values[j][map['TASK ID']]]) {
               values[j][map['TASK ID']] = oldToNewMap[values[j][map['TASK ID']]];
             }
@@ -407,35 +396,32 @@ function _TasksSync_pushTasks() {
           var inserted = Tasks.Tasks.get(targetListId, insertedId);
           _TasksSync_throttle(counter, 1);
 
-          values[i][map['TASK ID']] = inserted.id;
-          values[i][map['VERSION TOKEN']] = inserted.etag;
-          values[i][map['LAST SYNC']] = new Date();
+          row[map['TASK ID']] = inserted.id;
+          row[map['VERSION TOKEN']] = inserted.etag;
+          row[map['LAST SYNC']] = new Date();
           logMsg = 'Moved to ' + listName;
         }
       }
-
-      processedCount++;
-
-    } catch (e) {
-      isError = true;
-      errorObj = e;
-      logMsg = 'ERROR: ' + e.message;
-      console.error('Row ' + rowIndex + ': ' + e.message);
     }
 
+    if (map['ACTION'] !== undefined) row[map['ACTION']] = '';
+    
     var reference = 'Row ' + rowIndex + ' (' + (row[map['TITLE']] || 'Unknown') + ')';
-    if (isError) {
-      Logger.error(SyncEngine.getTool('TASKS').TITLE, reference, errorObj || logMsg);
-    } else if (logMsg) {
-      Logger.info(SyncEngine.getTool('TASKS').TITLE, reference, logMsg);
-    }
+    Logger.info(SyncEngine.getTool('TASKS').TITLE, reference, logMsg);
 
-    if (!isError && map['ACTION'] !== undefined) {
-      values[i][map['ACTION']] = '';
-    }
-  }
+    return { originalIndex: originalIdx, rowData: row };
 
-  dataRange.setValues(values);
+  }, {
+    onBatchComplete: function (batchResults) {
+      batchResults.forEach(function (res) {
+        if (res && res.originalIndex !== undefined) {
+          values[res.originalIndex] = res.rowData;
+        }
+      });
+      dataRange.setValues(values);
+    }
+  });
+
   SpreadsheetApp.flush();
 }
 
