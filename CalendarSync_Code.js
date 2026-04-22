@@ -113,8 +113,6 @@ function CalendarSync_pullEvents(request) {
 
     Logger.info(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Pull Events', 'Pull started — calendars: [' + request.calIds.join(', ') + '] from ' + request.startDate + ' to ' + request.endDate);
 
-    SheetManager.clearData('CALENDAR_SYNC');
-
     // Fetch Events
     var start = new Date(request.startDate);
     var end = new Date(request.endDate);

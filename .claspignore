@@ -1,0 +1,11 @@
+templates/**
+.git/**
+node_modules/**
+package.json
+package-lock.json
+README.md
+Blueprint.md
+Gemini.md
+.claspignore
+.clasp.json
+.gitmessage

@@ -1,31 +1,33 @@
 /**
  * Template Backend Tool
- * Version: 1.0 (Plugin Architecture — registers with SyncEngine)
+ * Version: 2.0 (Plugin Architecture — registers with SyncEngine)
  * 
  * Instructions:
- * 1. Duplicate this file and rename it (e.g. `MyNewTool_Code.js`).
- * 2. Update the Tool Key throughout from `TEMPLATE_TOOL` to your key.
- * 3. Add your `SHEET_NAME` to `00_Config_Constants.js` inside the `SHEET_NAMES` object.
- * 4. Create the corresponding HTML file `MyNewTool_Sidebar.html` from `TemplateTool_Sidebar.html`.
+ * 1. Copy the files from the `templates/` directory to the root.
+ * 2. Rename them (e.g., `MyNewTool_Code.js` and `MyNewTool_Sidebar.html`).
+ * 3. Update the Tool Key throughout from `TEMPLATE_TOOL` to your key.
+ * 4. Add your `SHEET_NAME` to `00_Config_Constants.js` inside the `SHEET_NAMES` object.
  */
 
 // --- TOOL REGISTRATION ---
 SyncEngine.registerTool('TEMPLATE_TOOL', {
+    // 1. Required Services (Checks for Advanced APIs)
+    REQUIRED_SERVICES: [
+        /* { name: 'Drive API', test: function() { return typeof Drive !== 'undefined'; } } */
+    ],
     IS_TEMPLATE: true, // Mark as template to skip system audits
     SHEET_NAME: '⚙️ Template Tool', 
     TITLE: '⚙️ Template Tool',
-    // MENU_LABEL removed to keep custom menu clean
     MENU_ENTRYPOINT: 'TemplateTool_openSidebar', 
     MENU_ORDER: 90, 
-    SIDEBAR_HTML: 'TemplateTool_Sidebar', // Name of the .html file
+    SIDEBAR_HTML: 'TemplateTool_Sidebar', 
     SIDEBAR_WIDTH: 300,
     FROZEN_ROWS: 1,
     FROZEN_COLS: 0,
-    COL_WIDTHS: [100, 200, 150], // Initial column widths
+    COL_WIDTHS: [100, 200, 150], 
     FORMAT_CONFIG: {
         numReadOnlyColsAtEnd: 0,
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
-        // Defines the columns and validation rules (headers automatically generated)
         COL_SCHEMA: [
             { header: 'Action', type: 'ACTION', options: ['START', 'STOP', 'PROCESS'] },
             { header: 'Item Name', type: 'TEXT' },
@@ -34,7 +36,21 @@ SyncEngine.registerTool('TEMPLATE_TOOL', {
     }
 });
 
-// --- PUBLIC ENTRY POINTS ---
+/* ==========================================================================
+   CONFIGURATION / ALIASES
+   ========================================================================== */
+
+/**
+ * Column-index aliases for easier reference. 
+ * Update these if your COL_SCHEMA changes.
+ */
+var TEMPLATE_TOOL_COL = {
+    ACTION: 0,
+    NAME: 1,
+    STATUS: 2
+};
+
+// --- SIDEBAR & SHEET SETUP ---
 
 /**
  * Triggered from the Custom Menu. Opens the Sidebar and prepares the sheet.
@@ -46,6 +62,10 @@ function TemplateTool_openSidebar() {
     });
 }
 
+/* ==========================================================================
+   CORE LOGIC
+   ========================================================================== */
+
 /**
  * Triggered from the Sidebar. Must return { success: boolean, message: string }
  */
@@ -56,7 +76,7 @@ function TemplateTool_processAction(payload) {
         var pendingItems = SheetManager.readPendingObjects('TEMPLATE_TOOL');
 
         if (pendingItems.length === 0) {
-            return { success: true, message: "No pending actions to process." };
+            return _App_ok("No pending actions to process.");
         }
 
         // 2. Process in batches (handles timeouts and progress tracking)
@@ -67,24 +87,29 @@ function TemplateTool_processAction(payload) {
             Logger.info('TEMPLATE_TOOL', 'Row ' + item._rowNumber, 'Processed ' + item['Item Name']);
 
             // Return updates for this row
+            var rowUpdates = {};
+            rowUpdates['Action'] = "";
+            rowUpdates['Status'] = "✅ Done";
+            
             return { 
-                action: "", 
-                status: "✅ Done", 
-                _rowNumber: item._rowNumber 
+                _rowNumber: item._rowNumber,
+                updates: rowUpdates
             };
         }, {
             onBatchComplete: function (batchResults) {
                 // Write back updates to the sheet efficiently
-                var rowNumbers = batchResults.map(r => r._rowNumber);
-                var patchData = batchResults.map(r => ({ 'Action': r.action, 'Status': r.status }));
+                var rowNumbers = batchResults.map(function(r) { return r._rowNumber; });
+                var patchData = batchResults.map(function(r) { return r.updates; });
                 SheetManager.batchPatchRows('TEMPLATE_TOOL', rowNumbers, patchData);
             }
         });
 
-        return { 
-            success: true, 
-            message: "Successfully processed " + stats.processedCount + " items!" 
-        };
+        var msg = "Successfully processed " + stats.processedCount + " items!";
+        if (stats.timeLimitReached) {
+            msg += " (Execution Time Limit Reached. Run again to continue)";
+        }
+
+        return _App_ok(msg, { stats: stats });
     });
 }
 

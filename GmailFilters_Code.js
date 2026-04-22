@@ -22,7 +22,7 @@ SyncEngine.registerTool('GMAIL_FILTERS', {
         numReadOnlyColsAtEnd: 0,
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [
-            { header: 'Action', type: 'ACTION', options: ['PULL', 'CREATE', 'UPDATE', 'DELETE', 'IGNORE'] },
+            { header: 'Action', type: 'ACTION', options: ['CREATE', 'UPDATE', 'DELETE'] },
             { header: 'Status', type: 'TEXT' },
             { header: 'Filter ID', type: 'TEXT' },
             { header: 'Criteria: From', type: 'TEXT' },
@@ -87,8 +87,7 @@ function GmailFilters_pullFilters() {
         });
 
         // Clear existing and write new
-        SheetManager.clearSheet('GMAIL_FILTERS');
-        SheetManager.writeObjects('GMAIL_FILTERS', rows);
+        SheetManager.overwriteObjects('GMAIL_FILTERS', rows);
 
         return _App_ok("Successfully pulled " + rows.length + " filters.");
     });

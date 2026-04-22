@@ -97,8 +97,6 @@ function ChatSpaceSync_pullMembers(request) {
 
     Logger.info(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Pull Members', 'Pull started — spaces: [' + request.spaceIds.join(', ') + ']');
 
-    SheetManager.clearData('CHAT_SYNC');
-
     var outputObjects = [];
 
     request.spaceIds.forEach(function (spaceNameId) {

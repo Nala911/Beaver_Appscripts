@@ -6,7 +6,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
     <style>
-        /* ── Design Tokens ── */
+        /* ── Design Tokens (Standardized) ── */
         :root {
             --primary: #6366f1;
             --primary-light: #818cf8;
@@ -139,20 +139,47 @@
         }
 
         .card-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text);
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .card-description {
-            font-size: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
             color: var(--text-secondary);
             margin-bottom: 12px;
-            line-height: 1.4;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* ── Form Elements ── */
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+            display: block;
+            letter-spacing: 0.02em;
+        }
+
+        .input {
+            width: 100%;
+            padding: 9px 10px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-family: 'Inter', sans-serif;
+            color: var(--text);
+            background: var(--surface);
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .input:focus {
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
         }
 
         /* ── Buttons ── */
@@ -185,7 +212,9 @@
             transition: opacity 0.2s ease;
         }
 
-        .btn:hover::before { opacity: 1; }
+        .btn:hover::before {
+            opacity: 1;
+        }
 
         .btn-primary {
             background: var(--gradient-pull);
@@ -198,15 +227,10 @@
             box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
         }
 
-        .btn-secondary {
-            background: var(--primary-bg);
-            color: var(--primary);
-            border: 1.5px solid var(--primary-light);
-        }
-
-        .btn-secondary:hover {
-            background: var(--primary-light);
+        .btn-success {
+            background: var(--gradient-push);
             color: white;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
         }
 
         /* ── Loading Overlay ── */
@@ -276,27 +300,6 @@
             from { bottom: 30px; opacity: 1; transform: translateX(-50%) scale(1); }
             to { bottom: 0; opacity: 0; transform: translateX(-50%) scale(0.95); }
         }
-
-        /* ── Instructions List ── */
-        .instructions-list {
-            list-style: none;
-            padding: 0;
-        }
-
-        .instructions-list li {
-            font-size: 11px;
-            color: var(--text-secondary);
-            margin-bottom: 6px;
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
-        }
-
-        .instructions-list li::before {
-            content: '•';
-            color: var(--primary);
-            font-weight: bold;
-        }
     </style>
 </head>
 
@@ -304,8 +307,8 @@
 
     <!-- Header -->
     <div class="header">
-        <span class="material-icons-outlined">filter_list</span>
-        <div class="header-title">Gmail Filters</div>
+        <span class="material-icons-outlined">settings</span>
+        <div class="header-title">⚙️ Template Tool</div>
     </div>
 
     <!-- Main Content -->
@@ -313,51 +316,29 @@
 
         <div>
             <div class="section-label">
-                <span class="material-icons-outlined">download</span> Retrieval
+                <span class="material-icons-outlined">info</span> Information
             </div>
             <div class="card">
-                <div class="card-title">
-                    <span class="material-icons-outlined">cloud_download</span>
-                    Step 1: Pull Filters
-                </div>
-                <p class="card-description">
-                    Fetch all existing filters from your Gmail account into this spreadsheet for bulk management.
+                <p style="color: var(--text-secondary); line-height: 1.5;">
+                    This is a scaffolded tool following the <strong>CalendarSync Benchmark</strong>.
                 </p>
-                <button onclick="pullFilters()" class="btn btn-secondary">
-                    Pull from Gmail
-                </button>
             </div>
         </div>
 
         <div>
             <div class="section-label">
-                <span class="material-icons-outlined">upload</span> Deployment
+                <span class="material-icons-outlined">play_arrow</span> Actions
             </div>
             <div class="card">
-                <div class="card-title">
-                    <span class="material-icons-outlined">cloud_upload</span>
-                    Step 2: Push Changes
+                <div class="form-group">
+                    <label class="label">Sample Input</label>
+                    <input type="text" id="sampleInput" class="input" placeholder="Enter parameters...">
                 </div>
-                <p class="card-description">
-                    Create, Update, or Delete filters based on the "Action" column in the spreadsheet.
-                </p>
-                <button onclick="pushChanges()" class="btn btn-primary">
-                    Push to Gmail
-                </button>
-            </div>
-        </div>
 
-        <div>
-            <div class="section-label">
-                <span class="material-icons-outlined">help_outline</span> Instructions
-            </div>
-            <div class="card">
-                <ul class="instructions-list">
-                    <li>Set <strong>Action</strong> to CREATE for new filters.</li>
-                    <li>Set <strong>Action</strong> to UPDATE to modify existing ones.</li>
-                    <li>Set <strong>Action</strong> to DELETE to remove them.</li>
-                    <li>Label names are case-sensitive.</li>
-                </ul>
+                <button class="btn btn-primary" onclick="executeAction()">
+                    <span class="material-icons-outlined">rocket_launch</span>
+                    Run Action
+                </button>
             </div>
         </div>
 
@@ -373,27 +354,19 @@
     <?!= _App_include('SidebarShared'); ?>
 
     <script>
-        function pullFilters() {
-            SyncSidebar.toggleLoading(true, 'Fetching filters...');
-            SyncSidebar.run('GmailFilters_pullFilters', [], {
-                context: 'Pull Filters',
-                onSuccess: function(res) {
-                    SyncSidebar.toggleLoading(false);
-                    SyncSidebar.showToast(res.message);
-                },
-                onError: function() {
-                    SyncSidebar.toggleLoading(false);
-                }
-            });
-        }
+        /**
+         * Standardized interaction using SyncSidebar wrapper.
+         */
+        function executeAction() {
+            var inputVal = document.getElementById('sampleInput').value;
+            
+            SyncSidebar.toggleLoading(true, 'Processing...');
 
-        function pushChanges() {
-            SyncSidebar.toggleLoading(true, 'Processing actions...');
-            SyncSidebar.run('GmailFilters_processAction', [], {
-                context: 'Push Actions',
+            SyncSidebar.run('TemplateTool_processAction', [{ input: inputVal }], {
+                context: 'Process Action',
                 onSuccess: function(res) {
                     SyncSidebar.toggleLoading(false);
-                    SyncSidebar.showToast(res.message);
+                    SyncSidebar.showToast(res.message || 'Action completed.');
                 },
                 onError: function() {
                     SyncSidebar.toggleLoading(false);

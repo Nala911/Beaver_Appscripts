@@ -99,9 +99,9 @@ Before completing any task, mentally run this checklist. Do not proceed until yo
 ## 🚀 Adding a New Tool
 
 Since humans do not code here, use the templates:
-1. Copy `Template_Tool_Code.js` into `<NewName>_Code.js`.
-2. Copy `Template_Tool_Sidebar.html` into `<NewName>_Sidebar.html`.
+1. Copy `templates/TemplateTool_Code.js` into `<NewName>_Code.js`.
+2. Copy `templates/TemplateTool_Sidebar.html` into `<NewName>_Sidebar.html`.
 3. Add the `SHEET_NAMES` entry to `00_Config_Constants.js`.
 4. Update the plugin registration inside `<NewName>_Code.js`.
 5. Implement backend logic with `Logger.run`.
-6. Implement frontend logic using the unified `#status-div` provided in `SidebarShared.html`.
+6. Implement frontend logic using the unified `#status-div` (now handled by `SyncSidebar` in the template).
