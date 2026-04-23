@@ -51,11 +51,9 @@ var DRIVE_SYNC_COL = {
 };
 
 // --- SIDEBAR & SHEET SETUP ---
+function _DriveFileDetails_InternalFunction() { } // Placeholder (no-op) if needed, or just remove.
+// Standardizing.
 
-/** @deprecated — Use _App_ensureSheetExists('DRIVE_SYNC') instead. */
-function _DriveFileDetails_ensureSheetExistsAndActivate() {
-  return _App_ensureSheetExists('DRIVE_SYNC');
-}
 
 /** Opens the Drive Sync sidebar and ensures the sheet exists. */
 function DriveFileDetails_openSidebar() {

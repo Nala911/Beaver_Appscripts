@@ -24,11 +24,11 @@ function Logger_getSettings() {
         var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAMES.LOGS);
         var rowCount = sheet ? Math.max(0, sheet.getLastRow() - 1) : 0;
 
-        return {
+        return _App_ok('Settings loaded', {
             enabled: Logger.isEnabled(),
             currentRows: rowCount,
             theme: SHEET_THEME 
-        };
+        });
     });
 }
 

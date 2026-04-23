@@ -90,11 +90,12 @@ Before completing any task, mentally run this checklist. Do not proceed until yo
 - [ ] Are all public functions prefixed with `ToolName_` (e.g., `MailMerge_doWork`)?
 - [ ] Are all internal helper functions prefixed with `_ToolName_` (e.g., `_MailMerge_validate`)?
 - [ ] Did I wrap my core action inside `Logger.run('KEY', 'Context', function() {...})`?
-- [ ] Does my public function return exactly `{ success: boolean, message: string }`?
+- [ ] Does my public function return a standard object via `_App_ok` or `_App_fail`?
 - [ ] Did I use `_App_callWithBackoff` around any external Google API calls?
 - [ ] If I added a new setting, is it declared in `APP_PROPS` in `00_Config_Constants.js`?
 - [ ] If my tool processes rows, did I use `_App_BatchProcessor` and `SheetManager.batchPatchRows`?
 - [ ] Is my sidebar strictly including `<?!= _App_include('SidebarShared'); ?>` to inherit standard WorkspaceSync UI libraries?
+- [ ] Are all backend calls in the sidebar routed through `SyncSidebar.run()` instead of raw `google.script.run`?
 
 ## 🚀 Adding a New Tool
 
@@ -103,5 +104,5 @@ Since humans do not code here, follow the **CalendarSync Benchmark**:
 2. Duplicate `CalendarSync_Sidebar.html` and rename it to `<NewName>_Sidebar.html`.
 3. Add the `SHEET_NAMES` entry to `00_Config_Constants.js`.
 4. Update the plugin registration inside `<NewName>_Code.js` (Key, Sheet Name, Title, etc.).
-5. Implement backend logic with `Logger.run`.
-6. Implement frontend logic using the unified `#status-div` (handled by `SyncSidebar`).
+5. Implement backend logic with `Logger.run` and `_App_ok`.
+6. Implement frontend logic using the `SyncSidebar.run` wrapper and native CSS variables (NO TailwindCSS).

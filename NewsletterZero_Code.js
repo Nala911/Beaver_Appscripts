@@ -118,7 +118,7 @@ function NewsletterZero_processActions() {
     return Logger.run('NEWSLETTER_ZERO', 'Process Actions', function () {
         var pendingItems = SheetManager.readPendingObjects('NEWSLETTER_ZERO');
         if (pendingItems.length === 0) {
-            return { success: true, message: "No pending actions to process." };
+            return _App_ok("No pending actions to process.");
         }
 
         var stats = _App_BatchProcessor('NEWSLETTER_ZERO', pendingItems, function (item) {
@@ -136,13 +136,19 @@ function NewsletterZero_processActions() {
                     _NewsletterZero_bulkCleanup(email, actionType === 'DELETE ALL');
                 }
 
-                return { success: true, status: resultStatus };
+                return { action: "", status: resultStatus, _rowNumber: item._rowNumber };
             } catch (e) {
-                return { success: false, status: "❌ Error: " + e.message };
+                return { action: actionType, status: "❌ " + e.message, _rowNumber: item._rowNumber };
+            }
+        }, {
+            onBatchComplete: function (batchResults) {
+                var rowNumbers = batchResults.map(r => r._rowNumber);
+                var patchData = batchResults.map(r => ({ 'Action': r.action }));
+                SheetManager.batchPatchRows('NEWSLETTER_ZERO', rowNumbers, patchData);
             }
         });
 
-        return _App_ok("Processed " + stats.processed + " actions.");
+        return _App_ok("Processed " + stats.processedCount + " actions.");
     });
 }
 

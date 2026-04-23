@@ -104,7 +104,7 @@ function CalendarSync_savePreferences(calIds, startStr, endStr) {
 function CalendarSync_pullEvents(request) {
   return Logger.run('CALENDAR_SYNC', 'Pull Events', function () {
     var TARGET_SHEET_NAME = SHEET_NAMES.CALENDAR_SYNC;
-    _CalendarSync_ensureSheetExistsAndActivate();
+    _App_ensureSheetExists('CALENDAR_SYNC');
 
     var allCals = _App_callWithBackoff(function () { return CalendarApp.getAllCalendars(); });
     Logger.info(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Pull Events', 'Pull started — processing ' + allCals.length + ' calendars from ' + request.startDate + ' to ' + request.endDate);

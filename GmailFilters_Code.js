@@ -132,7 +132,7 @@ function GmailFilters_processAction() {
     return Logger.run('GMAIL_FILTERS', 'Process Action', function () {
         var pendingItems = SheetManager.readPendingObjects('GMAIL_FILTERS');
         if (pendingItems.length === 0) {
-            return { success: true, message: "No pending actions to process." };
+            return _App_ok("No pending actions to process.");
         }
 
         var labelMap = _GmailFilters_getLabelMap();

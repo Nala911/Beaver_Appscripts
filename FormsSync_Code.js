@@ -131,7 +131,7 @@ function _FormsSync_pullForm(formInput) {
                 sheetData.push(["", title, type, options, helpText, required, id]);
             }
 
-            var sheet = _FormsSync_ensureSheetExistsAndActivate();
+            var sheet = _App_ensureSheetExists('FORMS_SYNC');
 
             // Clear old data
             var lastRow = sheet.getLastRow();

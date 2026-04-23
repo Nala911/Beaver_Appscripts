@@ -723,15 +723,13 @@
 
         function pullData() {
             const isShallow = document.getElementById('chkShallow').checked;
-            setStatus('working', 'Pulling...');
-            log(`Pulling from: ${currentFolderName}... ${isShallow ? '(Shallow)' : '(Deep)'}`);
-            google.script.run
-                .withSuccessHandler(res => {
+            SyncSidebar.run('DriveFileDetails_pullFromDrive', [currentFolderId, isShallow], {
+                onSuccess: res => {
                     log(res, 'success');
                     setStatus('ready');
-                })
-                .withFailureHandler(handleError)
-                .DriveFileDetails_pullFromDrive(currentFolderId, isShallow);
+                },
+                onFailure: handleError
+            });
         }
 
         function checkAndPush() {
@@ -756,34 +754,28 @@
 
         function confirmPush() {
             document.getElementById('deleteModal').classList.remove('open');
-            setStatus('working', 'Pushing...');
-            log("Pushing changes to Drive...");
-
-            google.script.run
-                .withSuccessHandler(logs => {
+            SyncSidebar.run('DriveFileDetails_runPushSequence', [], {
+                onSuccess: logs => {
                     logs.forEach(l => log(l));
                     log("Sync Complete.", 'success');
                     setStatus('ready');
-                })
-                .withFailureHandler(handleError)
-                .DriveFileDetails_runPushSequence();
+                },
+                onFailure: handleError
+            });
         }
 
         function fillPath() {
-            setStatus('working', 'Filling...');
             let pathParts = folderStack.filter(f => f.name !== 'Root').map(f => f.name).concat([currentFolderName]);
             if (pathParts.length === 0) pathParts = ['My Drive']; // Fallback
             const pathFormatted = "/" + pathParts.join("/");
 
-            log(`Filling path: ${pathFormatted}`);
-
-            google.script.run
-                .withSuccessHandler(msg => {
+            SyncSidebar.run('DriveFileDetails_fillActivePath', [currentFolderId, pathFormatted], {
+                onSuccess: msg => {
                     log(msg, 'success');
                     setStatus('ready');
-                })
-                .withFailureHandler(handleError)
-                .DriveFileDetails_fillActivePath(currentFolderId, pathFormatted);
+                },
+                onFailure: handleError
+            });
         }
 
         // --- Helpers ---

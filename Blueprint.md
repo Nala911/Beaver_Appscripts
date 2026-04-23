@@ -126,6 +126,9 @@ function ToolName_openSidebar() {
 ### 5. Background Automation & Trigger Management
 Tools that require background execution should manage their own triggers programmatically.
 
+### 6. Frontend Unified Wrapper (`SyncSidebar`)
+All client-to-server communication must use the `SyncSidebar.run()` wrapper located in `SidebarShared.html`. This utility abstracts `google.script.run`, standardizes loading states, unwraps the `{ success, message, data }` payloads, and provides consistent toast notifications. Direct use of `google.script.run` is prohibited in feature sidebars.
+
 ## 🌍 Global Variables & State
 
 - **`SHEET_THEME`**: A Proxy object in `01_Config_Theme.js` that provides access to theme colors and styles.
@@ -135,8 +138,8 @@ Tools that require background execution should manage their own triggers program
 ## 🔌 Connection Flow (Frontend <-> Backend)
 1. **Trigger**: User clicks menu or sidebar button.
 2. **Launch**: `_App_openSidebar('TOOL_KEY')` handles sheet prep and sidebar rendering.
-3. **Execution**: Sidebar calls `google.script.run` -> Backend function -> `Logger.run()` for automatic logging/error tracking.
-4. **Response**: Backend returns `{ success: true, message: "..." }`.
+3. **Execution**: Sidebar calls `SyncSidebar.run('ToolName_publicFunc')` -> Backend function -> `Logger.run()` for automatic logging/error tracking.
+4. **Response**: Backend returns standardized object via `_App_ok("Success msg", { payload })` or `_App_fail("Error")`.
 
 ### 🛠️ Developer Logging Architecture
 The project employs a robust, asynchronous-style logging system.
