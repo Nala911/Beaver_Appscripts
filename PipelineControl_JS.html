@@ -27,8 +27,8 @@
             context: 'Load Dashboard',
             onSuccess: function(res) {
                 SyncSidebar.toggleLoading(false);
-                if (!res.data) return;
-                pipelineData = res.data.pipelines;
+                if (!res || !Array.isArray(res.pipelines)) return;
+                pipelineData = res.pipelines;
                 renderPipelineList();
             },
             onError: function() {
@@ -72,6 +72,7 @@
             checkbox.className = 'styled-cb pipeline-cb';
             checkbox.value = p.rowIndex;
             checkbox.onchange = updateSelectAllState;
+            checkbox.disabled = isDis;
 
             checkboxWrapper.appendChild(checkbox);
 
@@ -93,15 +94,18 @@
 
             const btn = document.createElement('button');
             btn.className = 'run-btn-small';
+            btn.disabled = isDis;
             btn.onclick = (e) => {
                 e.stopPropagation();
+                if (isDis) return;
                 runSingle(p.rowIndex);
             };
             btn.id = `btn-single-${p.rowIndex}`;
-            btn.title = 'Run Single';
+            btn.title = isDis ? 'Enable pipeline to run' : 'Run Single';
             btn.innerHTML = `<span class="material-icons-outlined">play_arrow</span>`;
 
             item.onclick = (e) => {
+                if (isDis) return;
                 if (e.target !== checkbox && e.target !== btn && !btn.contains(e.target)) {
                     checkbox.checked = !checkbox.checked;
                     updateSelectAllState();

@@ -402,7 +402,7 @@
             SyncSidebar.run('BulkFolderCreation_getDriveNavData', [id], {
                 context: 'Fetch Nav Data',
                 onSuccess: function(res) {
-                    renderExplorer(res.data);
+                    renderExplorer(res);
                 },
                 onError: function(err) {
                     list.innerHTML = '<div style="text-align: center; color: var(--danger); padding: 20px;">' + (err.message || err) + '</div>';
