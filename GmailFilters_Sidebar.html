@@ -4,7 +4,7 @@
 <head>
     <base target="_top">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         /* ── Design Tokens ── */
         :root {
@@ -19,8 +19,12 @@
             --text-secondary: #6b7280;
             --success: #10b981;
             --success-dark: #059669;
+            --success-bg: #ecfdf5;
+            --warning: #f59e0b;
+            --warning-bg: #fffbeb;
             --danger: #ef4444;
             --danger-bg: #fef2f2;
+            --hover-bg: #f5f3ff;
             --gradient-pull: linear-gradient(135deg, #6366f1, #8b5cf6);
             --gradient-push: linear-gradient(135deg, #10b981, #14b8a6);
             --gradient-header: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);
@@ -41,9 +45,9 @@
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--background);
             color: var(--text);
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            height: 100vh;
             overflow: hidden;
             font-size: 13px;
             -webkit-font-smoothing: antialiased;
@@ -55,7 +59,7 @@
             padding: 14px 16px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: space-between;
             flex-shrink: 0;
             position: relative;
         }
@@ -71,37 +75,93 @@
             border-radius: 0 0 2px 2px;
         }
 
-        .header .material-icons-outlined {
-            font-size: 22px;
+        .header-title {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: -0.01em;
+        }
+
+        .header-title i {
             background: var(--gradient-pull);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
 
-        .header-title {
-            font-size: 15px;
-            font-weight: 700;
-            color: var(--text);
-            letter-spacing: -0.01em;
+        .status-badge {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: var(--success-bg);
+            color: var(--success);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.3s ease;
+            letter-spacing: 0.01em;
         }
 
-        /* ── Main Container ── */
-        .container {
+        .status-badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .status-badge.working {
+            background: var(--warning-bg);
+            color: var(--warning);
+            animation: pulse-badge 1.5s ease-in-out infinite;
+        }
+
+        .status-badge.working::before {
+            background: var(--warning);
+            animation: pulse-dot 1s ease-in-out infinite;
+        }
+
+        .status-badge.error {
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+
+        .status-badge.error::before {
+            background: var(--danger);
+        }
+
+        @keyframes pulse-badge {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.4); opacity: 0.6; }
+        }
+
+        /* ── Main Scroll Area ── */
+        .main {
             flex: 1;
+            overflow-y: auto;
             padding: 16px 14px;
             display: flex;
             flex-direction: column;
             gap: 16px;
-            overflow-y: auto;
             min-height: 0;
         }
 
-        .container::-webkit-scrollbar {
+        .main::-webkit-scrollbar {
             width: 5px;
         }
 
-        .container::-webkit-scrollbar-thumb {
+        .main::-webkit-scrollbar-thumb {
             background: rgba(99, 102, 241, 0.2);
             border-radius: 10px;
         }
@@ -119,52 +179,24 @@
             gap: 6px;
         }
 
-        .section-label .material-icons-outlined {
-            font-size: 15px;
+        .section-label i {
             color: var(--primary-light);
         }
 
-        /* ── Cards ── */
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border-light);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow-sm);
-            padding: 14px;
-            transition: box-shadow 0.25s ease;
+        /* ── Action Buttons ── */
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
         }
 
-        .card:hover {
-            box-shadow: var(--shadow-md);
-        }
-
-        .card-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text);
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .card-description {
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-bottom: 12px;
-            line-height: 1.4;
-        }
-
-        /* ── Buttons ── */
         .btn {
-            width: 100%;
-            padding: 0;
-            height: 40px;
             border: none;
+            height: 40px;
             border-radius: var(--radius-sm);
             font-family: inherit;
-            font-size: 13px;
             font-weight: 600;
+            font-size: 13px;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -187,116 +219,47 @@
 
         .btn:hover::before { opacity: 1; }
 
-        .btn-primary {
+        .btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .btn-pull {
             background: var(--gradient-pull);
             color: white;
             box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
         }
 
-        .btn-primary:hover {
+        .btn-pull:hover:not(:disabled) {
             transform: translateY(-1px);
             box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
         }
 
-        .btn-secondary {
-            background: var(--primary-bg);
-            color: var(--primary);
-            border: 1.5px solid var(--primary-light);
-        }
-
-        .btn-secondary:hover {
-            background: var(--primary-light);
+        .btn-push {
+            background: var(--gradient-push);
             color: white;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
         }
 
-        /* ── Loading Overlay ── */
-        .loading-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(245, 243, 255, 0.85);
-            backdrop-filter: blur(6px);
-            z-index: 100;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            gap: 12px;
+        .btn-push:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
         }
 
-        .spinner {
-            border: 3px solid var(--border-light);
-            border-top: 3px solid var(--primary);
-            border-right: 3px solid var(--primary-light);
+        /* ── Loader ── */
+        .loader {
+            border: 2.5px solid var(--border-light);
+            border-top: 2.5px solid var(--primary);
+            border-right: 2.5px solid var(--primary-light);
             border-radius: 50%;
-            width: 28px;
-            height: 28px;
+            width: 18px;
+            height: 18px;
             animation: spin 0.8s ease-in-out infinite;
         }
 
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        .loading-text {
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--text-secondary);
-        }
-
-        /* ── Toast ── */
-        .toast {
-            visibility: hidden;
-            min-width: 220px;
-            background: var(--text);
-            color: #fff;
-            text-align: center;
-            border-radius: var(--radius-sm);
-            padding: 11px 18px;
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 12px;
-            font-weight: 500;
-            z-index: 101;
-            box-shadow: var(--shadow-lg);
-        }
-
-        .toast.show {
-            visibility: visible;
-            animation: toastIn 0.35s ease, toastOut 0.35s ease 3.15s;
-        }
-
-        .toast.error-toast { background: var(--danger); }
-
-        @keyframes toastIn {
-            from { bottom: 0; opacity: 0; transform: translateX(-50%) scale(0.95); }
-            to { bottom: 30px; opacity: 1; transform: translateX(-50%) scale(1); }
-        }
-
-        @keyframes toastOut {
-            from { bottom: 30px; opacity: 1; transform: translateX(-50%) scale(1); }
-            to { bottom: 0; opacity: 0; transform: translateX(-50%) scale(0.95); }
-        }
-
-        /* ── Instructions List ── */
-        .instructions-list {
-            list-style: none;
-            padding: 0;
-        }
-
-        .instructions-list li {
-            font-size: 11px;
-            color: var(--text-secondary);
-            margin-bottom: 6px;
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
-        }
-
-        .instructions-list li::before {
-            content: '•';
-            color: var(--primary);
-            font-weight: bold;
-        }
     </style>
 </head>
 
@@ -304,96 +267,101 @@
 
     <!-- Header -->
     <div class="header">
-        <span class="material-icons-outlined">filter_list</span>
-        <div class="header-title">Gmail Filters</div>
+        <div class="header-title">
+            <i data-lucide="filter" style="width:18px;"></i>
+            Gmail Filters
+        </div>
+        <div id="statusBadge" class="status-badge">
+            Ready
+        </div>
     </div>
 
     <!-- Main Content -->
-    <div class="container">
+    <div class="main">
 
+        <!-- Action Buttons -->
         <div>
             <div class="section-label">
-                <span class="material-icons-outlined">download</span> Retrieval
+                <i data-lucide="zap" style="width:13px;"></i> Actions
             </div>
-            <div class="card">
-                <div class="card-title">
-                    <span class="material-icons-outlined">cloud_download</span>
-                    Step 1: Pull Filters
-                </div>
-                <p class="card-description">
-                    Fetch all existing filters from your Gmail account into this spreadsheet for bulk management.
-                </p>
-                <button onclick="pullFilters()" class="btn btn-secondary">
-                    Pull from Gmail
+            <div class="btn-group">
+                <button id="btn-pull" class="btn btn-pull" onclick="runPull()">
+                    <i data-lucide="download" style="width:15px;"></i> Pull
+                </button>
+                <button id="btn-push" class="btn btn-push" onclick="runPush()">
+                    <i data-lucide="upload-cloud" style="width:15px;"></i> Push
                 </button>
             </div>
         </div>
 
-        <div>
-            <div class="section-label">
-                <span class="material-icons-outlined">upload</span> Deployment
-            </div>
-            <div class="card">
-                <div class="card-title">
-                    <span class="material-icons-outlined">cloud_upload</span>
-                    Step 2: Push Changes
-                </div>
-                <p class="card-description">
-                    Create, Update, or Delete filters based on the "Action" column in the spreadsheet.
-                </p>
-                <button onclick="pushChanges()" class="btn btn-primary">
-                    Push to Gmail
-                </button>
-            </div>
-        </div>
-
-        <div>
-            <div class="section-label">
-                <span class="material-icons-outlined">help_outline</span> Instructions
-            </div>
-            <div class="card">
-                <ul class="instructions-list">
-                    <li>Set <strong>Action</strong> to CREATE for new filters.</li>
-                    <li>Set <strong>Action</strong> to UPDATE to modify existing ones.</li>
-                    <li>Set <strong>Action</strong> to DELETE to remove them.</li>
-                    <li>Label names are case-sensitive.</li>
-                </ul>
-            </div>
-        </div>
-
     </div>
-
-    <!-- UI Elements -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="spinner"></div>
-        <div class="loading-text" id="loadingText">Processing…</div>
-    </div>
-    <div id="toast" class="toast">Done</div>
 
     <?!= _App_include('SidebarShared'); ?>
 
     <script>
-        function pullFilters() {
-            SyncSidebar.toggleLoading(true, 'Fetching filters...');
+        // ── Init ──
+        window.onload = function () {
+            lucide.createIcons();
+        };
+
+        function runPull() {
+            setStatus('working');
+            SyncSidebar.toggleLoading(true, 'Pulling filters from Gmail...');
+
             SyncSidebar.run('GmailFilters_pullFilters', [], {
                 context: 'Pull Filters',
+                unwrap: false,
                 onSuccess: function(res) {
                     SyncSidebar.toggleLoading(false);
-                    SyncSidebar.showToast(res.message);
+                    setStatus(res.success ? 'ready' : 'error');
+                    SyncSidebar.showToast(res.message, !res.success);
                 },
-                onError: function() {
+                onError: function(err) {
                     SyncSidebar.toggleLoading(false);
+                    setStatus('error');
+                    SyncSidebar.showToast(err.message || 'Pull failed', true);
                 }
             });
         }
 
-        function pushChanges() {
+        function runPush() {
+            setStatus('working');
+            SyncSidebar.toggleLoading(true, 'Checking filters and labels...');
+
             SyncSidebar.confirmAndRun('GmailFilters_getMissingLabels', [], 'GmailFilters_processAction', [], {
                 checkText: 'Checking labels...',
-                runText: 'Processing actions...',
+                runText: 'Pushing changes...',
                 confirmPrefix: 'The following new labels will be created in Gmail:\n\n',
-                runContext: 'Push Actions'
+                runContext: 'Push Actions',
+                onSuccess: function(res) {
+                    SyncSidebar.toggleLoading(false);
+                    setStatus(res.success ? 'ready' : 'error');
+                    SyncSidebar.showToast(res.message, !res.success);
+                },
+                onError: function(err) {
+                    SyncSidebar.toggleLoading(false);
+                    setStatus('error');
+                    SyncSidebar.showToast(err.message || 'Push failed', true);
+                }
             });
+        }
+
+        // ── Helpers ──
+        function setStatus(state) {
+            var badge = document.getElementById('statusBadge');
+            var btns = document.querySelectorAll('.btn');
+            badge.className = 'status-badge ' + state;
+
+            if (state === 'working') {
+                badge.innerText = 'Working';
+                btns.forEach(function (b) { b.disabled = true; });
+            } else if (state === 'error') {
+                badge.innerText = 'Error';
+                btns.forEach(function (b) { b.disabled = false; });
+            } else {
+                badge.innerText = 'Ready';
+                btns.forEach(function (b) { b.disabled = false; });
+            }
         }
     </script>
 </body>

@@ -32,10 +32,11 @@ function _App_launchTool(toolKey, postCreateCallback) {
                 .setWidth(cfg.MODAL_WIDTH || cfg.SIDEBAR_WIDTH || 300)
                 .setHeight(cfg.MODAL_HEIGHT || 600);
             SpreadsheetApp.getUi().showModalDialog(html, cfg.TITLE);
-            return;
+            return _App_ok('Modal opened successfully.');
         }
 
         _App_openSidebar(toolKey, postCreateCallback);
+        return _App_ok('Sidebar opened successfully.');
     });
 }
 

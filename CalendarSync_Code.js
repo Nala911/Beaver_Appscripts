@@ -45,11 +45,6 @@ var CALENDAR_SYNC_CFG = {
 
 // --- MENU & UI HANDLERS ---
 
-/** @deprecated — Use _App_ensureSheetExists('CALENDAR_SYNC') instead. */
-function _CalendarSync_ensureSheetExistsAndActivate() {
-  return _App_ensureSheetExists('CALENDAR_SYNC');
-}
-
 /** Opens the Calendar sidebar and ensures the sheet exists. */
 function CalendarSync_openSidebar() {
   return Logger.run('CALENDAR_SYNC', 'Open Sidebar', function () {

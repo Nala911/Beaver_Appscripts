@@ -104,13 +104,12 @@ function DriveFileDetails_getFolderContent(folderId) {
         pageToken = result.nextPageToken;
       } while (pageToken);
 
-      return {
+      return _App_ok('Folder content loaded', {
         current: { id: currentFolder.id, name: currentFolder.name },
-        children: folders,
-        success: true
-      };
+        children: folders
+      });
     } catch (e) {
-      return { success: false, error: e.message };
+      return _App_fail(e.message);
     }
   });
 }
@@ -133,9 +132,9 @@ function DriveFileDetails_getDrivesList() {
         return a.name.localeCompare(b.name);
       });
 
-      return { success: true, drives: drives };
+      return _App_ok('Drives loaded', { drives: drives });
     } catch (e) {
-      return { success: false, error: e.message };
+      return _App_fail(e.message);
     }
   });
 }
@@ -206,9 +205,9 @@ function DriveFileDetails_getFolderHierarchy() {
         }
       }
 
-      return { success: true, topology: topology };
+      return _App_ok('Hierarchy loaded', { topology: topology });
     } catch (e) {
-      return { success: false, error: e.message };
+      return _App_fail(e.message);
     }
   });
 }

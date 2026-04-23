@@ -365,25 +365,38 @@
 
     <?!= _App_include('SidebarShared'); ?>
     <script>
-        function toggleLoading(show, text) {
-            SyncSidebar.toggleLoading(show, text);
-        }
+        // --- INITIALIZATION ---
+        window.onload = function () {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            
+            // Check for unsaved changes (Action column has data)
+            SyncSidebar.run('ContactsSync_checkForUnsavedChanges', [], {
+                context: 'Check Unsaved',
+                onSuccess: function (res) {
+                    if (res.data === true) {
+                        SyncSidebar.showToast('Unsaved changes detected. Push to sync.', false);
+                    }
+                }
+            });
+        };
 
-        function showToast(msg, isError) {
-            SyncSidebar.showToast(msg, isError, { duration: 3500 });
-        }
+        // --- PULL LOGIC ---
 
         function pullData() {
-            toggleLoading(true, 'Pulling contacts…');
+            SyncSidebar.toggleLoading(true, 'Pulling contacts…');
             SyncSidebar.run('ContactsSync_pullContacts', [{ groupIds: ['all'] }], {
                 context: 'Pull Contacts',
-                onSuccess: res => {
-                    toggleLoading(false);
-                    showToast(res.message, false);
+                onSuccess: function (res) {
+                    SyncSidebar.toggleLoading(false);
+                    SyncSidebar.showToast(res.message);
                 },
-                onError: () => { toggleLoading(false); }
+                onError: function () { 
+                    SyncSidebar.toggleLoading(false); 
+                }
             });
         }
+
+        // --- PUSH LOGIC ---
 
         function pushData() {
             SyncSidebar.confirmAndRun('ContactsSync_getMissingGroups', [], 'ContactsSync_pushChanges', [], {
@@ -392,7 +405,7 @@
                 confirmPrefix: 'The following new contact groups will be created:\n\n',
                 runContext: 'Push Changes',
                 onSuccess: function (res) {
-                    showToast(res.message, false);
+                    SyncSidebar.showToast(res.message);
                 }
             });
         }

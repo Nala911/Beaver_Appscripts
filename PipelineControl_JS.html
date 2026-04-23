@@ -1,300 +1,290 @@
 <script>
-// Global Error Catcher
-        window.onerror = function (msg, url, line, col, error) {
-            const detail = `Error: ${msg}\nURL: ${url}\nLine: ${line}, Col: ${col}${error ? '\nStack: ' + error.stack : ''}`;
-            google.script.run._App_logClientError(detail, 'Global Error');
-            return false;
-        };
+    // Global Error Catcher
+    window.onerror = function (msg, url, line, col, error) {
+        const detail = `Error: ${msg}\nURL: ${url}\nLine: ${line}, Col: ${col}${error ? '\nStack: ' + error.stack : ''}`;
+        google.script.run._App_logClientError(detail, 'Global Error');
+        return false;
+    };
 
-        function handleError(err, context = 'Sidebar Operation') {
-            if (typeof toggleLoading === 'function') toggleLoading(false);
-            showToast(err.message || err, true);
-            google.script.run._App_logClientError(err, context);
+    let pipelineData = [];
+    let allSelected = false;
+
+    window.onload = function () {
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        loadDashboard();
+
+        SyncSidebar.run('PipelineControl_getSystemStatus', [], {
+            context: 'System Status',
+            onSuccess: function(res) {
+                updateToggle(res.data);
+            }
+        });
+    };
+
+    function loadDashboard() {
+        SyncSidebar.toggleLoading(true, "Loading Dashboard…");
+        SyncSidebar.run('PipelineControl_getPipelineDashboardData', [], {
+            context: 'Load Dashboard',
+            onSuccess: function(res) {
+                SyncSidebar.toggleLoading(false);
+                if (!res.data) return;
+                pipelineData = res.data.pipelines;
+                renderPipelineList();
+            },
+            onError: function() {
+                SyncSidebar.toggleLoading(false);
+                document.getElementById('pipelineListContainer').innerHTML = `<div class="empty-state"><span class="material-icons-outlined" style="font-size:28px; color:var(--danger);">error_outline</span>Error loading pipelines.</div>`;
+            }
+        });
+    }
+
+    function renderPipelineList() {
+        const container = document.getElementById('pipelineListContainer');
+        container.innerHTML = '';
+
+        if (pipelineData.length === 0) {
+            container.innerHTML = `<div class="empty-state">
+      <span class="material-icons-outlined" style="font-size:28px; color:var(--text-secondary);">lightbulb</span>
+      No pipelines found. Format the sheet and add some!
+    </div>`;
+            return;
         }
 
-        let pipelineData = [];
-        let allSelected = false;
+        pipelineData.forEach((p, idx) => {
+            const isDis = !p.isEnabled;
+            const statusClass = p.lastStatus.toLowerCase();
 
-        window.onload = function () {
-            loadDashboard();
-            google.script.run.withSuccessHandler(updateToggle).PipelineControl_getSystemStatus();
-        };
+            let badgeClass = 'pending';
+            if (statusClass === 'success') badgeClass = 'success';
+            if (statusClass === 'failed') badgeClass = 'failed';
+            if (statusClass === 'running') badgeClass = 'running';
 
-        function showToast(msg, isError, isSuccess = false) {
-            const x = document.getElementById("toast");
-            x.innerText = msg;
-            if (isError) x.className = "toast error-toast show";
-            else if (isSuccess) x.className = "toast success-toast show";
-            else x.className = "toast show";
-            setTimeout(() => x.className = x.className.replace("show", ""), 3000);
+            const item = document.createElement('div');
+            item.className = `pipeline-item ${isDis ? 'disabled' : ''}`;
+            item.id = `row-${p.rowIndex}`;
+            item.style.animationDelay = (idx * 0.04) + 's';
+
+            const checkboxWrapper = document.createElement('div');
+            checkboxWrapper.className = 'checkbox-wrapper';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'styled-cb pipeline-cb';
+            checkbox.value = p.rowIndex;
+            checkbox.onchange = updateSelectAllState;
+
+            checkboxWrapper.appendChild(checkbox);
+
+            const info = document.createElement('div');
+            info.className = 'pipeline-info';
+
+            const title = document.createElement('div');
+            title.className = 'pipeline-name';
+            title.title = p.name;
+            title.innerText = p.name;
+
+            const meta = document.createElement('div');
+            meta.className = 'pipeline-meta';
+            meta.innerHTML = `<span class="badge ${badgeClass}">${p.lastStatus}</span>
+                      <span>${p.lastRun ? p.lastRun : 'Never run'}</span>`;
+
+            info.appendChild(title);
+            info.appendChild(meta);
+
+            const btn = document.createElement('button');
+            btn.className = 'run-btn-small';
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                runSingle(p.rowIndex);
+            };
+            btn.id = `btn-single-${p.rowIndex}`;
+            btn.title = 'Run Single';
+            btn.innerHTML = `<span class="material-icons-outlined">play_arrow</span>`;
+
+            item.onclick = (e) => {
+                if (e.target !== checkbox && e.target !== btn && !btn.contains(e.target)) {
+                    checkbox.checked = !checkbox.checked;
+                    updateSelectAllState();
+                }
+            };
+
+            item.appendChild(checkboxWrapper);
+            item.appendChild(info);
+            item.appendChild(btn);
+
+            container.appendChild(item);
+        });
+
+        updateSelectAllState(); 
+    }
+
+    // --- Selection Logic ---
+    function toggleSelectAll() {
+        const cbs = document.querySelectorAll('.pipeline-cb');
+        allSelected = !allSelected;
+        cbs.forEach(cb => cb.checked = allSelected);
+        updateSelectAllState(true);
+    }
+
+    function updateSelectAllState(fromToggle = false) {
+        const cbs = document.querySelectorAll('.pipeline-cb');
+        const checkedCbs = document.querySelectorAll('.pipeline-cb:checked');
+        const btn = document.getElementById('toggleSelect');
+
+        if (!fromToggle) {
+            if (cbs.length > 0 && checkedCbs.length === cbs.length) {
+                allSelected = true;
+            } else {
+                allSelected = false;
+            }
         }
 
-        function toggleLoading(show, text) {
-            document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
-            if (text) document.getElementById('loadingText').innerText = text;
+        if (allSelected && cbs.length > 0) {
+            btn.innerText = "Deselect";
+        } else {
+            btn.innerText = "Select All";
         }
 
-        function loadDashboard() {
-            toggleLoading(true, "Loading Dashboard…");
-            google.script.run
-                .withSuccessHandler(renderDashboard)
-                .withFailureHandler(err => {
-                    handleError(err, 'Load Dashboard');
-                    document.getElementById('pipelineListContainer').innerHTML = `<div class="empty-state"><span class="material-icons-outlined" style="font-size:28px; color:var(--danger);">error_outline</span>Error loading pipelines.</div>`;
-                })
-                .PipelineControl_getPipelineDashboardData();
+        updateRunButtonLabel(checkedCbs.length);
+    }
+
+    function updateRunButtonLabel(count) {
+        const btn = document.getElementById('btnRunSelected');
+        if (count === 0) {
+            btn.innerHTML = `<span class="material-icons-outlined">play_arrow</span> Run All Pipelines`;
+        } else {
+            btn.innerHTML = `<span class="material-icons-outlined">play_arrow</span> Run Selected (${count})`;
         }
+    }
 
-        function renderDashboard(data) {
-            toggleLoading(false);
-            if (!data) return;
+    // --- Execution Logic ---
+    function runSingle(rowIndex) {
+        runExecution([rowIndex], document.getElementById(`btn-single-${rowIndex}`));
+    }
 
-            pipelineData = data.pipelines;
-            renderPipelineList();
-        }
+    function runSelected() {
+        const cbs = document.querySelectorAll('.pipeline-cb:checked');
+        let indexes = [];
 
-        function renderPipelineList() {
-            const container = document.getElementById('pipelineListContainer');
-            container.innerHTML = '';
-
-            if (pipelineData.length === 0) {
-                container.innerHTML = `<div class="empty-state">
-          <span class="material-icons-outlined" style="font-size:28px; color:var(--text-secondary);">lightbulb</span>
-          No pipelines found. Format the sheet and add some!
-        </div>`;
+        if (cbs.length === 0) {
+            indexes = pipelineData.filter(p => p.isEnabled).map(p => p.rowIndex);
+            if (indexes.length === 0) {
+                SyncSidebar.showToast("No active pipelines to run.", true);
                 return;
             }
-
-            pipelineData.forEach((p, idx) => {
-                const isDis = !p.isEnabled;
-                const statusClass = p.lastStatus.toLowerCase();
-
-                let badgeClass = 'pending';
-                if (statusClass === 'success') badgeClass = 'success';
-                if (statusClass === 'failed') badgeClass = 'failed';
-                if (statusClass === 'running') badgeClass = 'running';
-
-                const item = document.createElement('div');
-                item.className = `pipeline-item ${isDis ? 'disabled' : ''}`;
-                item.id = `row-${p.rowIndex}`;
-                item.style.animationDelay = (idx * 0.04) + 's';
-
-                const checkboxWrapper = document.createElement('div');
-                checkboxWrapper.className = 'checkbox-wrapper';
-
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.className = 'styled-cb pipeline-cb';
-                checkbox.value = p.rowIndex;
-                checkbox.onchange = updateSelectAllState;
-
-                checkboxWrapper.appendChild(checkbox);
-
-                const info = document.createElement('div');
-                info.className = 'pipeline-info';
-
-                const title = document.createElement('div');
-                title.className = 'pipeline-name';
-                title.title = p.name;
-                title.innerText = p.name;
-
-                const meta = document.createElement('div');
-                meta.className = 'pipeline-meta';
-                meta.innerHTML = `<span class="badge ${badgeClass}">${p.lastStatus}</span>
-                          <span>${p.lastRun ? p.lastRun : 'Never run'}</span>`;
-
-                info.appendChild(title);
-                info.appendChild(meta);
-
-                const btn = document.createElement('button');
-                btn.className = 'run-btn-small';
-                btn.onclick = () => runSingle(p.rowIndex);
-                btn.id = `btn-single-${p.rowIndex}`;
-                btn.title = 'Run Single';
-                btn.innerHTML = `<span class="material-icons-outlined">play_arrow</span>`;
-
-                item.onclick = (e) => {
-                    if (e.target !== checkbox && e.target !== btn && !btn.contains(e.target)) {
-                        checkbox.checked = !checkbox.checked;
-                        updateSelectAllState();
-                    }
-                };
-
-                item.appendChild(checkboxWrapper);
-                item.appendChild(info);
-                item.appendChild(btn);
-
-                container.appendChild(item);
-            });
-
-            updateSelectAllState(); // reset visual state
+        } else {
+            indexes = Array.from(cbs).map(cb => parseInt(cb.value));
         }
 
-        // --- Selection Logic ---
-        function toggleSelectAll() {
-            const cbs = document.querySelectorAll('.pipeline-cb');
-            allSelected = !allSelected;
-            cbs.forEach(cb => cb.checked = allSelected);
-            updateSelectAllState(true);
+        runExecution(indexes, document.getElementById('btnRunSelected'));
+    }
+
+    function runExecution(rowIndexes, buttonEl) {
+        const isMainBtn = buttonEl.id === 'btnRunSelected';
+        const originalHtml = buttonEl.innerHTML;
+
+        buttonEl.disabled = true;
+        if (isMainBtn) {
+            buttonEl.innerHTML = `<div class="spinner-small" style="margin-right:8px;"></div> Running...`;
+        } else {
+            buttonEl.innerHTML = `<div class="spinner-small-primary"></div>`;
         }
 
-        function updateSelectAllState(fromToggle = false) {
-            const cbs = document.querySelectorAll('.pipeline-cb');
-            const checkedCbs = document.querySelectorAll('.pipeline-cb:checked');
-            const btn = document.getElementById('toggleSelect');
-
-            if (!fromToggle) {
-                if (cbs.length > 0 && checkedCbs.length === cbs.length) {
-                    allSelected = true;
-                } else {
-                    allSelected = false;
+        rowIndexes.forEach(idx => {
+            const item = document.getElementById(`row-${idx}`);
+            if (item) {
+                const badge = item.querySelector('.badge');
+                if (badge) {
+                    badge.className = 'badge running';
+                    badge.innerText = 'RUNNING...';
                 }
             }
+        });
 
-            if (allSelected && cbs.length > 0) {
-                btn.innerText = "Deselect";
-            } else {
-                btn.innerText = "Select All";
+        SyncSidebar.showToast(`Processing ${rowIndexes.length} pipeline(s)...`);
+
+        SyncSidebar.run('PipelineControl_runSelectedPipelines', [rowIndexes], {
+            context: 'Run Execution',
+            onSuccess: function() {
+                buttonEl.disabled = false;
+                buttonEl.innerHTML = originalHtml;
+                SyncSidebar.showToast("Execution complete.");
+                loadDashboard();
+            },
+            onError: function() {
+                buttonEl.disabled = false;
+                buttonEl.innerHTML = originalHtml;
+                loadDashboard();
             }
+        });
+    }
 
-            updateRunButtonLabel(checkedCbs.length);
+    // --- System Toggles ---
+    function updateToggle(status) {
+        var isEnabled = (status === 'true');
+        var toggleConfig = document.getElementById('systemToggle');
+        toggleConfig.checked = isEnabled;
+        toggleConfig.disabled = false;
+        updateStatusText(isEnabled);
+    }
+
+    function updateStatusText(isEnabled) {
+        var label = document.getElementById('systemStatusLabel');
+        if (isEnabled) {
+            label.innerText = "System Active";
+            label.style.color = "var(--success-dark)";
+            label.style.fontWeight = "700";
+        } else {
+            label.innerText = "System Paused";
+            label.style.color = "var(--danger)";
+            label.style.fontWeight = "700";
         }
+    }
 
-        function updateRunButtonLabel(count) {
-            const btn = document.getElementById('btnRunSelected');
-            if (count === 0) {
-                btn.innerHTML = `<span class="material-icons-outlined">play_arrow</span> Run All Pipelines`;
-            } else {
-                btn.innerHTML = `<span class="material-icons-outlined">play_arrow</span> Run Selected (${count})`;
+    function toggleSystem() {
+        var toggleConfig = document.getElementById('systemToggle');
+        var isChecked = toggleConfig.checked;
+        toggleConfig.disabled = true;
+        updateStatusText(isChecked);
+
+        SyncSidebar.run('PipelineControl_setSystemStatus', [isChecked], {
+            context: 'Toggle System',
+            onSuccess: function() {
+                toggleConfig.disabled = false;
+                SyncSidebar.showToast("System status updated.");
+            },
+            onError: function() {
+                toggleConfig.checked = !isChecked;
+                toggleConfig.disabled = false;
+                updateStatusText(!isChecked);
             }
+        });
+    }
+
+    function formatSheet() {
+        if (!confirm("WARNING: This will clear the active sheet and set it up for the Pipeline. Are you sure you want to proceed?")) {
+            return;
         }
 
-        // --- Execution Logic ---
-        function runSingle(rowIndex) {
-            runExecution([rowIndex], document.getElementById(`btn-single-${rowIndex}`));
-        }
+        var btn = document.getElementById('btnFormat');
+        var originalHtml = btn.innerHTML;
 
-        function runSelected() {
-            const cbs = document.querySelectorAll('.pipeline-cb:checked');
-            let indexes = [];
+        btn.disabled = true;
+        btn.innerHTML = `<div class="spinner-small-primary" style="border-top-color: var(--primary); border-width: 2px; margin-right:8px;"></div> Formatting...`;
+        SyncSidebar.showToast("Setting up headers...");
 
-            if (cbs.length === 0) {
-                indexes = pipelineData.filter(p => p.isEnabled).map(p => p.rowIndex);
-                if (indexes.length === 0) {
-                    showToast("No active pipelines to run.", false);
-                    return;
-                }
-            } else {
-                indexes = Array.from(cbs).map(cb => parseInt(cb.value));
+        SyncSidebar.run('PipelineControl_formatControlCenter', [], {
+            context: 'Format Sheet',
+            onSuccess: function(res) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                SyncSidebar.showToast(res.message);
+                loadDashboard();
+            },
+            onError: function() {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
             }
-
-            runExecution(indexes, document.getElementById('btnRunSelected'));
-        }
-
-        function runExecution(rowIndexes, buttonEl) {
-            const isMainBtn = buttonEl.id === 'btnRunSelected';
-            const originalHtml = buttonEl.innerHTML;
-
-            buttonEl.disabled = true;
-            if (isMainBtn) {
-                buttonEl.innerHTML = `<div class="spinner-small" style="margin-right:8px;"></div> Running...`;
-            } else {
-                buttonEl.innerHTML = `<div class="spinner-small-primary"></div>`;
-            }
-
-            // Mark items as running in UI
-            rowIndexes.forEach(idx => {
-                const item = document.getElementById(`row-${idx}`);
-                if (item) {
-                    const badge = item.querySelector('.badge');
-                    if (badge) {
-                        badge.className = 'badge running';
-                        badge.innerText = 'RUNNING...';
-                    }
-                }
-            });
-
-            showToast(`Processing ${rowIndexes.length} pipeline(s)...`, false);
-
-            google.script.run
-                .withSuccessHandler(results => {
-                    buttonEl.disabled = false;
-                    buttonEl.innerHTML = originalHtml;
-                    showToast("Execution complete.", false, true);
-                    loadDashboard();
-                })
-                .withFailureHandler(err => {
-                    buttonEl.disabled = false;
-                    buttonEl.innerHTML = originalHtml;
-                    handleError(err, 'Run Execution');
-                    loadDashboard();
-                })
-                .PipelineControl_runSelectedPipelines(rowIndexes);
-        }
-
-        // --- Existing System Toggles ---
-        function updateToggle(status) {
-            var isEnabled = (status === 'true');
-            var toggleConfig = document.getElementById('systemToggle');
-            toggleConfig.checked = isEnabled;
-            toggleConfig.disabled = false;
-            updateStatusText(isEnabled);
-        }
-
-        function updateStatusText(isEnabled) {
-            var label = document.getElementById('systemStatusLabel');
-            if (isEnabled) {
-                label.innerText = "System Active";
-                label.style.color = "var(--success-dark)";
-                label.style.fontWeight = "700";
-            } else {
-                label.innerText = "System Paused";
-                label.style.color = "var(--danger)";
-                label.style.fontWeight = "700";
-            }
-        }
-
-        function toggleSystem() {
-            var toggleConfig = document.getElementById('systemToggle');
-            var isChecked = toggleConfig.checked;
-            toggleConfig.disabled = true;
-            updateStatusText(isChecked);
-
-            google.script.run
-                .withSuccessHandler(() => { toggleConfig.disabled = false; showToast("System status updated.", false, true); })
-                .withFailureHandler(err => {
-                    toggleConfig.checked = !isChecked;
-                    toggleConfig.disabled = false;
-                    updateStatusText(!isChecked);
-                    handleError(err, 'Toggle System');
-                })
-                .PipelineControl_setSystemStatus(isChecked);
-        }
-
-        function formatSheet() {
-            if (!confirm("WARNING: This will clear the active sheet and set it up for the Pipeline. Are you sure you want to proceed?")) {
-                return;
-            }
-
-            var btn = document.getElementById('btnFormat');
-            var originalHtml = btn.innerHTML;
-
-            btn.disabled = true;
-            btn.innerHTML = `<div class="spinner-small-primary" style="border-top-color: var(--primary); border-width: 2px; margin-right:8px;"></div> Formatting...`;
-            showToast("Setting up headers...", false);
-
-            google.script.run
-                .withSuccessHandler(function (msg) {
-                    btn.disabled = false;
-                    btn.innerHTML = originalHtml;
-                    showToast(msg, false, true);
-                    loadDashboard();
-                })
-                .withFailureHandler(function (err) {
-                    btn.disabled = false;
-                    btn.innerHTML = originalHtml;
-                    handleError(err, 'Format Sheet');
-                })
-                .PipelineControl_formatControlCenter();
-        }
+        });
+    }
 </script>

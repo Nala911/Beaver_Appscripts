@@ -353,21 +353,17 @@
 
   <?!= _App_include('SidebarShared'); ?>
   <script>
-
-    function toggleLoading(show, text) {
-      SyncSidebar.toggleLoading(show, text);
-    }
-
-    function showToast(msg, isError) {
-      SyncSidebar.showToast(msg, isError, { duration: 3000 });
-    }
+    // --- INITIALIZATION ---
+    window.onload = function () {
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    };
 
     function runPull() {
       SyncSidebar.run('ChatSpaceSync_checkForUnsavedChanges', [], {
         unwrap: false,
         context: 'Check Changes',
-        onSuccess: hasChanges => {
-          if (hasChanges) {
+        onSuccess: function (res) {
+          if (res.data === true) {
             const confirmPull = confirm("⚠️ WARNING: Unsaved changes detected in the 'Action' column.\n\nRunning 'Pull' will overwrite these changes and they will be LOST.\n\nDo you want to continue?");
             if (!confirmPull) return;
           }
@@ -377,20 +373,30 @@
     }
 
     function executePull() {
-      toggleLoading(true, "Importing all members…");
+      SyncSidebar.toggleLoading(true, "Importing all members…");
       SyncSidebar.run('ChatSpaceSync_pullMembers', [], {
         context: 'Pull Members',
-        onSuccess: res => { toggleLoading(false); showToast(res.message, false); },
-        onError: () => { toggleLoading(false); }
+        onSuccess: function (res) { 
+          SyncSidebar.toggleLoading(false); 
+          SyncSidebar.showToast(res.message); 
+        },
+        onError: function () { 
+          SyncSidebar.toggleLoading(false); 
+        }
       });
     }
 
     function runPush() {
-      toggleLoading(true, "Syncing changes…");
+      SyncSidebar.toggleLoading(true, "Syncing changes…");
       SyncSidebar.run('ChatSpaceSync_pushChanges', [], {
         context: 'Push Changes',
-        onSuccess: res => { toggleLoading(false); showToast(res.message, false); },
-        onError: () => { toggleLoading(false); }
+        onSuccess: function (res) { 
+          SyncSidebar.toggleLoading(false); 
+          SyncSidebar.showToast(res.message); 
+        },
+        onError: function () { 
+          SyncSidebar.toggleLoading(false); 
+        }
       });
     }
   </script>

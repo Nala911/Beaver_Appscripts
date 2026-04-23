@@ -16,6 +16,7 @@ var SHEET_NAMES = {
     PIPELINE: '⛓  Pipeline',
     CHAT_SPACE_SYNC: '💬 Google Chat Spaces',
     GMAIL_FILTERS: '🗂️ Gmail Filters',
+    NEWSLETTER_ZERO: '🧹 Newsletter Zero',
     LOGS: '🛠️ Developer Log'
 };
 
@@ -56,6 +57,9 @@ var APP_PROPS = {
     // Forms Sync
     FORMS_CURRENT_FORM: { key: 'FORMSSYNC_CURRENT_FORM', store: STORE_TYPES.DOCUMENT, isJson: false },
     FORMS_SELECTED_FORM: { key: 'FORMSSYNC_SELECTED_FORM', store: STORE_TYPES.USER, isJson: false },
+
+    // Newsletter Zero
+    NEWSLETTER_ZERO_SCAN_DAYS: { key: 'NEWSLETTER_ZERO_SCAN_DAYS', store: STORE_TYPES.USER, isJson: false },
 
     // Developer Settings
     ENABLE_DEBUG_LOGGING: { key: 'ENABLE_DEBUG_LOGGING', store: STORE_TYPES.DOCUMENT, isJson: false },

@@ -137,29 +137,13 @@
         }
 
         @keyframes pulse-badge {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.7;
-            }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
         }
 
         @keyframes pulse-dot {
-
-            0%,
-            100% {
-                transform: scale(1);
-                opacity: 1;
-            }
-
-            50% {
-                transform: scale(1.4);
-                opacity: 0.6;
-            }
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.4); opacity: 0.6; }
         }
 
         /* ── Main Scroll Area ── */
@@ -213,85 +197,7 @@
             box-shadow: var(--shadow-md);
         }
 
-        /* ── List Selector ── */
-        .list-section {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-        }
-
-        .list-section .card {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-            padding: 0;
-            overflow: hidden;
-        }
-
-        .list-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-            overflow: hidden;
-        }
-
-        .list-scroll {
-            flex: 1;
-            overflow-y: auto;
-            min-height: 0;
-        }
-
-        .list-scroll::-webkit-scrollbar {
-            width: 5px;
-        }
-
-        .list-scroll::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .list-scroll::-webkit-scrollbar-thumb {
-            background: rgba(99, 102, 241, 0.18);
-            border-radius: 10px;
-        }
-
-        .list-scroll::-webkit-scrollbar-thumb:hover {
-            background: rgba(99, 102, 241, 0.35);
-        }
-
-        .list-item {
-            display: flex;
-            align-items: center;
-            padding: 10px 14px;
-            gap: 10px;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            border-bottom: 1px solid var(--border-light);
-            position: relative;
-        }
-
-        .list-item:last-child {
-            border-bottom: none;
-        }
-
-        .list-item:hover {
-            background: var(--primary-bg);
-        }
-
-        .list-item.select-all {
-            background: linear-gradient(135deg, #eef2ff, #f5f3ff);
-            border-bottom: 2px solid var(--border);
-            font-weight: 600;
-            color: var(--primary);
-            position: sticky;
-            top: 0;
-            z-index: 1;
-        }
-
         /* ── Custom Checkbox ── */
-        .list-item input[type="checkbox"],
         .toggle-row input[type="checkbox"] {
             -webkit-appearance: none;
             appearance: none;
@@ -306,13 +212,11 @@
             background: var(--surface);
         }
 
-        .list-item input[type="checkbox"]:checked,
         .toggle-row input[type="checkbox"]:checked {
             background: var(--gradient-pull);
             border-color: var(--primary);
         }
 
-        .list-item input[type="checkbox"]:checked::after,
         .toggle-row input[type="checkbox"]:checked::after {
             content: '';
             position: absolute;
@@ -327,34 +231,9 @@
         }
 
         @keyframes checkPop {
-            0% {
-                transform: rotate(45deg) scale(0);
-            }
-
-            60% {
-                transform: rotate(45deg) scale(1.2);
-            }
-
-            100% {
-                transform: rotate(45deg) scale(1);
-            }
-        }
-
-        .list-item input[type="checkbox"]:hover,
-        .toggle-row input[type="checkbox"]:hover {
-            border-color: var(--primary-light);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-
-        .list-item label {
-            cursor: pointer;
-            flex: 1;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--text);
+            0% { transform: rotate(45deg) scale(0); }
+            60% { transform: rotate(45deg) scale(1.2); }
+            100% { transform: rotate(45deg) scale(1); }
         }
 
         /* ── Options / Toggles ── */
@@ -403,9 +282,7 @@
             transition: opacity 0.2s ease;
         }
 
-        .btn:hover::before {
-            opacity: 1;
-        }
+        .btn:hover::before { opacity: 1; }
 
         .btn:disabled {
             opacity: 0.45;
@@ -425,11 +302,6 @@
             box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
         }
 
-        .btn-pull:active:not(:disabled) {
-            transform: translateY(0);
-            box-shadow: 0 1px 4px rgba(99, 102, 241, 0.3);
-        }
-
         .btn-push {
             background: var(--gradient-push);
             color: white;
@@ -439,64 +311,6 @@
         .btn-push:hover:not(:disabled) {
             transform: translateY(-1px);
             box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
-        }
-
-        .btn-push:active:not(:disabled) {
-            transform: translateY(0);
-            box-shadow: 0 1px 4px rgba(16, 185, 129, 0.3);
-        }
-
-        /* ── Console / Log ── */
-        .console {
-            background: var(--surface);
-            border-top: 3px solid;
-            border-image: var(--gradient-header) 1;
-            padding: 10px 14px;
-            min-height: 56px;
-            max-height: 90px;
-            overflow-y: auto;
-            font-family: 'SF Mono', 'Fira Code', 'Roboto Mono', monospace;
-            font-size: 11px;
-            color: var(--text-secondary);
-            flex-shrink: 0;
-        }
-
-        .console::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .console::-webkit-scrollbar-thumb {
-            background: rgba(99, 102, 241, 0.15);
-            border-radius: 10px;
-        }
-
-        .log-entry {
-            margin-bottom: 4px;
-            padding: 2px 0;
-            line-height: 1.5;
-            animation: fadeSlide 0.25s ease;
-        }
-
-        .log-entry.error {
-            color: var(--danger);
-            font-weight: 500;
-        }
-
-        .log-entry.success {
-            color: var(--success-dark);
-            font-weight: 500;
-        }
-
-        @keyframes fadeSlide {
-            from {
-                opacity: 0;
-                transform: translateY(4px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
 
         /* ── Loader ── */
@@ -510,58 +324,7 @@
             animation: spin 0.8s ease-in-out infinite;
         }
 
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* ── Loading Placeholder ── */
-        .loading-placeholder {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 36px;
-            color: var(--text-secondary);
-            gap: 12px;
-            font-weight: 500;
-        }
-
-        .loading-placeholder .loader {
-            width: 28px;
-            height: 28px;
-            border-width: 3px;
-        }
-
-        /* ── Fade-in for list items ── */
-        .list-item {
-            animation: listFadeIn 0.25s ease both;
-        }
-
-        @keyframes listFadeIn {
-            from {
-                opacity: 0;
-                transform: translateX(-6px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        /* ── Empty state ── */
-        .empty-state {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 30px 15px;
-            color: var(--text-secondary);
-            text-align: center;
-            gap: 8px;
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 
@@ -611,78 +374,65 @@
 
     </div>
 
-    <!-- Console -->
-    <div id="console" class="console">
-        <div class="log-entry">Welcome. Ready to sync tasks.</div>
-    </div>
-
     <?!= _App_include('SidebarShared'); ?>
     <script>
         // ── Init ──
         window.onload = function () {
-            lucide.createIcons();
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         };
 
         // ── Pull ──
         function runPull() {
             var incl = document.getElementById('include-completed').checked;
-            setStatus('working');
-            log('Pulling tasks…');
+            setStatus('working', 'Pulling...');
 
-            google.script.run
-                .withSuccessHandler(function (res) {
-                    setStatus(res.success ? 'ready' : 'error');
-                    log(res.message, res.success ? 'success' : 'error');
-                })
-                .withFailureHandler(handleError)
-                .TasksSync_pullRPC(incl);
+            SyncSidebar.run('TasksSync_pullRPC', [incl], {
+                context: 'Pull Tasks',
+                onSuccess: function (res) {
+                    setStatus('ready');
+                    SyncSidebar.showToast(res.message);
+                },
+                onError: function() {
+                    setStatus('error');
+                }
+            });
         }
 
         // ── Push ──
         function runPush() {
-            setStatus('working');
-            log('Pushing changes…');
+            setStatus('working', 'Pushing...');
 
-            google.script.run
-                .withSuccessHandler(function (res) {
-                    setStatus(res.success ? 'ready' : 'error');
-                    log(res.message, res.success ? 'success' : 'error');
-                })
-                .withFailureHandler(handleError)
-                .TasksSync_pushRPC();
+            SyncSidebar.run('TasksSync_pushRPC', [], {
+                context: 'Push Changes',
+                onSuccess: function (res) {
+                    setStatus('ready');
+                    SyncSidebar.showToast(res.message);
+                },
+                onError: function() {
+                    setStatus('error');
+                }
+            });
         }
 
         // ── Helpers ──
-        function setStatus(state) {
+        function setStatus(state, msg) {
             var badge = document.getElementById('statusBadge');
             var btns = document.querySelectorAll('.btn');
             badge.className = 'status-badge ' + state;
 
             if (state === 'working') {
-                badge.innerHTML = '<div class="loader" style="width:10px;height:10px;border-width:1.5px;"></div> Syncing…';
+                badge.innerText = msg || 'Working';
                 btns.forEach(function (b) { b.disabled = true; });
+                SyncSidebar.toggleLoading(true, msg || 'Processing...');
             } else if (state === 'error') {
                 badge.innerText = 'Error';
                 btns.forEach(function (b) { b.disabled = false; });
+                SyncSidebar.toggleLoading(false);
             } else {
                 badge.innerText = 'Ready';
                 btns.forEach(function (b) { b.disabled = false; });
+                SyncSidebar.toggleLoading(false);
             }
-        }
-
-        function log(msg, type) {
-            var con = document.getElementById('console');
-            var div = document.createElement('div');
-            div.className = 'log-entry ' + (type || '');
-            div.innerText = '› ' + msg;
-            con.appendChild(div);
-            con.scrollTop = con.scrollHeight;
-        }
-
-        function handleError(err) {
-            log(err.message || err, 'error');
-            setStatus('error');
-            google.script.run._App_logClientError(err, 'Sidebar Operation');
         }
     </script>
 </body>

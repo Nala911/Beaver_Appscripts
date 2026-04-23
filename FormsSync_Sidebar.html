@@ -4,9 +4,9 @@
 <head>
     <base target="_top">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
     <style>
-        /* ── Design Tokens ── */
+        /* ── Design Tokens (Standardized) ── */
         :root {
             --primary: #6366f1;
             --primary-light: #818cf8;
@@ -19,12 +19,8 @@
             --text-secondary: #6b7280;
             --success: #10b981;
             --success-dark: #059669;
-            --success-bg: #ecfdf5;
-            --warning: #f59e0b;
-            --warning-bg: #fffbeb;
             --danger: #ef4444;
             --danger-bg: #fef2f2;
-            --hover-bg: #f5f3ff;
             --gradient-pull: linear-gradient(135deg, #6366f1, #8b5cf6);
             --gradient-push: linear-gradient(135deg, #10b981, #14b8a6);
             --gradient-header: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);
@@ -45,9 +41,9 @@
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--background);
             color: var(--text);
-            height: 100vh;
             display: flex;
             flex-direction: column;
+            height: 100vh;
             overflow: hidden;
             font-size: 13px;
             -webkit-font-smoothing: antialiased;
@@ -59,7 +55,7 @@
             padding: 14px 16px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            gap: 10px;
             flex-shrink: 0;
             position: relative;
         }
@@ -75,182 +71,37 @@
             border-radius: 0 0 2px 2px;
         }
 
-        .header-title {
-            font-weight: 700;
-            font-size: 15px;
-            color: var(--text);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            letter-spacing: -0.01em;
-        }
-
-        .header-title i {
+        .header .material-icons-outlined {
+            font-size: 22px;
             background: var(--gradient-pull);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
 
-        .status-badge {
-            font-size: 11px;
-            padding: 4px 10px;
-            border-radius: 20px;
-            background: var(--success-bg);
-            color: var(--success);
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            transition: all 0.3s ease;
-            letter-spacing: 0.01em;
-        }
-
-        .status-badge::before {
-            content: '';
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--success);
-            display: inline-block;
-            flex-shrink: 0;
-        }
-
-        .status-badge.working {
-            background: var(--warning-bg);
-            color: var(--warning);
-            animation: pulse-badge 1.5s ease-in-out infinite;
-        }
-
-        .status-badge.working::before {
-            background: var(--warning);
-            animation: pulse-dot 1s ease-in-out infinite;
-        }
-
-        .status-badge.error {
-            background: var(--danger-bg);
-            color: var(--danger);
-        }
-
-        .status-badge.error::before {
-            background: var(--danger);
-        }
-
-        @keyframes pulse-badge {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.7;
-            }
-        }
-
-        @keyframes pulse-dot {
-
-            0%,
-            100% {
-                transform: scale(1);
-                opacity: 1;
-            }
-
-            50% {
-                transform: scale(1.4);
-                opacity: 0.6;
-            }
-        }
-
-        /* ── Quick Links Bar ── */
-        .quick-links {
-            display: none;
-            gap: 8px;
-            padding: 10px 14px;
-            background: var(--surface);
-            border-bottom: 1px solid var(--border-light);
-            flex-shrink: 0;
-            animation: slideDown 0.3s ease;
-        }
-
-        .quick-links.visible {
-            display: flex;
-        }
-
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-8px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .quick-link {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            padding: 8px 10px;
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--border);
-            background: var(--surface);
+        .header-title {
+            font-size: 15px;
+            font-weight: 700;
             color: var(--text);
-            font-family: inherit;
-            font-size: 11.5px;
-            font-weight: 600;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all 0.2s ease;
-            white-space: nowrap;
+            letter-spacing: -0.01em;
         }
 
-        .quick-link:hover {
-            background: var(--primary-bg);
-            border-color: var(--primary-light);
-            color: var(--primary);
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-sm);
-        }
-
-        .quick-link:active {
-            transform: translateY(0);
-        }
-
-        .quick-link i {
-            flex-shrink: 0;
-        }
-
-        .quick-link.edit-link:hover {
-            border-color: var(--primary);
-        }
-
-        .quick-link.responses-link:hover {
-            border-color: var(--success);
-            color: var(--success-dark);
-            background: var(--success-bg);
-        }
-
-        /* ── Main Scroll Area ── */
-        .main {
+        /* ── Main Container ── */
+        .container {
             flex: 1;
-            overflow-y: auto;
             padding: 16px 14px;
             display: flex;
             flex-direction: column;
             gap: 16px;
+            overflow-y: auto;
             min-height: 0;
         }
 
-        .main::-webkit-scrollbar {
+        .container::-webkit-scrollbar {
             width: 5px;
         }
 
-        .main::-webkit-scrollbar-thumb {
+        .container::-webkit-scrollbar-thumb {
             background: rgba(99, 102, 241, 0.2);
             border-radius: 10px;
         }
@@ -268,11 +119,12 @@
             gap: 6px;
         }
 
-        .section-label i {
+        .section-label .material-icons-outlined {
+            font-size: 15px;
             color: var(--primary-light);
         }
 
-        /* ── Card Wrapper ── */
+        /* ── Cards ── */
         .card {
             background: var(--surface);
             border: 1px solid var(--border-light);
@@ -282,507 +134,303 @@
             transition: box-shadow 0.25s ease;
         }
 
-        .card:hover {
-            box-shadow: var(--shadow-md);
+        .card:hover { box-shadow: var(--shadow-md); }
+
+        /* ── Form Elements ── */
+        .form-group { margin-bottom: 14px; }
+
+        .label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+            display: block;
+            letter-spacing: 0.02em;
         }
 
-        /* ── List Selector ── */
-        .list-section {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-        }
-
-        .list-section .card {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-            padding: 0;
-            overflow: hidden;
-        }
-
-        .list-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-            overflow: hidden;
-        }
-
-        .list-scroll {
-            flex: 1;
-            overflow-y: auto;
-            min-height: 0;
-        }
-
-        .list-scroll::-webkit-scrollbar {
-            width: 5px;
-        }
-
-        .list-scroll::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .list-scroll::-webkit-scrollbar-thumb {
-            background: rgba(99, 102, 241, 0.18);
-            border-radius: 10px;
-        }
-
-        .list-scroll::-webkit-scrollbar-thumb:hover {
-            background: rgba(99, 102, 241, 0.35);
-        }
-
-        .list-item {
-            display: flex;
-            align-items: center;
-            padding: 10px 14px;
-            gap: 10px;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            border-bottom: 1px solid var(--border-light);
-            position: relative;
-            animation: listFadeIn 0.25s ease both;
-        }
-
-        .list-item:last-child {
-            border-bottom: none;
-        }
-
-        .list-item:hover {
-            background: var(--primary-bg);
-        }
-
-        /* ── Custom Radio ── */
-        .list-item input[type="radio"] {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 18px;
-            height: 18px;
-            border: 2px solid var(--border);
-            border-radius: 50%;
-            cursor: pointer;
-            flex-shrink: 0;
-            position: relative;
-            transition: all 0.2s ease;
-            background: var(--surface);
-        }
-
-        .list-item input[type="radio"]:checked {
-            background: var(--surface);
-            border-color: var(--primary);
-        }
-
-        .list-item input[type="radio"]:checked::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0);
-            width: 10px;
-            height: 10px;
-            background: var(--gradient-pull);
-            border-radius: 50%;
-            animation: radioPop 0.2s ease forwards;
-        }
-
-        @keyframes radioPop {
-            0% {
-                transform: translate(-50%, -50%) scale(0);
-            }
-
-            60% {
-                transform: translate(-50%, -50%) scale(1.2);
-            }
-
-            100% {
-                transform: translate(-50%, -50%) scale(1);
-            }
-        }
-
-        .list-item input[type="radio"]:hover {
-            border-color: var(--primary-light);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-
-        .list-item label {
-            cursor: pointer;
-            flex: 1;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            font-size: 13px;
-            font-weight: 500;
+        .select {
+            width: 100%;
+            padding: 9px 10px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-family: inherit;
             color: var(--text);
+            background: var(--surface);
+            outline: none;
+            cursor: pointer;
         }
 
-        /* ── Buttons ── */
-        .btn-group {
+        .select:focus { border-color: var(--primary-light); }
+
+        /* ── Quick Links ── */
+        .link-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
+            margin-top: 8px;
         }
 
+        .link-card {
+            background: var(--primary-bg);
+            padding: 10px;
+            border-radius: var(--radius-sm);
+            text-decoration: none;
+            color: var(--primary);
+            font-weight: 600;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+
+        .link-card:hover { transform: translateY(-2px); }
+        .link-card .material-icons-outlined { font-size: 20px; }
+
+        /* ── Buttons ── */
         .btn {
-            border: none;
+            width: 100%;
             height: 40px;
+            border: none;
             border-radius: var(--radius-sm);
             font-family: inherit;
-            font-weight: 600;
             font-size: 13px;
+            font-weight: 600;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 7px;
             transition: all 0.25s ease;
-            position: relative;
-            overflow: hidden;
-            letter-spacing: 0.01em;
+            margin-bottom: 10px;
         }
 
-        .btn::before {
-            content: '';
-            position: absolute;
+        .btn-primary { background: var(--gradient-pull); color: white; }
+        .btn-success { background: var(--gradient-push); color: white; }
+        .btn:last-child { margin-bottom: 0; }
+
+        /* ── Loading Overlay ── */
+        .loading-overlay {
+            display: none;
+            position: fixed;
             inset: 0;
-            opacity: 0;
-            background: rgba(255, 255, 255, 0.15);
-            transition: opacity 0.2s ease;
-        }
-
-        .btn:hover::before {
-            opacity: 1;
-        }
-
-        .btn:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-            transform: none !important;
-            box-shadow: none !important;
-        }
-
-        .btn-pull {
-            background: var(--gradient-pull);
-            color: white;
-            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
-        }
-
-        .btn-pull:hover:not(:disabled) {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
-        }
-
-        .btn-pull:active:not(:disabled) {
-            transform: translateY(0);
-            box-shadow: 0 1px 4px rgba(99, 102, 241, 0.3);
-        }
-
-        .btn-push {
-            background: var(--gradient-push);
-            color: white;
-            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-        }
-
-        .btn-push:hover:not(:disabled) {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
-        }
-
-        .btn-push:active:not(:disabled) {
-            transform: translateY(0);
-            box-shadow: 0 1px 4px rgba(16, 185, 129, 0.3);
-        }
-
-
-        /* ── Loader ── */
-        .loader {
-            border: 2.5px solid var(--border-light);
-            border-top: 2.5px solid var(--primary);
-            border-right: 2.5px solid var(--primary-light);
-            border-radius: 50%;
-            width: 18px;
-            height: 18px;
-            animation: spin 0.8s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* ── Loading Placeholder ── */
-        .loading-placeholder {
-            display: flex;
-            flex-direction: column;
+            background: rgba(245, 243, 255, 0.85);
+            backdrop-filter: blur(6px);
+            z-index: 100;
             align-items: center;
             justify-content: center;
-            padding: 36px;
-            color: var(--text-secondary);
+            flex-direction: column;
             gap: 12px;
-            font-weight: 500;
         }
 
-        .loading-placeholder .loader {
+        .spinner {
+            border: 3px solid var(--border-light);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
             width: 28px;
             height: 28px;
-            border-width: 3px;
+            animation: spin 0.8s linear infinite;
         }
 
-        @keyframes listFadeIn {
-            from {
-                opacity: 0;
-                transform: translateX(-6px);
-            }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        /* ── Empty state ── */
-        .empty-state {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 30px 15px;
-            color: var(--text-secondary);
+        /* ── Toast ── */
+        .toast {
+            visibility: hidden;
+            min-width: 220px;
+            background: var(--text);
+            color: #fff;
             text-align: center;
-            gap: 8px;
+            border-radius: var(--radius-sm);
+            padding: 11px 18px;
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            font-weight: 500;
+            z-index: 101;
         }
+
+        .toast.show { visibility: visible; animation: toastIn 0.35s ease; }
+        .toast.error-toast { background: var(--danger); }
+
+        @keyframes toastIn { from { bottom: 0; opacity: 0; } to { bottom: 30px; opacity: 1; } }
     </style>
-    <?!= _App_include('SidebarShared'); ?>
 </head>
 
 <body>
 
-    <!-- Header -->
     <div class="header">
-        <div class="header-title">
-            <i data-lucide="file-spreadsheet" style="width:18px;"></i>
-            Google Forms
-        </div>
-        <div id="statusBadge" class="status-badge">
-            Ready
-        </div>
+        <span class="material-icons-outlined">dynamic_form</span>
+        <div class="header-title">Forms Sync</div>
     </div>
 
-    <!-- Quick Links Bar -->
-    <div id="quickLinks" class="quick-links">
-        <a id="link-edit" class="quick-link edit-link" href="#" target="_blank"
-            onclick="openLink(this.href); return false;">
-            <i data-lucide="external-link" style="width:13px;"></i>
-            🔗 Open Form
-        </a>
-        <a id="link-responses" class="quick-link responses-link" href="#" target="_blank"
-            onclick="openLink(this.href); return false;">
-            <i data-lucide="bar-chart-3" style="width:13px;"></i>
-            📊 Responses
-        </a>
-    </div>
-
-    <!-- Main Content -->
-    <div class="main">
-
-        <!-- List Selector -->
-        <div class="list-section">
+    <div class="container">
+        <!-- Connect Section -->
+        <div>
             <div class="section-label">
-                <i data-lucide="list" style="width:13px;"></i> Google Forms
+                <span class="material-icons-outlined">link</span> Connect Form
             </div>
-            <div id="loading-lists" class="loading-placeholder">
-                <div class="loader"></div> Loading forms…
-            </div>
-            <div id="list-area" class="card" style="display:none;">
-                <div class="list-area">
-                    <div class="list-scroll" id="list-selector"></div>
+            <div class="card">
+                <div class="form-group">
+                    <label class="label">Select Recent Form</label>
+                    <select id="form-select" class="select" onchange="onFormChange()">
+                        <option value="">Loading forms...</option>
+                    </select>
+                </div>
+
+                <div id="quick-links" style="display: none;">
+                    <div class="label" style="margin-top: 10px;">Quick Access</div>
+                    <div class="link-grid">
+                        <a id="link-edit" href="#" target="_blank" class="link-card">
+                            <span class="material-icons-outlined">edit_note</span>
+                            <span>Edit Form</span>
+                        </a>
+                        <a id="link-responses" href="#" target="_blank" class="link-card">
+                            <span class="material-icons-outlined">analytics</span>
+                            <span>Responses</span>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Action Buttons -->
+        <!-- Pull Section -->
         <div>
             <div class="section-label">
-                <i data-lucide="zap" style="width:13px;"></i> Actions
+                <span class="material-icons-outlined">file_download</span> Sync Inward
             </div>
-            <div class="btn-group">
-                <button id="btn-pull" class="btn btn-pull" onclick="runPull()">
-                    <i data-lucide="download" style="width:15px;"></i> Pull
-                </button>
-                <button id="btn-push" class="btn btn-push" onclick="runPush()">
-                    <i data-lucide="upload-cloud" style="width:15px;"></i> Sync
+            <div class="card">
+                <p style="color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+                    Pull form structure into the spreadsheet to edit questions and options.
+                </p>
+                <button class="btn btn-primary" onclick="pullForm()">
+                    <span class="material-icons-outlined">download</span> Pull from Form
                 </button>
             </div>
         </div>
 
+        <!-- Push Section -->
+        <div>
+            <div class="section-label">
+                <span class="material-icons-outlined">file_upload</span> Sync Outward
+            </div>
+            <div class="card">
+                <p style="color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+                    Apply changes made in the spreadsheet back to the Google Form.
+                </p>
+                <button class="btn btn-success" onclick="syncToForm()">
+                    <span class="material-icons-outlined">upload</span> Sync to Form
+                </button>
+            </div>
+        </div>
     </div>
 
+    <!-- UI Elements -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loadingText">Processing...</div>
+    </div>
+    <div id="toast" class="toast">Done</div>
+
+    <?!= _App_include('SidebarShared'); ?>
 
     <script>
-        // Global Error Catcher
-        window.onerror = function (msg, url, line, col, error) {
-            const detail = `Error: ${msg}\nURL: ${url}\nLine: ${line}, Col: ${col}${error ? '\nStack: ' + error.stack : ''}`;
-            google.script.run._App_logClientError(detail, 'Global Error');
-            return false;
-        };
-
-        // ── Init ──
+        // --- INITIALIZATION ---
         window.onload = function () {
-            lucide.createIcons();
-            google.script.run
-                .withSuccessHandler(renderLists)
-                .withFailureHandler(handleError)
-                .FormsSync_getForms();
-
-            // Try to load quick links if a form is already connected
-            google.script.run
-                .withSuccessHandler(showQuickLinks)
-                .FormsSync_getFormLinks();
+            loadForms();
         };
 
-        // ── Quick Links ──
-        function showQuickLinks(links) {
-            var bar = document.getElementById('quickLinks');
-            if (!links || !links.editUrl) {
-                bar.classList.remove('visible');
-                return;
-            }
-            document.getElementById('link-edit').href = links.editUrl;
-            document.getElementById('link-responses').href = links.responsesUrl;
-            bar.classList.add('visible');
-            lucide.createIcons();
+        function loadForms() {
+            SyncSidebar.run('FormsSync_getForms', [], {
+                context: 'Load Forms',
+                onSuccess: function(res) {
+                    renderLists(res.data);
+                    showQuickLinks();
+                }
+            });
         }
 
-        function openLink(url) {
-            window.open(url, '_blank');
-        }
-
-        // ── Render Forms List ──
         function renderLists(data) {
-            var forms = data.forms || [];
-            var savedId = data.savedFormId;
+            const select = document.getElementById('form-select');
+            select.innerHTML = '<option value="">-- Choose a Form --</option>';
 
-            var container = document.getElementById('list-selector');
-            var loader = document.getElementById('loading-lists');
-            var area = document.getElementById('list-area');
-            container.innerHTML = '';
-
-            if (!forms || forms.length === 0) {
-                container.innerHTML = '<div class="empty-state"><i data-lucide="inbox" style="width:28px; color:var(--text-secondary);"></i>No forms found.</div>';
-                lucide.createIcons();
-            } else {
-                forms.forEach(function (form, idx) {
-                    var div = document.createElement('div');
-                    div.className = 'list-item';
-                    div.style.animationDelay = (idx * 0.02) + 's';
-                    var isChecked = (form.id === savedId) ? ' checked' : '';
-                    div.innerHTML =
-                        '<input type="radio" name="formSelect" class="list-radio" id="form-' + form.id + '" value="' + form.id + '"' + isChecked + '>' +
-                        '<label for="form-' + form.id + '">' + form.title + '</label>';
-                    container.appendChild(div);
+            if (data.forms && data.forms.length > 0) {
+                data.forms.forEach(f => {
+                    const opt = document.createElement('option');
+                    opt.value = f.id;
+                    opt.textContent = f.title;
+                    if (f.id === data.savedFormId) opt.selected = true;
+                    select.appendChild(opt);
                 });
-            }
-
-            loader.style.display = 'none';
-            area.style.display = 'flex';
-
-            if (savedId) {
-                setTimeout(function () {
-                    var selectedEl = document.getElementById('form-' + savedId);
-                    if (selectedEl && selectedEl.parentElement) {
-                        selectedEl.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-                }, 100);
+            } else {
+                select.innerHTML = '<option value="">No recent forms found</option>';
             }
         }
 
-        // ── Pull ──
-        function runPull() {
-            var selected = document.querySelector('.list-radio:checked');
-            if (!selected) {
-                log('Select a form to pull.', 'error');
+        function onFormChange() {
+            showQuickLinks();
+        }
+
+        function showQuickLinks() {
+            const formId = document.getElementById('form-select').value;
+            const container = document.getElementById('quick-links');
+            
+            if (!formId) {
+                container.style.display = 'none';
                 return;
             }
 
-            var formId = selected.value;
-
-            setStatus('working');
-            log('Pulling form data…');
-
-            google.script.run
-                .withSuccessHandler(function (res) {
-                    setStatus(res.success ? 'ready' : 'error');
-                    log(res.message, res.success ? 'success' : 'error');
-
-                    // Refresh quick links after a successful pull
-                    if (res.success) {
-                        google.script.run
-                            .withSuccessHandler(showQuickLinks)
-                            .FormsSync_getFormLinks();
+            SyncSidebar.run('FormsSync_getFormLinks', [], {
+                context: 'Load Links',
+                onSuccess: function(res) {
+                    const links = res.data;
+                    if (links && links.editUrl) {
+                        document.getElementById('link-edit').href = links.editUrl;
+                        document.getElementById('link-responses').href = links.responsesUrl;
+                        container.style.display = 'block';
+                    } else {
+                        container.style.display = 'none';
                     }
-                })
-                .withFailureHandler(handleError)
-                .FormsSync_pullForm(formId);
+                }
+            });
         }
 
-        // ── Sync to Form ──
-        function runPush() {
-            setStatus('working');
-            log('Syncing changes to Form…');
-
-            google.script.run
-                .withSuccessHandler(function (res) {
-                    setStatus(res.success ? 'ready' : 'error');
-                    log(res.message, res.success ? 'success' : 'error');
-
-                    // Refresh quick links after a successful sync
-                    if (res.success) {
-                        google.script.run
-                            .withSuccessHandler(showQuickLinks)
-                            .FormsSync_getFormLinks();
-                    }
-                })
-                .withFailureHandler(handleError)
-                .FormsSync_syncToForm();
-        }
-
-        // ── Helpers ──
-        function setStatus(state) {
-            var badge = document.getElementById('statusBadge');
-            var btns = document.querySelectorAll('.btn');
-            badge.className = 'status-badge ' + state;
-
-            if (state === 'working') {
-                badge.innerHTML = '<div class="loader" style="width:10px;height:10px;border-width:1.5px;"></div> Syncing…';
-                btns.forEach(function (b) { b.disabled = true; });
-                var radios = document.querySelectorAll('.list-radio');
-                radios.forEach(function (r) { r.disabled = true; });
-            } else if (state === 'error') {
-                badge.innerText = 'Error';
-                btns.forEach(function (b) { b.disabled = false; });
-                var radios = document.querySelectorAll('.list-radio');
-                radios.forEach(function (r) { r.disabled = false; });
-            } else {
-                badge.innerText = 'Ready';
-                btns.forEach(function (b) { b.disabled = false; });
-                var radios = document.querySelectorAll('.list-radio');
-                radios.forEach(function (r) { r.disabled = false; });
+        function pullForm() {
+            const formId = document.getElementById('form-select').value;
+            if (!formId) {
+                SyncSidebar.showToast('Please select a form first.', true);
+                return;
             }
+
+            SyncSidebar.toggleLoading(true, 'Pulling form...');
+            SyncSidebar.run('FormsSync_pullForm', [formId], {
+                context: 'Pull Form',
+                onSuccess: function(res) {
+                    SyncSidebar.toggleLoading(false);
+                    SyncSidebar.showToast(res.message);
+                },
+                onError: function() {
+                    SyncSidebar.toggleLoading(false);
+                }
+            });
         }
 
-        function log(msg, type) {
-            console.log(`[FormsSync ${type || ''}] ${msg}`);
-            if (type === 'error' || (typeof msg === 'string' && msg.startsWith('Error:'))) {
-                alert(msg);
-            }
-        }
-
-        function handleError(err) {
-            log(err.message || err, 'error');
-            setStatus('error');
-            google.script.run._App_logClientError(err, 'Sidebar Operation');
+        function syncToForm() {
+            SyncSidebar.toggleLoading(true, 'Syncing to form...');
+            SyncSidebar.run('FormsSync_syncToForm', [], {
+                context: 'Sync to Form',
+                onSuccess: function(res) {
+                    SyncSidebar.toggleLoading(false);
+                    SyncSidebar.showToast(res.message);
+                },
+                onError: function() {
+                    SyncSidebar.toggleLoading(false);
+                }
+            });
         }
     </script>
 </body>

@@ -42,11 +42,6 @@ var MAIL_SENDER_CFG = {
   HEADER_ROW: 1
 };
 
-/** @deprecated — Use _App_ensureSheetExists('MAIL_SENDER') instead. */
-function _MailSender_ensureSheetExistsAndActivate() {
-  return _App_ensureSheetExists('MAIL_SENDER');
-}
-
 /** Opens the Mail Sender sidebar and ensures the sheet exists. */
 function MailSender_openSidebar() {
   return Logger.run('MAIL_SENDER', 'Open Sidebar', function () {

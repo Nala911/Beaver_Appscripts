@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <?!= _App_include('SidebarShared'); ?>
+    <style>
+        .setting-group { margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.03); border-radius: 8px; }
+        .setting-label { font-weight: bold; display: block; margin-bottom: 8px; font-size: 13px; }
+        .info-text { font-size: 12px; color: #666; margin-top: 10px; line-height: 1.4; }
+        .action-btn { width: 100%; margin-bottom: 10px; justify-content: center; }
+    </style>
+</head>
+<body>
+    <div class="sidebar-container">
+        <div class="header">
+            <div class="header-title">Newsletter Zero</div>
+            <div class="header-subtitle">Purge your inbox of bulk clutter.</div>
+        </div>
+
+        <div class="setting-group">
+            <label class="setting-label">Scan Depth</label>
+            <select id="scanDays" class="standard-input">
+                <option value="7">Last 7 Days</option>
+                <option value="30" selected>Last 30 Days (Recommended)</option>
+                <option value="90">Last 90 Days</option>
+                <option value="365">Last Year</option>
+            </select>
+            <div class="info-text">
+                The tool will analyze your recent emails to find recurring bulk senders and newsletters.
+            </div>
+        </div>
+
+        <div class="button-container">
+            <button onclick="pullSenders()" class="standard-button action-btn">
+                <span>🔍 Scan Inbox for Senders</span>
+            </button>
+            
+            <button onclick="processActions()" class="standard-button primary action-btn">
+                <span>⚡ Process Selected Actions</span>
+            </button>
+        </div>
+
+        <div id="status-div"></div>
+        
+        <div class="info-text" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
+            <strong>How it works:</strong>
+            <ul style="padding-left: 20px; margin-top: 5px;">
+                <li>Identifies emails with "Unsubscribe" headers.</li>
+                <li>Excludes senders you've replied to.</li>
+                <li>Aggregates by sender so you can bulk-archive or delete.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const sidebar = new SyncSidebar('NEWSLETTER_ZERO');
+
+        function pullSenders() {
+            const days = document.getElementById('scanDays').value;
+            sidebar.showLoading('Analyzing your inbox...');
+            
+            google.script.run
+                .withSuccessHandler((response) => {
+                    sidebar.showResponse(response);
+                })
+                .withFailureHandler((err) => {
+                    sidebar.showError(err.message);
+                })
+                .NewsletterZero_pullSenders(days);
+        }
+
+        function processActions() {
+            sidebar.showLoading('Processing actions...');
+            
+            google.script.run
+                .withSuccessHandler((response) => {
+                    sidebar.showResponse(response);
+                })
+                .withFailureHandler((err) => {
+                    sidebar.showError(err.message);
+                })
+                .NewsletterZero_processActions();
+        }
+
+        // Initialize status polling
+        sidebar.initProgressPolling();
+    </script>
+</body>
+</html>

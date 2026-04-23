@@ -495,12 +495,6 @@
       return false;
     };
 
-    function handleError(err, context = 'Sidebar Operation') {
-      if (typeof toggleLoading === 'function') toggleLoading(false);
-      showToast(err.message || err, 'error');
-      google.script.run._App_logClientError(err, context);
-    }
-
     /* ── State ── */
     var currentEnabled = false;
 
@@ -510,15 +504,16 @@
     };
 
     function refreshSettings() {
-      google.script.run
-        .withSuccessHandler(populateUI)
-        .withFailureHandler(function (err) {
-          showToast('Error loading settings: ' + err.message, 'error');
-        })
-        .Logger_getSettings();
+      SyncSidebar.run('Logger_getSettings', [], {
+        context: 'Load Settings',
+        onSuccess: function (res) {
+          populateUI(res.data);
+        }
+      });
     }
 
     function populateUI(settings) {
+      if (!settings) return;
       currentEnabled = !!settings.enabled;
       document.getElementById('loggingToggle').checked = currentEnabled;
       updateBadge(currentEnabled);
@@ -571,86 +566,65 @@
       btn.disabled = true;
       textSpan.innerText = 'Scanning...';
 
-      google.script.run
-        .withSuccessHandler(function(res) {
+      SyncSidebar.run('Logger_runSystemAudit', [], {
+        context: 'System Audit',
+        onSuccess: function(res) {
           btn.disabled = false;
           textSpan.innerText = 'Run System Audit';
-          showToast('Audit complete! Check Logs sheet.', 'success');
-        })
-        .withFailureHandler(function(err) {
+          SyncSidebar.showToast('Audit complete! Check Logs sheet.', false);
+        },
+        onError: function() {
           btn.disabled = false;
           textSpan.innerText = 'Run System Audit';
-          handleError(err, 'System Audit');
-        })
-        .Logger_runSystemAudit();
+        }
+      });
     }
 
 
     /* ── Save ── */
     function saveSettings() {
       var enabled = document.getElementById('loggingToggle').checked;
-      toggleLoading(true, 'Saving preferences…');
+      SyncSidebar.toggleLoading(true, 'Saving preferences…');
 
-      google.script.run
-        .withSuccessHandler(function (res) {
-          toggleLoading(false);
-          if (res.success) {
-            currentEnabled = enabled;
-            showToast(res.message, 'success');
-            refreshSettings();
-          } else {
-            showToast(res.message, 'error');
-          }
-        })
-        .withFailureHandler(function (err) {
-          handleError(err, 'Save Settings');
-        })
-        .Logger_saveSettings(enabled);
+      SyncSidebar.run('Logger_saveSettings', [enabled], {
+        context: 'Save Settings',
+        onSuccess: function (res) {
+          SyncSidebar.toggleLoading(false);
+          currentEnabled = enabled;
+          SyncSidebar.showToast(res.message);
+          refreshSettings();
+        },
+        onError: function() {
+          SyncSidebar.toggleLoading(false);
+        }
+      });
     }
 
     /* ── View Logs Sheet ── */
     function viewLogsSheet() {
-      google.script.run
-        .withFailureHandler(function(err) { showToast(err.message || 'Could not activate sheet.', 'error'); })
-        .Logger_activateSheet();
+      SyncSidebar.run('Logger_activateSheet', [], {
+        context: 'View Logs',
+        onSuccess: function(res) {
+          SyncSidebar.showToast(res.message);
+        }
+      });
     }
 
     /* ── Clear Logs ── */
     function clearLogs() {
         if (!confirm('Are you sure you want to delete all log entries? This cannot be undone.')) return;
         
-        toggleLoading(true, 'Clearing logs…');
-        google.script.run
-            .withSuccessHandler(function(res) {
-                toggleLoading(false);
-                if (res.success) {
-                    showToast(res.message, 'success');
-                } else {
-                    showToast(res.message, 'error');
-                }
-            })
-            .withFailureHandler(function(err) {
-                handleError(err, 'Clear Logs');
-            })
-            .Logger_clearLogs();
-    }
-
-
-    /* ── Helpers ── */
-    function toggleLoading(show, text) {
-      var overlay = document.getElementById('loadingOverlay');
-      overlay.style.display = show ? 'flex' : 'none';
-      if (text) document.getElementById('loadingText').textContent = text;
-    }
-
-    function showToast(msg, type) {
-      var t = document.getElementById('toast');
-      t.textContent = msg;
-      t.className = 'toast';
-      if (type === 'error')   t.classList.add('error-toast');
-      if (type === 'success') t.classList.add('success-toast');
-      t.classList.add('show');
-      setTimeout(function () { t.className = 'toast'; }, 3500);
+        SyncSidebar.toggleLoading(true, 'Clearing logs…');
+        SyncSidebar.run('Logger_clearLogs', [], {
+            context: 'Clear Logs',
+            onSuccess: function(res) {
+                SyncSidebar.toggleLoading(false);
+                SyncSidebar.showToast(res.message);
+            },
+            onError: function() {
+                SyncSidebar.toggleLoading(false);
+            }
+        });
     }
   </script>
 

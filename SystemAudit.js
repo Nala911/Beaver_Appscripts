@@ -320,10 +320,8 @@ function Logger_runSystemAudit() {
 
         keys.forEach(function (key) {
             var cfg = tools[key];
-            if (cfg.IS_TEMPLATE === true) return; // Skip templates
-            
-            var report = { key: key, title: cfg.TITLE || key, status: 'SUCCESS', issues: [], errorObj: null };
-            
+
+            var report = { key: key, title: cfg.TITLE || key, status: 'SUCCESS', issues: [], errorObj: null };            
             try {
                 var sheet = ss.getSheetByName(cfg.SHEET_NAME);
                 AuditRules.forEach(function (rule) {

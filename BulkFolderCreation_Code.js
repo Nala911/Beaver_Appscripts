@@ -34,11 +34,6 @@ var BULKFOLDER_COL = {
 
 // --- MENU & UI HANDLERS ---
 
-/** @deprecated — Use _App_ensureSheetExists('BULK_FOLDER') instead. */
-function _BulkFolderCreation_ensureSheetExistsAndActivate() {
-  return _App_ensureSheetExists('BULK_FOLDER');
-}
-
 /** Opens the Bulk Folder sidebar and ensures the sheet exists. */
 function BulkFolderCreation_openSidebar() {
   return Logger.run('BULK_FOLDER', 'Open Sidebar', function () {
@@ -91,11 +86,11 @@ function BulkFolderCreation_getDriveNavData(folderId) {
 
       folderList.sort(function (a, b) { return a.name.localeCompare(b.name); });
 
-      return {
+      return _App_ok('Navigation data loaded', {
         current: { id: currentId, name: currentName },
         breadcrumbs: breadcrumbs,
         children: folderList
-      };
+      });
 
     } catch (e) {
       throw new Error("Error fetching Drive data: " + e.message);

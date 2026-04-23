@@ -38,7 +38,7 @@ SyncEngine.registerTool('CONTACTS_SYNC', {
                         var response = _App_callWithBackoff(function () {
                             return People.ContactGroups.list({ pageSize: 1000 });
                         });
-                        var excluded = ['Friends', 'Family', 'Coworkers', 'My Contacts', 'All Contacts', 'Chat contacts', 'Starred'];
+                        var excluded = ['Friends', 'Family', 'Coworkers', 'All Contacts', 'Starred'];
                         (response.contactGroups || []).forEach(function (g) {
                             var name = g.formattedName || g.name;
                             if (name && !excluded.includes(name)) {
@@ -68,11 +68,6 @@ var CONTACTS_SYNC_CFG = {
 };
 
 // Declarative format config now lives in SyncEngine.getTool('CONTACTS_SYNC').FORMAT_CONFIG
-
-/** @deprecated — Use _App_ensureSheetExists('CONTACTS_SYNC') instead. */
-function _ContactsSync_ensureSheetExistsAndActivate() {
-    return _App_ensureSheetExists('CONTACTS_SYNC');
-}
 
 /** Opens the Contacts sidebar and ensures the sheet exists. */
 function ContactsSync_openSidebar() {
@@ -464,23 +459,8 @@ function _ContactsSync_applyGroups(resourceName, groupsStr, groupNameToId) {
 
 // Stage 1: Skeleton — headers, column widths, freeze, data validations only
 function _ContactsSync_setupSheetStructure(sheet) {
-    var headers = SyncEngine.getTool('CONTACTS_SYNC').HEADERS;
-
-    var headerRange = sheet.getRange(1, 1, 1, headers.length);
-    headerRange.setValues([headers])
-        .setFontWeight(SHEET_THEME.LAYOUT.HEADER_WEIGHT)
-        .setFontSize(SHEET_THEME.SIZES.HEADER)
-        .setFontFamily(SHEET_THEME.FONTS.PRIMARY)
-        .setBackground(SHEET_THEME.HEADER)
-        .setFontColor(SHEET_THEME.TEXT)
-        .setBorder(true, true, true, true, true, true, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE)
-        .setVerticalAlignment(SHEET_THEME.LAYOUT.HEADER_ALIGN_V)
-        .setHorizontalAlignment(SHEET_THEME.LAYOUT.HEADER_ALIGN_H);
-
-    sheet.setFrozenRows(1);
-
-    // widths typically managed by APP_REGISTRY, here are fallbacks if needed
-    _ContactsSync_applyDataValidationsInternal(sheet);
+    var tool = SyncEngine.getTool('CONTACTS_SYNC');
+    _App_applyBodyFormatting(sheet, 0, tool.FORMAT_CONFIG);
 }
 
 function _ContactsSync_applyDataValidationsInternal(sheet) {

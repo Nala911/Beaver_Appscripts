@@ -6,40 +6,22 @@
             return false;
         };
 
-        function handleError(err, context = 'Sidebar Operation') {
-            const overlay = document.getElementById('loading-overlay');
-            if (overlay) overlay.style.display = 'none';
-            const saveBtn = document.getElementById('saveBtn');
-            if (saveBtn) {
-                saveBtn.disabled = false;
-                if (saveBtn.dataset.originalText) saveBtn.innerHTML = saveBtn.dataset.originalText;
-            }
-            const resetBtn = document.getElementById('resetBtn');
-            if (resetBtn) {
-                resetBtn.disabled = false;
-                if (resetBtn.dataset.originalText) resetBtn.innerHTML = resetBtn.dataset.originalText;
-            }
-            showToast(err.message || err, true);
-            google.script.run._App_logClientError(err, context);
-        }
-
         let currentTheme = null;
         let defaultTheme = null;
 
         // Initialize from server
-        google.script.run
-            .withSuccessHandler(initDashboard)
-            .withFailureHandler(err => {
-                const overlay = document.getElementById('loading-overlay');
-                if (overlay) overlay.style.display = 'none';
-                showToast(err.message, true);
-                google.script.run._App_logClientError(err, 'Get Theme Config');
-            })
-            .UI_getThemeConfig();
+        window.onload = function() {
+            SyncSidebar.run('UI_getThemeConfig', [], {
+                context: 'Get Theme Config',
+                onSuccess: function(res) {
+                    initDashboard(res.data);
+                }
+            });
+        };
 
         function initDashboard(config) {
+            if (!config) return;
             currentTheme = config.current;
-            
             defaultTheme = config.defaults;
 
             mapDataToInputs(currentTheme);
@@ -50,6 +32,58 @@
                 document.getElementById('loading-overlay').style.display = 'none';
                 document.getElementById('theme-form').style.display = 'grid';
             }, 300);
+        }
+
+        // Actions
+        function saveTheme() {
+            const btn = document.getElementById('saveBtn');
+            if (!btn.dataset.originalText) btn.dataset.originalText = btn.innerHTML;
+            const originalText = btn.dataset.originalText;
+            
+            btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;margin:0;margin-right:8px;border-top-color:white;"></div> Saving...';
+            btn.disabled = true;
+
+            const updatedTheme = mapInputsToData(currentTheme);
+
+            SyncSidebar.run('UI_saveThemeConfig', [updatedTheme], {
+                context: 'Save Theme',
+                onSuccess: function(res) {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    SyncSidebar.showToast(res.message);
+                    currentTheme = updatedTheme;
+                },
+                onError: function() {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            });
+        }
+
+        function resetTheme() {
+            if (!confirm("Revert all styles back to WorkspaceSync defaults?")) return;
+
+            const btn = document.getElementById('resetBtn');
+            if (!btn.dataset.originalText) btn.dataset.originalText = btn.innerHTML;
+            const originalText = btn.dataset.originalText;
+
+            btn.innerHTML = 'Resetting...';
+            btn.disabled = true;
+
+            SyncSidebar.run('UI_resetThemeConfig', [], {
+                context: 'Reset Theme',
+                onSuccess: function(res) {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    SyncSidebar.showToast(res.message);
+                    mapDataToInputs(defaultTheme);
+                    currentTheme = JSON.parse(JSON.stringify(defaultTheme));
+                },
+                onError: function() {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            });
         }
 
         // Sidebar Navigation
@@ -227,80 +261,5 @@
                 return acc[part];
             }, obj);
             target[last] = value;
-        }
-
-        // Actions
-        function saveTheme() {
-            const btn = document.getElementById('saveBtn');
-            if (!btn.dataset.originalText) btn.dataset.originalText = btn.innerHTML;
-            const originalText = btn.dataset.originalText;
-            
-            btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;margin:0;margin-right:8px;border-top-color:white;"></div> Saving...';
-            btn.disabled = true;
-
-            const updatedTheme = mapInputsToData(currentTheme);
-
-            google.script.run
-                .withSuccessHandler(res => {
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                    if (res.success) {
-                        showToast(res.message);
-                        currentTheme = updatedTheme;
-                    } else {
-                        showToast(res.message, true);
-                    }
-                })
-                .withFailureHandler(err => handleError(err, 'Save Theme'))
-                .UI_saveThemeConfig(updatedTheme);
-        }
-
-        function resetTheme() {
-            if (!confirm("Revert all styles back to WorkspaceSync defaults?")) return;
-
-            const btn = document.getElementById('resetBtn');
-            if (!btn.dataset.originalText) btn.dataset.originalText = btn.innerHTML;
-            const originalText = btn.dataset.originalText;
-
-            btn.innerHTML = 'Resetting...';
-            btn.disabled = true;
-
-            google.script.run
-                .withSuccessHandler(res => {
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                    if (res.success) {
-                        showToast(res.message);
-                        mapDataToInputs(defaultTheme);
-                        currentTheme = JSON.parse(JSON.stringify(defaultTheme));
-                    } else {
-                        showToast(res.message, true);
-                    }
-                })
-                .withFailureHandler(err => handleError(err, 'Reset Theme'))
-                .UI_resetThemeConfig();
-        }
-
-        // Toast Notification
-        let toastTimeout;
-        function showToast(msg, isError = false) {
-            const toast = document.getElementById('toast');
-            document.getElementById('toast-msg').textContent = msg;
-
-            const icon = document.getElementById('toast-icon');
-            if (isError) {
-                toast.classList.add('error');
-                icon.innerHTML = '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>';
-                icon.setAttribute('stroke', 'white');
-            } else {
-                toast.classList.remove('error');
-                icon.innerHTML = '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>';
-            }
-
-            toast.classList.add('show');
-            clearTimeout(toastTimeout);
-            toastTimeout = setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
         }
 </script>

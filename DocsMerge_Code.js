@@ -34,11 +34,6 @@ var DOCS_MERGE_CFG = {
   HEADER_ROW: 1
 };
 
-/** @deprecated — Use _App_ensureSheetExists('DOCS_MERGE') instead. */
-function _DocsMerge_ensureSheetExistsAndActivate() {
-  return _App_ensureSheetExists('DOCS_MERGE');
-}
-
 /** Opens the Docs Merge sidebar and ensures the sheet exists. */
 function DocsMerge_openSidebar() {
   return Logger.run('DOCS_MERGE', 'Open Sidebar', function () {

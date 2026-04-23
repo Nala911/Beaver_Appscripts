@@ -15,7 +15,7 @@ This project uses **Clasp** (Command Line Apps Script Projects) for local develo
 - Treat `BLUEPRINT.md` as the ultimate architectural map. It contains connection flows and the scope of external APIs.
 - Treat `00_Config_Constants.js` as the source of truth for global state keys and sheet names.
 - **Do not invent new patterns.** If a tool needs local storage, use the properties registry. If a tool needs to modify the spreadsheet UI, it must use the `_App_` ecosystem.
-- Before adding a new tool, duplicate `TemplateTool_Code.js` and `TemplateTool_Sidebar.html` and modify them, rather than writing a tool from scratch.
+- Before adding a new tool, use `CalendarSync_Code.js` and `CalendarSync_Sidebar.html` as your primary architectural benchmark models.
 
 ## ⛔ "Do Not Touch" Core Modules
 
@@ -98,10 +98,10 @@ Before completing any task, mentally run this checklist. Do not proceed until yo
 
 ## 🚀 Adding a New Tool
 
-Since humans do not code here, use the templates:
-1. Copy `templates/TemplateTool_Code.js` into `<NewName>_Code.js`.
-2. Copy `templates/TemplateTool_Sidebar.html` into `<NewName>_Sidebar.html`.
+Since humans do not code here, follow the **CalendarSync Benchmark**:
+1. Duplicate `CalendarSync_Code.js` and rename it to `<NewName>_Code.js`.
+2. Duplicate `CalendarSync_Sidebar.html` and rename it to `<NewName>_Sidebar.html`.
 3. Add the `SHEET_NAMES` entry to `00_Config_Constants.js`.
-4. Update the plugin registration inside `<NewName>_Code.js`.
+4. Update the plugin registration inside `<NewName>_Code.js` (Key, Sheet Name, Title, etc.).
 5. Implement backend logic with `Logger.run`.
-6. Implement frontend logic using the unified `#status-div` (now handled by `SyncSidebar` in the template).
+6. Implement frontend logic using the unified `#status-div` (handled by `SyncSidebar`).

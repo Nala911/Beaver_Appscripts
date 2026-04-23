@@ -85,11 +85,6 @@ function _TasksSync_getTargetSheet() {
 // 3. SIDEBAR HANDLERS
 // ==========================================
 
-/** @deprecated — Use _App_ensureSheetExists('TASKS') instead. */
-function _TasksSync_ensureSheetExistsAndActivate() {
-  return SheetManager.ensureSheet('TASKS');
-}
-
 /** Opens the Tasks sidebar and ensures the sheet exists. */
 function TasksSync_openSidebar() {
   return Logger.run('TASKS', 'Open Sidebar', function () {
@@ -132,7 +127,7 @@ function TasksSync_pushRPC() {
 // ==========================================
 
 function _TasksSync_pullTasks(includeCompleted) {
-  var sheet = _TasksSync_ensureSheetExistsAndActivate();
+  var sheet = _App_ensureSheetExists('TASKS');
 
   if (sheet.getLastRow() > 1 && SheetManager.hasPendingActions('TASKS')) {
     throw new Error('Unsaved actions detected! Push your changes first or clear the Action column manually.');
@@ -504,9 +499,3 @@ function _TasksSync_deepMoveTask(sourceListId, taskId, targetListId, newParentId
     throw e;
   }
 }
-
-// ==========================================
-// 6. FORMATTING
-// ==========================================
-
-// Conditional formatting is now handled by _App_applyBodyFormatting via _App_applyConditionalRules

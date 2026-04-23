@@ -42,11 +42,6 @@ var MAILMERGE_CFG = {
   HEADER_ROW: 1
 };
 
-/** @deprecated — Use _App_ensureSheetExists('MAIL_MERGE') instead. */
-function _MailMerge_ensureSheetExistsAndActivate() {
-  return _App_ensureSheetExists('MAIL_MERGE');
-}
-
 /** Opens the Mail Merge sidebar and ensures the sheet exists. */
 function MailMerge_openSidebar() {
   return Logger.run('MAIL_MERGE', 'Open Sidebar', function () {

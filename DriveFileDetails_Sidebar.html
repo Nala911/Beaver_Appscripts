@@ -578,25 +578,24 @@
 
             log("Scanning Google Drive folder hierarchy...");
 
-            google.script.run
-                .withSuccessHandler(function (response) {
-                    if (response.success) {
-                        folderTopology = response.topology;
-                        log("File system scan complete.", "success");
-                        setStatus('ready');
-                        loadFolder(null, 'Root');
-                    } else {
-                        handleError(response.error);
-                    }
-                })
-                .withFailureHandler(handleError)
-                .DriveFileDetails_getFolderHierarchy();
+            SyncSidebar.run('DriveFileDetails_getFolderHierarchy', [], {
+                context: 'Load Hierarchy',
+                onSuccess: function (data) {
+                    folderTopology = data.topology;
+                    log("File system scan complete.", "success");
+                    setStatus('ready');
+                    loadFolder(null, 'Root');
+                },
+                onError: function(err) {
+                    handleError(err);
+                }
+            });
         };
 
         function log(msg, type = '') {
             console.log(`[DriveSync ${type}] ${msg}`);
             if (type === 'error' || (typeof msg === 'string' && msg.startsWith('Error:'))) {
-                alert(msg);
+                SyncSidebar.showToast(msg, true);
             }
         }
 
@@ -635,27 +634,20 @@
             try { if (typeof lucide !== 'undefined') lucide.createIcons(); } catch (e) { }
 
             if (id === null) {
-                const rootData = { success: true, drives: folderTopology.rootDrives };
-                renderDrives(rootData);
+                renderDrives(folderTopology.rootDrives);
             } else {
                 let lookupId = id;
                 if (id === 'root' && folderTopology.myDriveId) {
                     lookupId = folderTopology.myDriveId;
                 }
                 const children = folderTopology.dict[lookupId] || [];
-                const folderData = { success: true, children: children };
-                renderFolders(folderData);
+                renderFolders(children);
             }
         }
 
-        function renderDrives(data) {
+        function renderDrives(drives) {
             const list = document.getElementById('folderList');
             list.innerHTML = '';
-
-            if (!data.success) {
-                list.innerHTML = `<div style="padding:15px; color:var(--danger); font-size: 12px; font-weight: 500;">${data.error}</div>`;
-                return;
-            }
 
             const myDrive = document.createElement('div');
             myDrive.className = 'folder-item';
@@ -667,7 +659,7 @@
             myDrive.innerHTML = `<i data-lucide="hard-drive"></i><span>My Drive</span>`;
             list.appendChild(myDrive);
 
-            if (data.drives && data.drives.length > 0) {
+            if (drives && drives.length > 0) {
                 const divider = document.createElement('div');
                 divider.style.padding = '10px 14px 6px 14px';
                 divider.style.fontSize = '10px';
@@ -678,7 +670,7 @@
                 divider.innerText = 'Shared Drives';
                 list.appendChild(divider);
 
-                data.drives.forEach(drive => {
+                drives.forEach(drive => {
                     const div = document.createElement('div');
                     div.className = 'folder-item';
                     div.onclick = () => {
@@ -694,23 +686,19 @@
             try { if (typeof lucide !== 'undefined') lucide.createIcons(); } catch (e) { }
         }
 
-        function renderFolders(data) {
+        function renderFolders(children) {
             const list = document.getElementById('folderList');
             list.innerHTML = '';
 
-            if (!data.success) {
-                list.innerHTML = `<div style="padding:15px; color:var(--danger); font-size: 12px; font-weight: 500;">${data.error}</div>`;
-                return;
-            }
-            if (!data.children || data.children.length === 0) {
+            if (!children || children.length === 0) {
                 list.innerHTML = '<div style="padding:20px; color:var(--text-secondary); text-align:center; font-size: 12px; font-weight: 500;">Empty Folder</div>';
                 return;
             }
 
             // sort by name
-            data.children.sort((a, b) => a.name.localeCompare(b.name));
+            children.sort((a, b) => a.name.localeCompare(b.name));
 
-            data.children.forEach(folder => {
+            children.forEach(folder => {
                 const div = document.createElement('div');
                 div.className = 'folder-item';
                 div.onclick = () => {

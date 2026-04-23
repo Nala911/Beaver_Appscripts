@@ -396,13 +396,6 @@
       return false;
     };
 
-    function handleError(err, context = 'Sidebar Operation') {
-      if (typeof pollInterval !== 'undefined' && pollInterval) clearInterval(pollInterval);
-      if (typeof toggleLoading === 'function') toggleLoading(false);
-      showToast(err.message || err, true);
-      google.script.run._App_logClientError(err, context);
-    }
-
     let pollInterval = null;
 
     // ── Init ──
@@ -411,21 +404,22 @@
     };
 
     function refreshData() {
-      // Load Quota
-      google.script.run
-        .withSuccessHandler(updateQuota)
-        .withFailureHandler(err => {
+      SyncSidebar.run('MailSender_getQuota', [], {
+        context: 'Refresh Quota',
+        onSuccess: function (res) {
+          updateQuota(res.data);
+        },
+        onError: function() {
           const el = document.getElementById('quota-display');
           el.innerText = "Error";
           el.classList.remove('loading');
-          handleError(err, 'Refresh Quota');
-        })
-        .MailSender_getQuota();
+        }
+      });
     }
 
     function updateQuota(amount) {
       const el = document.getElementById('quota-display');
-      el.innerText = amount;
+      el.innerText = amount || "0";
       el.classList.remove('loading');
       if (amount < 20) {
         el.classList.add('danger');
@@ -439,13 +433,21 @@
       const confirmAction = confirm("Execute all 'SEND' and 'DRAFT' actions in the sheet using the provided Custom Subjects and Bodies?");
       if (!confirmAction) return;
 
-      toggleLoading(true, "Initializing...");
+      SyncSidebar.toggleLoading(true, "Initializing...");
 
-      // Start the main execution
-      google.script.run
-        .withSuccessHandler(handleExecutionSuccess)
-        .withFailureHandler(err => handleError(err, 'Execute Actions'))
-        .MailSender_executeActions();
+      SyncSidebar.run('MailSender_executeActions', [], {
+        context: 'Execute Actions',
+        onSuccess: function (res) {
+          if (pollInterval) clearInterval(pollInterval);
+          SyncSidebar.toggleLoading(false);
+          SyncSidebar.showToast(res.message);
+          refreshData();
+        },
+        onError: function() {
+          if (pollInterval) clearInterval(pollInterval);
+          SyncSidebar.toggleLoading(false);
+        }
+      });
 
       // Start polling for progress
       pollInterval = setInterval(fetchProgress, 1500);
@@ -453,55 +455,15 @@
 
     function fetchProgress() {
       google.script.run
-        .withSuccessHandler(function (data) {
+        .withSuccessHandler(function (res) {
+          const data = res.data;
           if (data && typeof data.total !== 'undefined' && typeof data.current !== 'undefined') {
             if (data.total > 0) {
               document.getElementById('loadingText').innerText = "Processing " + data.current + " of " + data.total + "...";
             }
           }
         })
-        .withFailureHandler(function (e) { 
-          google.script.run._App_logClientError(e, 'Fetch Progress');
-        })
         .MailSender_getProgress();
-    }
-
-    function handleExecutionSuccess(msg) {
-      cleanupExecution();
-      showToast(msg, false);
-      refreshData();
-    }
-
-    function handleExecutionError(err) {
-      handleError(err, 'Execution Error');
-    }
-
-    function cleanupExecution() {
-      if (pollInterval) {
-        clearInterval(pollInterval);
-        pollInterval = null;
-      }
-      toggleLoading(false);
-    }
-
-    // ── UI Helpers ──
-    function toggleLoading(show, text) {
-      document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
-      if (text) document.getElementById('loadingText').innerText = text;
-
-      const btn = document.getElementById('btn-run');
-      if (btn) btn.disabled = show;
-    }
-
-    function showToast(msg, isError) {
-      const x = document.getElementById("toast");
-      x.innerText = msg;
-
-      let toastClass = "toast show";
-      if (isError) toastClass += " error-toast";
-
-      x.className = toastClass;
-      setTimeout(() => x.className = x.className.replace("show", ""), 3000);
     }
   </script>
 </body>

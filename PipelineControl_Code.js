@@ -45,11 +45,6 @@ var PIPELINE_NON_DATA_ROWS = 1;
 
 // --- SIDEBAR ---
 
-/** @deprecated — Use _App_ensureSheetExists('PIPELINE') instead. */
-function _PipelineControl_ensureSheetExistsAndActivate() {
-    return _App_ensureSheetExists('PIPELINE');
-}
-
 /** Opens the Pipeline sidebar, creating the sheet if needed. */
 function PipelineControl_openSidebar() {
     return Logger.run('PIPELINE', 'Open Sidebar', function () {

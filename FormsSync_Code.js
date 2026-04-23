@@ -66,7 +66,7 @@ function _FormsSync_extractFormId(inputUrlOrId) {
 function _FormsSync_pullForm(formInput) {
     return Logger.run('FORMS_SYNC', 'Pull Form', function () {
         var formId = _FormsSync_extractFormId(formInput);
-        if (!formId) return { success: false, message: "Invalid Form URL or ID" };
+        if (!formId) return _App_fail("Invalid Form URL or ID");
 
         try {
             var form = _App_callWithBackoff(function () { return FormApp.openById(formId); });
@@ -154,7 +154,7 @@ function _FormsSync_pullForm(formInput) {
             // Save to UserProperties for sidebar auto-selection
             _App_setProperty(APP_PROPS.FORMS_SELECTED_FORM, formId);
 
-            return { success: true, message: "Successfully pulled " + sheetData.length + " items." };
+            return _App_ok("Successfully pulled " + sheetData.length + " items.");
         } catch (e) {
             throw e;
         }
@@ -164,14 +164,14 @@ function _FormsSync_pullForm(formInput) {
 function _FormsSync_syncToForm() {
     return Logger.run('FORMS_SYNC', 'Sync to Form', function () {
         var formId = _App_getProperty(APP_PROPS.FORMS_CURRENT_FORM);
-        if (!formId) return { success: false, message: "No form connected. Please Pull data first." };
+        if (!formId) return _App_fail("No form connected. Please Pull data first.");
 
         try {
             var form = _App_callWithBackoff(function () { return FormApp.openById(formId); });
             
             var pendingRows = SheetManager.readPendingObjects('FORMS_SYNC', { useDisplayValues: true });
 
-            if (pendingRows.length === 0) return { success: true, message: "No pending actions found." };
+            if (pendingRows.length === 0) return _App_ok("No pending actions found.");
 
             var stats = _App_BatchProcessor('FORMS_SYNC', pendingRows, function (item) {
                 var action = (item['Action'] || "").toString().trim().toUpperCase();
@@ -450,7 +450,7 @@ function FormsSync_getForms() {
 
             var savedFormId = _App_getProperty(APP_PROPS.FORMS_SELECTED_FORM);
 
-            return { forms: mappedForms, savedFormId: savedFormId };
+            return _App_ok('Forms loaded', { forms: mappedForms, savedFormId: savedFormId });
         } catch (e) {
             Logger.error(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Get Forms', e);
             throw new Error("Failed to fetch forms: " + e.toString());
@@ -473,18 +473,18 @@ function FormsSync_syncToForm() {
 function FormsSync_getFormLinks() {
     return Logger.run('FORMS_SYNC', 'Get Form Links', function () {
         var formId = _App_getProperty(APP_PROPS.FORMS_CURRENT_FORM);
-        if (!formId) return null;
+        if (!formId) return _App_ok('No form selected.', null);
         try {
             var form = FormApp.openById(formId);
-            return {
+            return _App_ok('Links loaded', {
                 editUrl: form.getEditUrl(),
                 responsesUrl: form.getSummaryUrl()
-            };
+            });
         } catch (e) {
-            return {
+            return _App_ok('Links loaded (fallback)', {
                 editUrl: 'https://docs.google.com/forms/d/' + formId + '/edit',
                 responsesUrl: 'https://docs.google.com/forms/d/' + formId + '/edit#responses'
-            };
+            });
         }
     });
 }
