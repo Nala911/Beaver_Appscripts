@@ -105,7 +105,7 @@ function PipelineControl_processPipelines() {
         return _App_withDocumentLock('PIPELINE_PROCESS', function () {
             if (_App_getProperty(APP_PROPS.SYSTEM_ENABLED) !== 'true') {
                 Logger.info('PIPELINE', 'Global', "System is globally disabled. Skipping execution.");
-                return;
+                return _App_ok('System is globally disabled. Skipping execution.');
             }
 
             var pendingPipelines = SheetManager.readPendingObjects('PIPELINE', { actionColName: 'ON/OFF' });
@@ -116,7 +116,7 @@ function PipelineControl_processPipelines() {
 
             if (activeScheduled.length === 0) {
                 Logger.info('PIPELINE', 'Global', "No pipelines scheduled to run.");
-                return;
+                return _App_ok('No pipelines scheduled to run.');
             }
 
             var sheet = SheetManager.getSheet('PIPELINE');
@@ -125,6 +125,7 @@ function PipelineControl_processPipelines() {
                 _PipelineControl_runPipeline(sheet, item._rowNumber, item);
                 return { success: true };
             });
+            return _App_ok('Scheduled pipelines processed.', { processedCount: activeScheduled.length });
         });
     });
 }
@@ -179,7 +180,7 @@ function _PipelineControl_shouldRun(item) {
 function PipelineControl_getPipelineDashboardData() {
     return Logger.run('PIPELINE', 'Dashboard Data', function () {
         var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAMES.PIPELINE);
-        if (!sheet) return null;
+        if (!sheet) return _App_ok('Pipeline sheet not found.', { summary: { total: 0, active: 0, success: 0, failed: 0 }, pipelines: [] });
 
         var dataObjects = SheetManager.readObjects('PIPELINE');
 
@@ -219,10 +220,10 @@ function PipelineControl_getPipelineDashboardData() {
             }
         });
 
-        return {
+        return _App_ok('Pipeline dashboard data loaded.', {
             summary: summary,
             pipelines: pipelines
-        };
+        });
     });
 }
 
@@ -383,6 +384,6 @@ function PipelineControl_formatControlCenter() {
         sheet.getRange("G:G").setBorder(null, true, null, null, null, null, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
         sheet.getRange("H:H").setBorder(null, true, null, null, null, null, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
 
-        return "Formatted Pipeline with Dark Theme & Elegant Groups!";
+        return _App_ok('Formatted Pipeline with Dark Theme & Elegant Groups!');
     });
 }

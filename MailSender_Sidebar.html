@@ -389,13 +389,6 @@
   <div id="toast" class="toast">Done</div>
 
   <script>
-    // Global Error Catcher
-    window.onerror = function (msg, url, line, col, error) {
-      const detail = `Error: ${msg}\nURL: ${url}\nLine: ${line}, Col: ${col}${error ? '\nStack: ' + error.stack : ''}`;
-      google.script.run._App_logClientError(detail, 'Global Error');
-      return false;
-    };
-
     let pollInterval = null;
 
     // ── Init ──
@@ -454,16 +447,18 @@
     }
 
     function fetchProgress() {
-      google.script.run
-        .withSuccessHandler(function (res) {
-          const data = res.data;
-          if (data && typeof data.total !== 'undefined' && typeof data.current !== 'undefined') {
-            if (data.total > 0) {
-              document.getElementById('loadingText').innerText = "Processing " + data.current + " of " + data.total + "...";
-            }
+      SyncSidebar.run('MailSender_getProgress', [], {
+        unwrap: false,
+        toast: false,
+        resetLoading: false,
+        context: 'Poll Progress',
+        onSuccess: function (res) {
+          const data = res && res.data ? res.data : null;
+          if (data && typeof data.total !== 'undefined' && typeof data.current !== 'undefined' && data.total > 0) {
+            document.getElementById('loadingText').innerText = "Processing " + data.current + " of " + data.total + "...";
           }
-        })
-        .MailSender_getProgress();
+        }
+      });
     }
   </script>
 </body>

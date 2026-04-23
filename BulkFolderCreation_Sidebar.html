@@ -497,17 +497,21 @@
 
         function pollProgress() {
             if (!isProcessing) return;
-            google.script.run
-                .withSuccessHandler(function (res) {
-                    const progress = res.data;
+            SyncSidebar.run('BulkFolderCreation_getProgress', [], {
+                unwrap: false,
+                toast: false,
+                resetLoading: false,
+                context: 'Poll Progress',
+                onSuccess: function (res) {
+                    const progress = res && res.data ? res.data : null;
                     if (progress && progress.total > 0) {
                         let percent = Math.round((progress.current / progress.total) * 100);
                         document.getElementById('progress-bar').style.width = percent + "%";
                         document.getElementById('progress-percent').innerText = percent + "%";
                         document.getElementById('progress-text').innerText = "Processed " + progress.current + " of " + progress.total;
                     }
-                })
-                .BulkFolderCreation_getProgress();
+                }
+            });
         }
 
         function finishProcess(msg) {

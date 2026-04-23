@@ -562,7 +562,7 @@
         // Global Error Catcher
         window.onerror = function (msg, url, line, col, error) {
             const detail = `Error: ${msg}\nURL: ${url}\nLine: ${line}, Col: ${col}${error ? '\nStack: ' + error.stack : ''}`;
-            google.script.run._App_logClientError(detail, 'Global Error');
+            SyncSidebar.logClientError(detail, 'Global Error');
             return false; // let default handler run too
         };
 
@@ -728,7 +728,7 @@
                     log(res, 'success');
                     setStatus('ready');
                 },
-                onFailure: handleError
+                onError: handleError
             });
         }
 
@@ -760,7 +760,7 @@
                     log("Sync Complete.", 'success');
                     setStatus('ready');
                 },
-                onFailure: handleError
+                onError: handleError
             });
         }
 
@@ -774,7 +774,7 @@
                     log(msg, 'success');
                     setStatus('ready');
                 },
-                onFailure: handleError
+                onError: handleError
             });
         }
 
@@ -787,7 +787,7 @@
         function handleError(err) {
             log(err, 'error');
             setStatus('error');
-            google.script.run._App_logClientError(err, 'Sidebar Operation');
+            SyncSidebar.logClientError(err, 'Sidebar Operation');
         }
 
     </script>

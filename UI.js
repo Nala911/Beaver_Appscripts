@@ -87,15 +87,15 @@ function UI_saveThemeConfig(newThemeConfig) {
   return Logger.run('SYSTEM', 'Save Theme', function () {
     if (newThemeConfig) {
       _App_setProperty(APP_PROPS.THEME, newThemeConfig);
-      return { success: true, message: 'Theme saved successfully!' };
+      return _App_ok('Theme saved successfully!');
     }
-    return { success: false, message: 'No theme data received.' };
+    return _App_fail('No theme data received.');
   });
 }
 
 function UI_resetThemeConfig() {
   return Logger.run('SYSTEM', 'Reset Theme', function () {
     _App_deleteProperty(APP_PROPS.THEME);
-    return { success: true, message: 'Reset to default theme!' };
+    return _App_ok('Reset to default theme!');
   });
 }

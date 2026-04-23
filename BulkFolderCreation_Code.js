@@ -269,7 +269,7 @@ function BulkFolderCreation_setupSheet(sheet) {
   }
   // For direct calls with an existing sheet (e.g., resetting), delegate setup manually
   _App_applyBodyFormatting(sheet, 0, SyncEngine.getTool('BULK_FOLDER').FORMAT_CONFIG);
-  return "Sheet has been setup successfully for Bulk Folder Creation.";
+  return _App_ok('Sheet has been setup successfully for Bulk Folder Creation.');
 }
 
 function _BulkFolderCreation_initializeHeaders(sheet) {
