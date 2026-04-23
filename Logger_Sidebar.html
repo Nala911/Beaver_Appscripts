@@ -508,13 +508,15 @@
       SyncSidebar.run('Logger_getSettings', [], {
         context: 'Load Settings',
         onSuccess: function (res) {
-          populateUI(res.data);
+          populateUI(res);
         }
       });
     }
 
-    function populateUI(settings) {
+    function populateUI(payload) {
+      var settings = (payload && payload.data) ? payload.data : payload;
       if (!settings) return;
+
       currentEnabled = !!settings.enabled;
       document.getElementById('loggingToggle').checked = currentEnabled;
       updateBadge(currentEnabled);

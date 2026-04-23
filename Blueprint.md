@@ -47,7 +47,6 @@ Each tool has a Backend file, a Frontend sidebar file, and a global Entry Functi
 | **Pipeline** | `PipelineControl_Code.js` | `PipelineControl_Sidebar.html` | `PipelineControl_openSidebar` |
 | **Google Chat Spaces** | `ChatSpaceSync_Code.js` | `ChatSpaceSync_Sidebar.html` | `ChatSpaceSync_openSidebar` |
 | **Gmail Filters** | `GmailFilters_Code.js` | `GmailFilters_Sidebar.html` | `GmailFilters_openSidebar` |
-| **Newsletter Zero** | `NewsletterZero_Code.js` | `NewsletterZero_Sidebar.html` | `NewsletterZero_openSidebar` |
 | **Developer Log** | `Logger.js`, `SystemAudit.js`, `Logger_SidebarController.js` | `Logger_Sidebar.html` | `Logger_openSidebar` |
 | **Theme Editor** | (Inside `UI.js`) | `ThemeEditor_Sidebar.html` | `UI_openThemeDialog` |
 
@@ -95,7 +94,6 @@ All keys used across the codebase. **Do NOT invent new key names** — check her
 | `selectedContactGroups` | `ContactsSync_Code.js` | `UserProperties` | JSON array of selected contact group IDs |
 | `FORMSSYNC_CURRENT_FORM` | `FormsSync_Code.js` | `DocumentProperties` | Stores currently synced form ID |
 | `FORMS_SELECTED_FORM` | `FormsSync_Code.js` | `UserProperties` | Stores user's selected form ID for sidebar auto-selection |
-| `NEWSLETTER_ZERO_SCAN_DAYS` | `NewsletterZero_Code.js` | `UserProperties` | Saved scan depth for inbox purging |
 | `ENABLE_DEBUG_LOGGING` | `Logger.js` | `DocumentProperties` | Global on/off for debug logging ('true'/'false') |
 | `LOGGER_MAX_ROWS` | `Logger.js` | `DocumentProperties` | Max rows to keep in the Log sheet |
 
