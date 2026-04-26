@@ -38,9 +38,78 @@
 
       node.innerText = getMessage(message);
       node.className = isError ? 'toast error-toast show' : 'toast show';
+      
+      // Keep error toasts visible longer, or don't auto-hide them immediately
+      var duration = isError ? 10000 : (opts.duration || 3500);
       setTimeout(function () {
         node.className = node.className.replace('show', '').trim();
-      }, opts.duration || 3500);
+      }, duration);
+    }
+
+    function showCopyableError(msg, severity) {
+        var overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0'; overlay.style.left = '0';
+        overlay.style.width = '100%'; overlay.style.height = '100%';
+        overlay.style.backgroundColor = 'rgba(0,0,0,0.5)';
+        overlay.style.zIndex = '9999';
+        overlay.style.display = 'flex';
+        overlay.style.justifyContent = 'center';
+        overlay.style.alignItems = 'center';
+
+        var box = document.createElement('div');
+        box.style.backgroundColor = '#fff';
+        box.style.padding = '20px';
+        box.style.borderRadius = '8px';
+        box.style.width = '80%';
+        box.style.maxWidth = '400px';
+        box.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+        box.style.fontFamily = 'sans-serif';
+
+        var title = document.createElement('h3');
+        var severityTitle = 'System Error';
+        var titleColor = '#dc2626'; // Default critical
+
+        if (severity === 'mild') {
+            severityTitle = 'Notice';
+            titleColor = '#2563eb'; // Blue
+        } else if (severity === 'medium') {
+            severityTitle = 'Warning';
+            titleColor = '#d97706'; // Amber
+        }
+
+        title.innerText = severityTitle;
+        title.style.margin = '0 0 10px 0';
+        title.style.color = titleColor;
+
+        var textarea = document.createElement('textarea');
+        textarea.value = msg;
+        textarea.readOnly = true;
+        textarea.style.width = '100%';
+        textarea.style.height = '100px';
+        textarea.style.marginBottom = '15px';
+        textarea.style.padding = '8px';
+        textarea.style.border = '1px solid #ccc';
+        textarea.style.borderRadius = '4px';
+        textarea.style.boxSizing = 'border-box';
+        textarea.style.resize = 'vertical';
+
+        var btn = document.createElement('button');
+        btn.innerText = 'Close';
+        btn.style.padding = '8px 16px';
+        btn.style.backgroundColor = '#e5e7eb';
+        btn.style.color = '#374151';
+        btn.style.border = 'none';
+        btn.style.borderRadius = '4px';
+        btn.style.cursor = 'pointer';
+        btn.style.fontWeight = '500';
+        btn.onclick = function() { document.body.removeChild(overlay); };
+
+        box.appendChild(title);
+        box.appendChild(textarea);
+        box.appendChild(btn);
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
     }
 
     function unwrap(result) {
@@ -73,11 +142,14 @@
     function handleError(err, options) {
       var opts = options || {};
       if (opts.resetLoading !== false) toggleLoading(false, null, opts);
-      if (opts.toast !== false) showToast(getMessage(err), true, opts);
-      logClientError(getMessage(err), opts.context || 'Sidebar Operation');
+      var msg = getMessage(err);
+      if (opts.toast !== false) showToast(msg, true, opts);
+      logClientError(msg, opts.context || 'Sidebar Operation');
       if (typeof opts.onError === 'function') {
         opts.onError(err);
       }
+      // Show copyable overlay for easy troubleshooting
+      showCopyableError(msg, opts.severity || 'critical');
     }
 
     function run(methodName, args, options) {

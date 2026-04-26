@@ -26,7 +26,7 @@ The system is split into two halves: the Core Engine and the Tool Modules. Agent
 - `01_SheetManager.js`
 - `UI.js`
 - `SidebarShared.html`
-- `Logger.js`, `SystemAudit.js`, and `Logger_SidebarController.js`
+- `Logger.js` and `SystemAudit.js`
 
 If you are just editing or adding a feature (like Mail Merge, Tasks Sync, etc.), stick entirely to your tool's `_Code.js` and `_Sidebar.html` files.
 
@@ -46,13 +46,13 @@ To maintain a professional and consistent user experience, the following strings
 - **`MENU_LABEL`** (in `SyncEngine.registerTool`): Must match `SHEET_NAMES[KEY]` exactly (including emoji).
 - **`Blueprint.md` (Bold Tool Name)**: Must match `SHEET_NAMES[KEY]` but without the emoji.
 - **Sidebar Header (`.header-title`)**: Must match the base tool name (without emoji or suffixes like "Toolkit").
+- **Status Column**: Every tool sheet MUST include a `Status` column immediately following the `Action` column. It must be defined in `COL_SCHEMA` as `{ header: 'Status', type: 'STATUS' }`.
 
 ### 2. The SyncEngine Contract
 Every tool backend file must register itself with the engine at the very top of the script using `SyncEngine.registerTool(key, config)`. Do not hardcode columns inside backend logic; rely on the registry's `FORMAT_CONFIG.COL_SCHEMA`.
 
 ### 3. The Logger.run Contract
-Every public function called from a sidebar or the Ribbon UI must use the `Logger.run` execution wrapper to ensure errors are caught and recorded. DO NOT manually try/catch to write error strings into cells. 
-```javascript
+Every public function called from a sidebar or the Ribbon UI must use the `Logger.run` execution wrapper to ensure errors are caught and propagated via the return contract. **Direct use of `console.log`, `console.warn`, or `console.error` is strictly prohibited.** System-level errors must be thrown to be caught by the wrapper, while row-level errors must be reported via the `Status` column.
 function MyTool_publicFunction() {
     return Logger.run('MY_TOOL', 'Action Context', function() {
         // ... logic
@@ -60,6 +60,12 @@ function MyTool_publicFunction() {
     });
 }
 ```
+
+### 3a. The Unified Reporting Contract
+All tools must implement the dual-layer reporting architecture:
+1. **Row-Level Errors**: Processing errors must be caught and returned as `{ isError: true, error: msg }` to `_App_BatchProcessor`. The `onBatchComplete` hook MUST then write these to the `Status` column prefixed with `SHEET_THEME.STATUS_PREFIXES.ERROR` (❌).
+2. **Success Messages**: All row-level success messages MUST be prefixed with `SHEET_THEME.STATUS_PREFIXES.SUCCESS` (✅).
+3. **General Errors**: Any system-wide errors in sidebars must use `SyncSidebar.handleError(err, { severity: 'mild|medium|critical' })` to surface a standardized modal box.
 
 ### 4. Return Contract
 Public functions called by `google.script.run` MUST return an object: `{ success: boolean, message: string }`.
@@ -73,13 +79,15 @@ Never use `PropertiesService.getDocumentProperties()` directly in a tool.
 - Use `_App_getProperty` and `_App_setProperty` from `02_Config_Storage.js`.
 
 ### 8. Batch Processing & Time Limits
-Row-by-row data processing must use `_App_BatchProcessor` from `03_Core_Utils.js`. This utility handles progress tracking, backoff retries, and protects against the 6-minute script timeout. Use `SheetManager.batchPatchRows` for efficient data writing within the batch complete hook.
+Row-by-row data processing must use `_App_BatchProcessor` from `03_Core_Utils.js`. This utility handles progress tracking, backoff retries, and protects against the 6-minute script timeout. 
+- **Error Propagation**: The `processFn` should throw errors directly. 
+- **Status Reporting**: Use `SheetManager.batchPatchRows` within the `onBatchComplete` hook to write results (including `res.isError` details) into the `Status` column.
 
 ## 🤖 Gemini Workflow Rules
 
 1. **Minimize file reads**: ONLY read the specific tool files needed.
 2. **Consult Core Modules first**: Global configuration and logic are defined in `00_Config_Constants.js` through `09_Engine_UI.js`.
-3. **Use `Logger.run()`**: Wrap primary tool operations in `Logger.run('TOOL_KEY', 'Context', () => { ... })` for consistent logging.
+3. **Use `Logger.run()`**: Wrap primary tool operations in `Logger.run('TOOL_KEY', 'Context', () => { ... })` for consistent error boundary management. **NEVER use `console.log` for debugging or reporting.**
 4. **Follow `SyncEngine`**: When modifying sheet structure, update the registration metadata in the tool's backend file, which registers with `SyncEngine`.
 
 ## 📋 Gemini Pre-Flight Checklist
@@ -90,6 +98,8 @@ Before completing any task, mentally run this checklist. Do not proceed until yo
 - [ ] Are all public functions prefixed with `ToolName_` (e.g., `MailMerge_doWork`)?
 - [ ] Are all internal helper functions prefixed with `_ToolName_` (e.g., `_MailMerge_validate`)?
 - [ ] Did I wrap my core action inside `Logger.run('KEY', 'Context', function() {...})`?
+- [ ] Does my backend file include the mandatory `Status` column in `COL_SCHEMA`?
+- [ ] Does my `onBatchComplete` logic handle `res.isError` to report failures in the `Status` column?
 - [ ] Does my public function return a standard object via `_App_ok` or `_App_fail`?
 - [ ] Did I use `_App_callWithBackoff` around any external Google API calls?
 - [ ] If I added a new setting, is it declared in `APP_PROPS` in `00_Config_Constants.js`?
@@ -104,5 +114,6 @@ Since humans do not code here, follow the **CalendarSync Benchmark**:
 2. Duplicate `CalendarSync_Sidebar.html` and rename it to `<NewName>_Sidebar.html`.
 3. Add the `SHEET_NAMES` entry to `00_Config_Constants.js`.
 4. Update the plugin registration inside `<NewName>_Code.js` (Key, Sheet Name, Title, etc.).
-5. Implement backend logic with `Logger.run` and `_App_ok`.
-6. Implement frontend logic using the `SyncSidebar.run` wrapper and native CSS variables (NO TailwindCSS).
+5. Ensure `COL_SCHEMA` includes the mandatory `Status` column (type: `STATUS`) as the second entry.
+6. Implement backend logic with `Logger.run` and `_App_ok`.
+7. Implement frontend logic using the `SyncSidebar.run` wrapper and native CSS variables (NO TailwindCSS).

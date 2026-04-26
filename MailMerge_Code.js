@@ -33,14 +33,7 @@ SyncEngine.registerTool('MAIL_MERGE', {
     }
 });
 
-// Column-index aliases kept for backward compatibility within this file.
-// Metadata (title, sidebar, headers, widths) now lives in SyncEngine.getTool('MAIL_MERGE').
-var MAILMERGE_CFG = {
-  COLUMNS: {
-    ACTION: 0, EMAIL_TO: 1, CC: 2, BCC: 3, THREAD_ID: 4, ATTACHMENTS: 5, STATUS: 6
-  },
-  HEADER_ROW: 1
-};
+
 
 /** Opens the Mail Merge sidebar and ensures the sheet exists. */
 function MailMerge_openSidebar() {
@@ -302,7 +295,7 @@ function MailMerge_executeActions(draftId, startIndex) {
             GmailApp.sendEmail(targetTo, emailSubject, "", options);
           }
 
-          rowUpdates.status = "✅ Sent (" + new Date().toLocaleString() + ")";
+          rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Sent (" + new Date().toLocaleString() + ")";
           rowUpdates.action = "";
         } else if (action === "DRAFT") {
           var options = {
@@ -341,13 +334,13 @@ function MailMerge_executeActions(draftId, startIndex) {
             var draftReply = lastMessage.createDraftReplyAll("", replyOptions);
             draftReply.update(newTo || "", emailSubject, "", replyOptions);
 
-            rowUpdates.status = "📝 Reply Draft Created";
+            rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Reply Draft Created";
             rowUpdates.action = "";
           } else {
             options.cc = targetCc;
             options.bcc = targetBcc;
             GmailApp.createDraft(targetTo, emailSubject, "", options);
-            rowUpdates.status = "📝 Draft Created";
+            rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Draft Created";
             rowUpdates.action = "";
           }
         }
@@ -364,10 +357,16 @@ function MailMerge_executeActions(draftId, startIndex) {
       onBatchComplete: function (batchResults) {
         var rowNumbers = [];
         var updates = [];
+        var prefixes = SHEET_THEME.STATUS_PREFIXES;
+        
         batchResults.forEach(function (res) {
           if (res && res._rowNumber !== undefined) {
             rowNumbers.push(res._rowNumber);
-            updates.push({ 'Action': res.action, 'Status': res.status });
+            if (res.isError) {
+              updates.push({ 'Action': res.action, 'Status': prefixes.ERROR + res.error });
+            } else {
+              updates.push({ 'Action': res.action, 'Status': res.status });
+            }
           }
         });
         if (rowNumbers.length > 0) {
@@ -391,7 +390,11 @@ function MailMerge_getRemainingPendingCount() {
     if (!sheet) return 0;
     var maxRows = sheet.getMaxRows();
     if (maxRows < 2) return 0;
-    var actionRange = sheet.getRange(2, MAILMERGE_CFG.COLUMNS.ACTION + 1, maxRows - 1);
+    var headers = SheetManager.getHeaders('MAIL_MERGE');
+    var actionColIndex = headers.indexOf('Action') + 1;
+    if (actionColIndex < 1) return 0;
+    
+    var actionRange = sheet.getRange(2, actionColIndex, maxRows - 1);
     var values = actionRange.getValues();
     var count = 0;
     for (var i = 0; i < values.length; i++) {

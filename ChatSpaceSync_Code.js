@@ -20,6 +20,7 @@ SyncEngine.registerTool('CHAT_SYNC', {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [
             { header: 'Action', type: 'ACTION', options: ['ADD_MEMBER', 'REMOVE_MEMBER'] },
+            { header: 'Status', type: 'STATUS' },
             { header: 'Space Name', type: 'TEXT' },
             { header: 'Member Email', type: 'TEXT' },
             { header: 'Role', type: 'DROPDOWN', options: ['ROLE_MEMBER', 'ROLE_MANAGER'] },
@@ -45,8 +46,6 @@ function ChatSpaceSync_pullMembers() {
   return Logger.run('CHAT_SYNC', 'Pull Members', function () {
     var TARGET_SHEET_NAME = SHEET_NAMES.CHAT_SPACE_SYNC;
     var sheet = _App_ensureSheetExists('CHAT_SYNC');
-
-    Logger.info(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Pull Members', 'Pull started — fetching all accessible spaces');
 
     var outputObjects = [];
     var spacesList = [];
@@ -102,6 +101,7 @@ function ChatSpaceSync_pullMembers() {
 
           outputObjects.push({
             'Action': "",
+            'Status': "",
             'Space Name': spaceDisplayName,
             'Member Email': memberEmail,
             'Role': m.role === 'ROLE_MANAGER' ? 'ROLE_MANAGER' : 'ROLE_MEMBER',
@@ -110,9 +110,8 @@ function ChatSpaceSync_pullMembers() {
             'Membership ID': m.name
           });
         });
-        Logger.info(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Pull Members', 'Pulled ' + members.length + ' member(s) from space: ' + spaceDisplayName);
       } catch (err) {
-        Logger.error(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Pull Members — ' + space.name, err);
+        throw new Error('Pull Members failed for ' + space.name + ': ' + err.message);
       }
     });
 
@@ -124,7 +123,6 @@ function ChatSpaceSync_pullMembers() {
     SheetManager.overwriteObjects('CHAT_SYNC', outputObjects);
     
     var summary = 'Successfully imported ' + outputObjects.length + " members into '" + TARGET_SHEET_NAME + "'.";
-    Logger.info(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Pull Members', summary);
     return _App_ok(summary);
   });
 }
@@ -143,8 +141,6 @@ function ChatSpaceSync_pushChanges() {
 
     if (pendingItems.length === 0) return _App_ok("No pending actions found.");
 
-    Logger.info(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Global', 'Push started — processing ' + pendingItems.length + ' pending row(s)');
-
     var stats = _App_BatchProcessor('CHAT_SYNC', pendingItems, function (item) {
       var rowUpdates = {
         action: item['Action'],
@@ -153,8 +149,7 @@ function ChatSpaceSync_pushChanges() {
         _rowNumber: item._rowNumber
       };
 
-      try {
-        var action = rowUpdates.action.toString().toUpperCase();
+      var action = rowUpdates.action.toString().toUpperCase();
         var targetEmail = item['Member Email'];
         var targetRole = item['Role'] || 'ROLE_MEMBER';
         var spaceId = item['Space ID'];
@@ -178,7 +173,7 @@ function ChatSpaceSync_pushChanges() {
             });
 
             rowUpdates.membershipId = newMembership.name;
-            rowUpdates.status = "✅ Added";
+            rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Added";
             rowUpdates.action = "";
             break;
 
@@ -189,33 +184,33 @@ function ChatSpaceSync_pushChanges() {
                Chat.Spaces.Members.remove(rowUpdates.membershipId);
             });
             
-            rowUpdates.status = "🗑️ Removed";
+            rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Removed";
             rowUpdates.action = "";
             break;
 
           default:
-            rowUpdates.status = "❓ Unknown Action '" + action + "'";
+            throw new Error("❓ Unknown Action '" + action + "'");
         }
 
-        Logger.info(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Row ' + item._rowNumber, rowUpdates.status);
         return rowUpdates;
 
-      } catch (e) {
-        rowUpdates.status = e.message;
-        Logger.error(SyncEngine.getTool('CHAT_SYNC').TITLE, 'Row ' + item._rowNumber, e);
-        return rowUpdates;
-      }
     }, {
       onBatchComplete: function (batchResults) {
         var rowNumbers = [];
         var patchData = [];
+        var prefixes = SHEET_THEME.STATUS_PREFIXES;
         batchResults.forEach(function (res) {
           if (res && res._rowNumber !== undefined) {
             rowNumbers.push(res._rowNumber);
-            patchData.push({
-              'Action': res.action,
-              'Membership ID': res.membershipId
-            });
+            if (res.isError) {
+              patchData.push({ 'Status': prefixes.ERROR + res.error });
+            } else {
+              patchData.push({
+                'Action': res.action,
+                'Status': res.status,
+                'Membership ID': res.membershipId
+              });
+            }
           }
         });
         if (rowNumbers.length > 0) {

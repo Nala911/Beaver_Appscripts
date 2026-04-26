@@ -19,6 +19,7 @@ SyncEngine.registerTool('MAIL_SENDER', {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [
             { header: 'Action', type: 'ACTION', options: ['SEND', 'DRAFT'] },
+            { header: 'Status', type: 'STATUS' },
             { header: 'To', type: 'EMAIL_LIST' },
             { header: 'CC', type: 'EMAIL_LIST' },
             { header: 'BCC', type: 'EMAIL_LIST' },
@@ -32,15 +33,7 @@ SyncEngine.registerTool('MAIL_SENDER', {
     }
 });
 
-// Column-index aliases kept for backward compatibility within this file.
-// Metadata (title, sidebar, headers, widths) now lives in SyncEngine.getTool('MAIL_SENDER').
-var MAIL_SENDER_CFG = {
-  COLUMNS: {
-    ACTION: 0, EMAIL_TO: 1, CC: 2, BCC: 3, THREAD_ID: 4,
-    ATTACHMENTS: 5, EMAIL_SUBJECT: 6, EMAIL_BODY: 7, PDF_HTML: 8, PDF_NAME: 9
-  },
-  HEADER_ROW: 1
-};
+
 
 /** Opens the Mail Sender sidebar and ensures the sheet exists. */
 function MailSender_openSidebar() {
@@ -117,8 +110,7 @@ function MailSender_executeActions() {
       var action = rowUpdates.action.toString().trim().toUpperCase();
       if (action !== "SEND" && action !== "DRAFT") return null;
 
-      try {
-        var targetTo = item['To'];
+      var targetTo = item['To'];
         var targetCc = item['CC'];
         var targetBcc = item['BCC'];
         var targetThreadId = item['Thread ID or Subject'];
@@ -200,7 +192,7 @@ function MailSender_executeActions() {
             GmailApp.sendEmail(targetTo, emailSubject, "", options);
           }
 
-          resultStatus = "✅ Sent (" + new Date().toLocaleString() + ")";
+          resultStatus = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Sent (" + new Date().toLocaleString() + ")";
           rowUpdates.action = "";
         } else if (action === "DRAFT") {
           var options = {
@@ -239,36 +231,34 @@ function MailSender_executeActions() {
             var draftReply = lastMessage.createDraftReplyAll("", replyOptions);
             draftReply.update(newTo || "", emailSubject, "", replyOptions);
 
-            resultStatus = "📝 Reply Draft Created";
+            resultStatus = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Reply Draft Created";
             rowUpdates.action = "";
           } else {
             options.cc = targetCc;
             options.bcc = targetBcc;
             GmailApp.createDraft(targetTo, emailSubject, "", options);
-            resultStatus = "📝 Draft Created";
+            resultStatus = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Draft Created";
             rowUpdates.action = "";
           }
         }
 
-        var reference = 'Row ' + item._rowNumber;
-        if (emailSubject) reference += ' (' + emailSubject + ')';
-        Logger.info(SyncEngine.getTool('MAIL_SENDER').TITLE, reference, resultStatus);
-
+        rowUpdates.status = resultStatus;
         return rowUpdates;
 
-      } catch (e) {
-        var reference = 'Row ' + item._rowNumber;
-        Logger.error(SyncEngine.getTool('MAIL_SENDER').TITLE, reference, e);
-        return null;
-      }
     }, {
       onBatchComplete: function (batchResults) {
         var rowNumbers = [];
         var patchData = [];
+        var prefixes = SHEET_THEME.STATUS_PREFIXES;
+
         batchResults.forEach(function (res) {
           if (res && res._rowNumber !== undefined) {
             rowNumbers.push(res._rowNumber);
-            patchData.push({ 'Action': res.action });
+            if (res.isError) {
+              patchData.push({ 'Status': prefixes.ERROR + res.error });
+            } else {
+              patchData.push({ 'Action': res.action, 'Status': res.status });
+            }
           }
         });
         if (rowNumbers.length > 0) {
@@ -278,7 +268,6 @@ function MailSender_executeActions() {
     });
 
     var finalResult = stats.processedCount + " actions processed!";
-    Logger.info(SyncEngine.getTool('MAIL_SENDER').TITLE, "Execute Actions", finalResult);
     return _App_ok(finalResult);
   });
 }

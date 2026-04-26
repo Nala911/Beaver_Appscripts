@@ -20,6 +20,7 @@ SyncEngine.registerTool('CONTACTS_SYNC', {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [
             { header: 'Action', type: 'ACTION', options: ['CREATE', 'UPDATE', 'REMOVE'] },
+            { header: 'Status', type: 'STATUS' },
             { header: 'First Name', type: 'TEXT' },
             { header: 'Last Name', type: 'TEXT' },
             { header: 'Email', type: 'TEXT' },
@@ -56,16 +57,7 @@ SyncEngine.registerTool('CONTACTS_SYNC', {
     }
 });
 
-// Column-index aliases — kept for backward compatibility within this file.
-// Metadata (title, sidebar, headers, widths) now lives in SyncEngine.getTool('CONTACTS_SYNC').
-var CONTACTS_SYNC_CFG = {
-    COLUMNS: {
-        ACTION: 0, FIRST_NAME: 1, LAST_NAME: 2,
-        EMAIL: 3, PHONE: 4, COMPANY: 5, JOB_TITLE: 6, STARRED: 7,
-        STREET: 8, CITY: 9, STATE: 10, ZIP: 11, GROUPS: 12, NOTES: 13, CONTACT_ID: 14
-    },
-    HEADER_ROW: 1
-};
+
 
 // Declarative format config now lives in SyncEngine.getTool('CONTACTS_SYNC').FORMAT_CONFIG
 
@@ -173,6 +165,7 @@ function ContactsSync_pullContacts(request) {
 
                     outputData.push([
                         "", // Action
+                        "", // Status
                         firstName,
                         lastName,
                         email,
@@ -252,9 +245,8 @@ function ContactsSync_pushChanges() {
                 _rowNumber: item._rowNumber
             };
 
-            try {
-                var action = rowUpdates.action.toString().toUpperCase();
-                var contactData = {
+            var action = rowUpdates.action.toString().toUpperCase();
+            var contactData = {
                     firstName: item['First Name'] !== "" ? String(item['First Name']) : "",
                     lastName: item['Last Name'] !== "" ? String(item['Last Name']) : "",
                     email: item['Email'] !== "" ? String(item['Email']) : "",
@@ -303,7 +295,7 @@ function ContactsSync_pushChanges() {
                         if (contactData.starred === true || contactData.starred === 'TRUE') {
                             People.ContactGroups.Members.modify({ resourceNamesToAdd: [createdPerson.resourceName] }, 'contactGroups/starred');
                         }
-                        rowUpdates.status = "✅ Created";
+                        rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Created";
                         rowUpdates.action = "";
                         break;
 
@@ -345,14 +337,14 @@ function ContactsSync_pushChanges() {
                         if (contactData.starred === true || contactData.starred === 'TRUE') {
                             try { People.ContactGroups.Members.modify({ resourceNamesToAdd: [rowUpdates.contactId] }, 'contactGroups/starred'); } catch (e) { }
                         }
-                        rowUpdates.status = "✅ Updated";
+                        rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Updated";
                         rowUpdates.action = "";
                         break;
 
                     case "REMOVE":
                         if (!rowUpdates.contactId) throw new Error("⚠️ Missing Contact ID");
                         try { People.People.deleteContact(rowUpdates.contactId); } catch (e) { }
-                        rowUpdates.status = "🗑️ Removed";
+                        rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Removed";
                         rowUpdates.action = "";
                         break;
 
@@ -360,22 +352,22 @@ function ContactsSync_pushChanges() {
                         rowUpdates.status = "❓ Unknown Action '" + action + "'";
                 }
 
-                Logger.info(SyncEngine.getTool('CONTACTS_SYNC').TITLE, 'Row ' + item._rowNumber, rowUpdates.status);
                 return rowUpdates;
 
-            } catch (e) {
-                rowUpdates.status = "⚠️ " + e.message;
-                Logger.error(SyncEngine.getTool('CONTACTS_SYNC').TITLE, 'Row ' + item._rowNumber, e);
-                return rowUpdates;
-            }
         }, {
             onBatchComplete: function (batchResults) {
                 var rowNumbers = [];
                 var updatesArr = [];
+                var prefixes = SHEET_THEME.STATUS_PREFIXES;
+
                 batchResults.forEach(function (res) {
                     if (res && res._rowNumber !== undefined) {
                         rowNumbers.push(res._rowNumber);
-                        updatesArr.push({ 'Action': res.action, 'Contact ID': res.contactId });
+                        if (res.isError) {
+                            updatesArr.push({ 'Status': prefixes.ERROR + res.error });
+                        } else {
+                            updatesArr.push({ 'Action': res.action, 'Status': res.status, 'Contact ID': res.contactId });
+                        }
                     }
                 });
                 if (rowNumbers.length > 0) {
@@ -443,7 +435,7 @@ function _ContactsSync_applyGroups(resourceName, groupsStr, groupNameToId) {
                 id = newGroup.resourceName;
                 groupNameToId[gName] = id; // Cache it for the rest of the run
             } catch (e) {
-                console.error("Failed to auto-create group: " + gName);
+                // Silently skip if auto-creation fails
             }
         }
 
@@ -466,8 +458,9 @@ function _ContactsSync_setupSheetStructure(sheet) {
 function _ContactsSync_applyDataValidationsInternal(sheet) {
     var maxRows = sheet.getMaxRows();
     if (maxRows < 2) return;
-
+    var headers = SheetManager.getHeaders('CONTACTS_SYNC');
+    var actionColIndex = headers.indexOf('Action') + 1;
     var ruleAction = SpreadsheetApp.newDataValidation().requireValueInList(["CREATE", "UPDATE", "REMOVE"], true).build();
-    sheet.getRange(2, CONTACTS_SYNC_CFG.COLUMNS.ACTION + 1, maxRows - 1).setDataValidation(ruleAction);
+    if (actionColIndex > 0) sheet.getRange(2, actionColIndex, maxRows - 1).setDataValidation(ruleAction);
 }
 

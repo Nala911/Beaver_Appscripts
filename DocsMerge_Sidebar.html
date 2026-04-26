@@ -739,8 +739,6 @@
             if (!confirm(confirmMsg)) return;
 
             setStatus('working', 'Initializing...');
-            log("Initializing Docs Merge Engine...");
-            document.getElementById('console').innerHTML = '';
 
             const config = {
                 templateUrl: templateUrl,
@@ -750,56 +748,23 @@
                 mode: currentMode
             };
 
-            SyncSidebar.run('DocsMerge_initExport', [config], {
-                onSuccess: function (exportData) {
-                    log("Found " + exportData.rowsToProcess.length + " rows to process.", "success");
-                    processNextRow(exportData, 0);
-                },
-                toast: false
-            });
+            executeBatch(config, 0);
         }
 
-        function processNextRow(exportData, index) {
-            if (index >= exportData.rowsToProcess.length) {
-                // Done with rows, finish up
-                log("All rows processed, finalizing...", "success");
-                setStatus('working', 'Finalizing...');
-
-                const config = { mode: currentMode };
-                SyncSidebar.run('DocsMerge_finishExport', [config, exportData.masterDocId, exportData.folderId, exportData.rowsToProcess], {
-                    onSuccess: function (res) {
-                        setStatus('ready');
-                        log(res.message, "success");
-                    },
-                    toast: false
-                });
-                return;
-            }
-
-            const item = exportData.rowsToProcess[index];
-            const isFirst = index === 0;
-            const isLast = index === (exportData.rowsToProcess.length - 1);
-
-            setStatus('working', 'Row ' + (item.index + 1) + '...');
-            log("Processing row " + (item.index + 1) + " [" + (index + 1) + "/" + exportData.rowsToProcess.length + "]...");
-
-            const config = { mode: currentMode };
-
-            SyncSidebar.run('DocsMerge_processRow', [item, config, exportData.masterDocId, exportData.templateId, exportData.folderId, exportData.headers, isFirst, isLast], {
-                unwrap: false,
+        function executeBatch(config, startIndex) {
+            SyncSidebar.run('DocsMerge_executeBatch', [config, startIndex], {
                 onSuccess: function (res) {
-                    if (res.success) {
-                        log(res.message, "success");
+                    if (res.completed) {
+                        setStatus('ready');
+                        log("Batch complete! Processed: " + res.processed, "success");
                     } else {
-                        log(res.message, "error");
+                        log("Processed batch. " + res.remainingPending + " rows remaining. Resuming...", "success");
+                        executeBatch(config, res.nextIndex);
                     }
-                    // Process next regardless of generic success/fail
-                    processNextRow(exportData, index + 1);
                 },
                 onError: function (err) {
-                    log("Hard fail on row " + (item.index + 1) + ": " + err, "error");
-                    // Keep going even if script failed hard
-                    processNextRow(exportData, index + 1);
+                    log("Batch halted due to error: " + err, "error");
+                    setStatus('error');
                 },
                 toast: false
             });
@@ -824,18 +789,14 @@
         }
 
         function log(msg, type) {
-            var errorMsg = (typeof msg === 'object' && msg.message) ? msg.message : String(msg);
-            console.log(`[DocsMerge ${type || ''}] ${errorMsg}`);
-            if (type === 'error' || errorMsg.startsWith('Error:')) {
-                alert(errorMsg);
-            }
+            var message = (typeof msg === 'object' && msg.message) ? msg.message : String(msg);
+            SyncSidebar.showToast(message, type === 'error' || message.startsWith('Error:'));
         }
 
-    function handleError(err) {
-      log(err, 'error');
-      setStatus('error');
-      SyncSidebar.logClientError(err, 'Sidebar Operation');
-    }
+        function handleError(err) {
+            SyncSidebar.handleError(err, { context: 'Sidebar Operation' });
+            setStatus('error');
+        }
     </script>
 </body>
 

@@ -262,4 +262,80 @@
             }, obj);
             target[last] = value;
         }
+
+        function runSystemAudit() {
+            const btn = document.getElementById('btn-run-audit');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Running...';
+            btn.disabled = true;
+
+            const container = document.getElementById('audit-results-container');
+            container.style.display = 'flex';
+            container.innerHTML = '<div style="text-align:center; padding:20px; color:#6b7280;">Analyzing system...</div>';
+
+            SyncSidebar.run('System_runAudit', [], {
+                context: 'System Audit',
+                onSuccess: function(res) {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    renderAuditResults(res.data || res);
+                },
+                onError: function() {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    container.innerHTML = '<div style="color:#dc2626; padding:10px;">Audit failed to run. Check connectivity or system health.</div>';
+                }
+            });
+        }
+
+        function renderAuditResults(data) {
+            const container = document.getElementById('audit-results-container');
+            container.innerHTML = '';
+
+            if (!data || !data.details) {
+                container.innerHTML = '<div style="color:#dc2626;">Invalid response from server.</div>';
+                return;
+            }
+
+            // Summary Header
+            const summaryDiv = document.createElement('div');
+            summaryDiv.style.padding = '12px';
+            summaryDiv.style.background = '#e5e7eb';
+            summaryDiv.style.borderRadius = '4px';
+            summaryDiv.style.fontWeight = '600';
+            summaryDiv.style.marginBottom = '10px';
+            summaryDiv.innerHTML = `Audit Summary: <span style="color:#059669">${data.summary.passed} Passed</span> | <span style="color:#d97706">${data.summary.warnings} Warnings</span> | <span style="color:#dc2626">${data.summary.errors} Errors</span>`;
+            container.appendChild(summaryDiv);
+
+            // Details
+            data.details.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.style.padding = '12px';
+                itemDiv.style.background = '#fff';
+                itemDiv.style.border = '1px solid #d1d5db';
+                itemDiv.style.borderRadius = '4px';
+
+                let statusColor = '#059669'; // Success
+                if (item.status === 'WARN') statusColor = '#d97706';
+                if (item.status === 'ERROR') statusColor = '#dc2626';
+
+                let html = `<div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                                <strong style="color:#374151;">${item.title}</strong>
+                                <span style="color:${statusColor}; font-weight:600; font-size:12px;">${item.status}</span>
+                            </div>`;
+
+                if (item.issues && item.issues.length > 0) {
+                    html += `<ul style="margin:8px 0 0 0; padding-left:20px; font-size:12px; color:#4b5563;">`;
+                    item.issues.forEach(issue => {
+                        html += `<li style="margin-bottom:4px;">${issue}</li>`;
+                    });
+                    html += `</ul>`;
+                } else if (item.status === 'SUCCESS') {
+                     html += `<div style="font-size:12px; color:#6b7280;">All checks passed.</div>`;
+                }
+                
+                itemDiv.innerHTML = html;
+                container.appendChild(itemDiv);
+            });
+        }
 </script>

@@ -15,8 +15,7 @@ var SHEET_NAMES = {
     DRIVE_SYNC: '💾 Google Drive',
     PIPELINE: '⛓  Pipeline',
     CHAT_SPACE_SYNC: '💬 Google Chat Spaces',
-    GMAIL_FILTERS: '🗂️ Gmail Filters',
-    LOGS: '🛠️ Developer Log'
+    GMAIL_FILTERS: '🗂️ Gmail Filters'
 };
 
 // ==========================================
@@ -41,6 +40,7 @@ var APP_PROPS = {
     DOCS_MERGE_FOLDER_URL: { key: 'DOCS_MERGE_FOLDER_URL', store: STORE_TYPES.DOCUMENT, isJson: false },
     DOCS_MERGE_TEMPLATE_NAME: { key: 'DOCS_MERGE_TEMPLATE_NAME', store: STORE_TYPES.DOCUMENT, isJson: false },
     DOCS_MERGE_FOLDER_NAME: { key: 'DOCS_MERGE_FOLDER_NAME', store: STORE_TYPES.DOCUMENT, isJson: false },
+    DOCS_MERGE_MASTER_DOC_ID: { key: 'DOCS_MERGE_MASTER_DOC_ID', store: STORE_TYPES.DOCUMENT, isJson: false },
 
     // Calendar Sync
     CAL_SELECTED_IDS: { key: 'selectedCalIds', store: STORE_TYPES.USER, isJson: true },
@@ -57,13 +57,9 @@ var APP_PROPS = {
     FORMS_CURRENT_FORM: { key: 'FORMSSYNC_CURRENT_FORM', store: STORE_TYPES.DOCUMENT, isJson: false },
     FORMS_SELECTED_FORM: { key: 'FORMSSYNC_SELECTED_FORM', store: STORE_TYPES.USER, isJson: false },
 
-    // Developer Settings
-    ENABLE_DEBUG_LOGGING: { key: 'ENABLE_DEBUG_LOGGING', store: STORE_TYPES.DOCUMENT, isJson: false },
-    LOGGER_MAX_ROWS: { key: 'LOGGER_MAX_ROWS', store: STORE_TYPES.DOCUMENT, isJson: false }
 };
 
 var CACHE_KEYS = {
-    LOGS: 'WorkspaceSync_DEBUG_LOGS',
     PROGRESS: '_PROGRESS'
 };
 

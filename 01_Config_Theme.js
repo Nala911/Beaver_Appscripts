@@ -15,6 +15,15 @@ var DEFAULT_SHEET_THEME = {
         WARNING: '#d59679'
     },
 
+    // Standard Status Prefixes
+    STATUS_PREFIXES: {
+        SUCCESS: '✅ ',
+        ERROR: '❌ ',
+        WARNING: '⚠️ ',
+        PENDING: '⏳ ',
+        INFO: 'ℹ️ '
+    },
+
     // Text Colors
     TEXT: '#ffffff',         // Unified light text color for all backgrounds
 
@@ -94,7 +103,7 @@ function _UI_getTheme() {
 
             return merged;
         } catch (e) {
-            console.error('Failed to parse saved theme, falling back to defaults:', e);
+            // Silently fallback to defaults
         }
     }
     return DEFAULT_SHEET_THEME;

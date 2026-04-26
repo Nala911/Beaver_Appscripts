@@ -598,17 +598,13 @@
     }
 
     function log(msg, type) {
-      var errorMsg = (typeof msg === 'object' && msg.message) ? msg.message : String(msg);
-      console.log(`[MailMerge ${type || ''}] ${errorMsg}`);
-      if (type === 'error' || errorMsg.startsWith('Error:')) {
-        alert(errorMsg);
-      }
+      var message = (typeof msg === 'object' && msg.message) ? msg.message : String(msg);
+      SyncSidebar.showToast(message, type === 'error' || message.startsWith('Error:'));
     }
 
     function handleError(err) {
-      log(err, 'error');
+      SyncSidebar.handleError(err, { context: 'Sidebar Operation' });
       setStatus('error');
-      SyncSidebar.logClientError(err, 'Sidebar Operation');
     }
   </script>
 </body>

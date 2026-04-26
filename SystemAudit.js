@@ -202,11 +202,6 @@ var GlobalAuditRules = [
                     _addGlobalResult(summary, results, 'Environment Config', 'INFO', 'SYSTEM_ENABLED script property is missing or false. Pipeline logic is currently suspended.');
                 }
                 
-                var debugEnabled = _App_getProperty(APP_PROPS.ENABLE_DEBUG_LOGGING);
-                if (!debugEnabled || debugEnabled !== 'true') {
-                    _addGlobalResult(summary, results, 'Environment Config', 'INFO', 'ENABLE_DEBUG_LOGGING is unset or false. Some developer logs will not be recorded.');
-                }
-                
             } catch (e) {
                 _addGlobalResult(summary, results, 'Environment Config', 'ERROR', 'Error accessing properties service: ' + e.message, e);
             }
@@ -279,6 +274,11 @@ var GlobalAuditRules = [
 ];
 
 function _addGlobalResult(summary, results, title, status, msg, errorObj) {
+    if (status === 'SUCCESS') {
+        summary.passed++;
+        return; // Do not record passed tests
+    }
+    
     results.push({
         key: 'GLOBAL', 
         title: title, 
@@ -287,13 +287,8 @@ function _addGlobalResult(summary, results, title, status, msg, errorObj) {
     });
     if (status === 'ERROR') {
         summary.errors++;
-        Logger.error(title, 'Audit Global Check', errorObj || msg);
     } else if (status === 'WARN') {
         summary.warnings++;
-        Logger.warn(title, 'Audit Global Check', msg);
-    } else {
-        summary.passed++;
-        Logger.info(title, 'Audit Global Check', msg);
     }
 }
 
@@ -301,14 +296,12 @@ function _addGlobalResult(summary, results, title, status, msg, errorObj) {
  * Runs a comprehensive audit of all registered tools and the global environment.
  * Executes global rules followed by tool-specific rules.
  */
-function Logger_runSystemAudit() {
-    return Logger.run('LOGS', 'System Audit', function () {
+function System_runAudit() {
+    return Logger.run('SYSTEM', 'System Audit', function () {
         var tools = SyncEngine.getAllTools();
         var keys = SyncEngine.getToolKeys();
         var results = [];
         var summary = { passed: 0, warnings: 0, errors: 0 };
-
-        Logger.info('System Audit', 'Global', "Starting rule-based audit for " + keys.length + " tools...");
 
         // 1. Run Global Rules
         GlobalAuditRules.forEach(function (rule) {
@@ -341,23 +334,19 @@ function Logger_runSystemAudit() {
 
             if (report.status === 'ERROR') {
                 summary.errors++;
-                Logger.error(report.title, 'Audit Test', report.errorObj || report.issues.join(' | '), { issues: report.issues, module: key });
+                results.push(report);
             } else if (report.status === 'WARN') {
                 summary.warnings++;
-                Logger.warn(report.title, 'Audit Test', report.issues.join(' | '), { issues: report.issues, module: key });
+                results.push(report);
             } else {
                 summary.passed++;
-                Logger.success(report.title, 'Audit Test', "All checks passed.");
             }
-
-            results.push(report);
         });
 
-        Logger.flushLogs();
         return {
             summary: summary,
             details: results
         };
-    }, true);
+    });
 }
 

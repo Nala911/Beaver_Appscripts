@@ -20,6 +20,7 @@ SyncEngine.registerTool('FORMS_SYNC', {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [
             { header: 'Action', type: 'ACTION', options: ['CREATE', 'UPDATE', 'REMOVE'] },
+            { header: 'Status', type: 'STATUS' },
             { header: 'Question Title', type: 'TEXT' },
             { header: 'Type', type: 'DROPDOWN', options: ['MULTIPLE_CHOICE', 'CHECKBOX', 'LIST', 'TEXT', 'PARAGRAPH_TEXT', 'DATE', 'TIME', 'DATETIME', 'DURATION', 'SCALE', 'GRID', 'CHECKBOX_GRID', 'FILE_UPLOAD', 'PAGE_BREAK', 'SECTION_HEADER', 'IMAGE', 'VIDEO'] },
             { header: 'Options', type: 'TEXT' },
@@ -30,15 +31,7 @@ SyncEngine.registerTool('FORMS_SYNC', {
     }
 });
 
-// --- CONFIGURATION ---
-// Column-index aliases (1-based) — kept for backward compatibility.
-// Tool metadata now lives in SyncEngine.getTool('FORMS_SYNC').
-var FORMSSYNC_CFG = {
-    COLUMNS: {
-        ACTION: 1, TITLE: 2, TYPE: 3, OPTIONS: 4, HELP_TEXT: 5, REQUIRED: 6, ID: 7
-    },
-    HEADER_ROW: 1
-};
+
 
 // --- SHEET SETUP LOGIC ---
 /** @deprecated — Use _App_ensureSheetExists('FORMS_SYNC') instead. */
@@ -128,21 +121,23 @@ function _FormsSync_pullForm(formInput) {
                     Logger.warn(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Property Error', "Error reading item properties for ID " + id + ": " + propErr);
                 }
 
-                sheetData.push(["", title, type, options, helpText, required, id]);
+                sheetData.push(["", "", title, type, options, helpText, required, id]);
             }
 
             var sheet = _App_ensureSheetExists('FORMS_SYNC');
 
             // Clear old data
             var lastRow = sheet.getLastRow();
-            if (lastRow > FORMSSYNC_CFG.HEADER_ROW) {
-                sheet.getRange(FORMSSYNC_CFG.HEADER_ROW + 1, 1, lastRow - FORMSSYNC_CFG.HEADER_ROW, sheet.getLastColumn()).clearContent();
-                sheet.getRange(FORMSSYNC_CFG.HEADER_ROW + 1, FORMSSYNC_CFG.COLUMNS.REQUIRED, lastRow - FORMSSYNC_CFG.HEADER_ROW, 1).removeCheckboxes();
+            if (lastRow > 1) {
+                var headers = SheetManager.getHeaders('FORMS_SYNC');
+                var reqColIndex = headers.indexOf('Required') + 1;
+                sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
+                if (reqColIndex > 0) sheet.getRange(2, reqColIndex, lastRow - 1, 1).removeCheckboxes();
             }
 
             // Set New Data
             if (sheetData.length > 0) {
-                var targetRange = sheet.getRange(FORMSSYNC_CFG.HEADER_ROW + 1, 1, sheetData.length, sheetData[0].length);
+                var targetRange = sheet.getRange(2, 1, sheetData.length, sheetData[0].length);
                 targetRange.setValues(sheetData);
             }
 
@@ -185,6 +180,7 @@ function _FormsSync_syncToForm() {
                 var updateObj = {
                     action: action,
                     id: id,
+                    status: "",
                     _rowNumber: item._rowNumber
                 };
 
@@ -200,7 +196,6 @@ function _FormsSync_syncToForm() {
                     optionsArr = optionsRaw ? optionsRaw.split("\n").map(function (o) { return o.trim(); }).filter(function (o) { return o.length > 0; }) : [];
                 }
 
-                try {
                     if (action === "CREATE") {
                         if (!title) throw new Error("Missing Title");
                         var targetItem = null;
@@ -229,7 +224,7 @@ function _FormsSync_syncToForm() {
 
                         updateObj.id = targetItem.getId().toString();
                         updateObj.action = "";
-                        Logger.info(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Item: ' + title, '✅ Created');
+                        updateObj.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Created";
                     }
                     else if (action === "UPDATE") {
                         if (!id) throw new Error("Missing ID");
@@ -244,7 +239,7 @@ function _FormsSync_syncToForm() {
                                 updItem.setHelpText(helpText);
                                 _applyItemProperties(updItem, type, required, optionsArr, gridRows, gridCols);
                             });
-                            Logger.info(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Item: ' + title, '✅ Updated');
+                            updateObj.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Updated";
                         } else {
                             var targetIndex = updItem.getIndex();
                             _App_callWithBackoff(function () { form.deleteItem(updItem); });
@@ -274,7 +269,7 @@ function _FormsSync_syncToForm() {
                             });
 
                             updateObj.id = newItem.getId().toString();
-                            Logger.info(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Item: ' + title, '✅ Updated (Type Recreated)');
+                            updateObj.status = "✅ Updated (Type Recreated)";
                         }
                         updateObj.action = "";
                     }
@@ -283,25 +278,27 @@ function _FormsSync_syncToForm() {
                         var delItem = _App_callWithBackoff(function () { return form.getItemById(parseInt(id, 10)); });
                         if (delItem) {
                             _App_callWithBackoff(function () { form.deleteItem(delItem); });
-                            Logger.info(SyncEngine.getTool('FORMS_SYNC').TITLE, 'ID Map: ' + id, '🗑️ Removed');
+                            updateObj.status = "🗑️ Removed";
                         } else {
-                            Logger.info(SyncEngine.getTool('FORMS_SYNC').TITLE, 'ID Map: ' + id, '⚠️ Already Deleted');
+                            updateObj.status = SHEET_THEME.STATUS_PREFIXES.WARNING + "Already Deleted";
                         }
                         updateObj.action = "";
                     }
-                } catch (err) {
-                    Logger.error(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Row ' + item._rowNumber, err);
-                }
 
                 return updateObj;
             }, {
                 onBatchComplete: function (batchResults) {
                     var rowNumbers = [];
                     var patchData = [];
+                    var prefixes = SHEET_THEME.STATUS_PREFIXES;
                     batchResults.forEach(function (res) {
                         if (res && res._rowNumber !== undefined) {
                             rowNumbers.push(res._rowNumber);
-                            patchData.push({ 'Action': res.action, 'Item ID': res.id });
+                            if (res.isError) {
+                                patchData.push({ 'Status': prefixes.ERROR + res.error });
+                            } else {
+                                patchData.push({ 'Action': res.action, 'Status': res.status, 'Item ID': res.id });
+                            }
                         }
                     });
                     if (rowNumbers.length > 0) {

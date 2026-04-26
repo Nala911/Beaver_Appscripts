@@ -25,8 +25,6 @@ function _App_logClientError(err, context) {
         Logger.setRunId(); // Ensure a Run ID exists for this independent execution
         Logger.error(source, ref, msg);
         if (typeof Logger.flushLogs === 'function') Logger.flushLogs();
-    } else {
-        console.error("[Client Error] " + ref + ": " + msg);
     }
 }
 /**
@@ -39,7 +37,5 @@ function _App_logClientInfo(message, context) {
         Logger.setRunId(); // Ensure a Run ID exists for this independent execution
         Logger.info('Client UI', context || 'Default', message);
         if (typeof Logger.flushLogs === 'function') Logger.flushLogs();
-    } else {
-        console.log("[Client Info] " + (context || "UI") + ": " + message);
     }
 }

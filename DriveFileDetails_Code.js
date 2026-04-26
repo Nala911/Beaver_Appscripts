@@ -20,6 +20,7 @@ SyncEngine.registerTool('DRIVE_SYNC', {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [
             { header: 'Action', type: 'ACTION', options: ['Create', 'Update', 'Delete', 'Clone'] },
+            { header: 'Status', type: 'STATUS' },
             { header: 'Item Name', type: 'TEXT' },
             { header: 'Description', type: 'TEXT' },
             { header: 'Starred', type: 'CHECKBOX' },
@@ -45,15 +46,18 @@ SyncEngine.registerTool('DRIVE_SYNC', {
 
 // Column-index aliases — kept for backward-compat; metadata now in SyncEngine.getTool('DRIVE_SYNC').
 var DRIVE_SYNC_COL = {
-  ACTION: 0, NAME: 1, DESC: 2, STARRED: 3, TYPE: 4,
-  EDITORS: 5, VIEWERS: 6, IS_PUBLIC: 7, PATH: 8,
-  SIZE: 9, OWNER: 10, MIME: 11, MODIFIED: 12, ITEM_ID: 13, PARENT_ID: 14, URL: 15
+  ACTION: 0, STATUS: 1, NAME: 2, DESC: 3, STARRED: 4, TYPE: 5,
+  EDITORS: 6, VIEWERS: 7, IS_PUBLIC: 8, PATH: 9,
+  SIZE: 10, OWNER: 11, MIME: 12, MODIFIED: 13, ITEM_ID: 14, PARENT_ID: 15, URL: 16
 };
 
 // --- SIDEBAR & SHEET SETUP ---
-function _DriveFileDetails_InternalFunction() { } // Placeholder (no-op) if needed, or just remove.
-// Standardizing.
+function _DriveFileDetails_InternalFunction() { } 
 
+/** @deprecated — Use _App_ensureSheetExists('DRIVE_SYNC') instead. */
+function _DriveFileDetails_ensureSheetExistsAndActivate() {
+    return _App_ensureSheetExists('DRIVE_SYNC');
+}
 
 /** Opens the Drive Sync sidebar and ensures the sheet exists. */
 function DriveFileDetails_openSidebar() {
@@ -118,12 +122,12 @@ function DriveFileDetails_getDrivesList() {
       var drives = [];
       var pageToken = null;
       do {
-        var result = Drive.Drives.list({
+        var result = _DriveFileDetails_safeListDrives({
           pageToken: pageToken,
           fields: "nextPageToken, drives(id, name)"
         });
-        if (result.drives) drives = drives.concat(result.drives);
-        pageToken = result.nextPageToken;
+        if (result && result.drives) drives = drives.concat(result.drives);
+        pageToken = result ? result.nextPageToken : null;
       } while (pageToken);
 
       drives.sort(function (a, b) {
@@ -165,12 +169,12 @@ function DriveFileDetails_getFolderHierarchy() {
       var drives = [];
       var drivePageToken = null;
       do {
-        var dResult = Drive.Drives.list({
+        var dResult = _DriveFileDetails_safeListDrives({
           pageToken: drivePageToken,
           fields: "nextPageToken, drives(id, name)"
         });
-        if (dResult.drives) drives = drives.concat(dResult.drives);
-        drivePageToken = dResult.nextPageToken;
+        if (dResult && dResult.drives) drives = drives.concat(dResult.drives);
+        drivePageToken = dResult ? dResult.nextPageToken : null;
       } while (drivePageToken);
 
       drives.sort(function (a, b) {
@@ -235,17 +239,9 @@ function DriveFileDetails_pullFromDrive(targetFolderId, isShallow) {
       _App_resetExecutionTimer();
       targetFolderId = targetFolderId || "root";
 
-      var sheet = _DriveFileDetails_ensureSheetExistsAndActivate();
+      var sheet = _App_ensureSheetExists('DRIVE_SYNC');
 
-      var maxRows = sheet.getMaxRows();
-      var maxCols = sheet.getMaxColumns();
-      if (maxRows > 1) {
-        sheet.getRange(2, 1, maxRows - 1, maxCols).clearContent();
-      }
-
-      if (sheet.getLastRow() < 1) {
-        _DriveFileDetails_initializeHeaders(sheet);
-      }
+      SheetManager.clearData('DRIVE_SYNC');
 
       var allItems = [];
       var folderMap = new Map();
@@ -377,6 +373,7 @@ function DriveFileDetails_pullFromDrive(targetFolderId, isShallow) {
 
         var row = new Array(headers.length);
         row[DRIVE_SYNC_COL.ACTION] = "";
+        row[DRIVE_SYNC_COL.STATUS] = "";
         row[DRIVE_SYNC_COL.NAME] = item.name;
         row[DRIVE_SYNC_COL.DESC] = item.description || "";
         row[DRIVE_SYNC_COL.STARRED] = item.starred || false;
@@ -429,7 +426,6 @@ function DriveFileDetails_runPushSequence() {
     function log(msg) { logs.push("[" + new Date().toLocaleTimeString() + "] " + msg); }
 
     try {
-      DRIVE_SYNC_START_TIME = Date.now();
       log("Starting Push Sequence...");
 
       var pendingRows = SheetManager.readPendingObjects('DRIVE_SYNC');
@@ -455,7 +451,6 @@ function DriveFileDetails_runPushSequence() {
       });
 
       var stats = _App_BatchProcessor('DRIVE_SYNC', pendingRows, function (item) {
-        try {
           var statusMsg = "";
           var action = item['Action'];
           var resultValues = {};
@@ -465,30 +460,30 @@ function DriveFileDetails_runPushSequence() {
           else if (action === 'Update') statusMsg = _DriveFileDetails_handleUpdate(item);
           else if (action === 'Delete') statusMsg = _DriveFileDetails_handleDelete(item);
 
-          var updates = { 'Action': "" };
+          var updates = { 'Action': "", 'Status': '✅ ' + statusMsg };
           if (resultValues.id) updates['Item ID'] = resultValues.id;
           if (resultValues.url) updates['URL'] = resultValues.url;
           if (resultValues.mime) updates['Mime Type'] = resultValues.mime;
           if (resultValues.size) updates['Size'] = resultValues.size;
 
-          Logger.info(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'Row ' + item._rowNumber + ' (' + item['Item Name'] + ')', '✅ ' + statusMsg);
           log("Row " + item._rowNumber + ": " + statusMsg);
 
           return { _rowNumber: item._rowNumber, updates: updates };
 
-        } catch (e) {
-          Logger.error(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'Row ' + item._rowNumber + ' (' + item['Item Name'] + ')', e);
-          log("Row " + item._rowNumber + " Error: " + e.message);
-          return null;
-        }
       }, {
         onBatchComplete: function (results) {
           var rowNumbers = [];
           var updatesArr = [];
+          var prefixes = SHEET_THEME.STATUS_PREFIXES;
+
           results.forEach(function (res) {
             if (res && res._rowNumber) {
               rowNumbers.push(res._rowNumber);
-              updatesArr.push(res.updates);
+              if (res.isError) {
+                updatesArr.push({ 'Status': prefixes.ERROR + res.error });
+              } else {
+                updatesArr.push(res.updates);
+              }
             }
           });
           if (rowNumbers.length > 0) {
@@ -512,24 +507,7 @@ function DriveFileDetails_runPushSequence() {
 
 function DriveFileDetails_setupSheet(sheet) {
   return Logger.run('DRIVE_SYNC', 'Setup Sheet', function () {
-    if (!sheet) {
-      sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-      sheet.clear();
-      const maxRows = sheet.getMaxRows();
-      const maxCols = sheet.getMaxColumns();
-      if (maxRows > 0 && maxCols > 0) sheet.getRange(1, 1, maxRows, maxCols).clearDataValidations();
-    }
-
-    _DriveFileDetails_initializeHeaders(sheet);
-    
-    var cfg = SyncEngine.getTool('DRIVE_SYNC');
-    if (cfg.COL_WIDTHS) {
-      cfg.COL_WIDTHS.forEach(function (w, i) {
-        if (w !== null && w !== undefined) sheet.setColumnWidth(i + 1, w);
-      });
-    }
-    // Schema-driven validation now handles this within _App_applyBodyFormatting
-    
+    _App_ensureSheetExists('DRIVE_SYNC');
     return _App_ok("Sheet has been reset successfully.");
   });
 }
@@ -542,11 +520,7 @@ function _DriveFileDetails_validateHeaders(sheet) {
   var headers = SyncEngine.getTool('DRIVE_SYNC').HEADERS;
   var currentHeaders = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
   if (currentHeaders[0] !== headers[0] || currentHeaders[DRIVE_SYNC_COL.ITEM_ID] !== headers[DRIVE_SYNC_COL.ITEM_ID]) {
-    // Auto-fix corrupted headers instead of blocking the operation
-    console.warn("Sheet headers appear corrupted. Auto-resetting headers...");
-    _DriveFileDetails_initializeHeaders(sheet);
-    var cfg = SyncEngine.getTool('DRIVE_SYNC');
-    // Schema-driven validation handles this on sheet load.
+    _App_applyHeaderFormatting(sheet, headers);
   }
 }
 
@@ -569,6 +543,23 @@ function _DriveFileDetails_fetchAllItems(query, fields) {
   } while (pageToken);
   return items;
 }
+
+/**
+ * Safely lists shared drives with error shielding for cases where they are not supported or enabled.
+ * @param {Object} params - API parameters for Drive.Drives.list
+ * @returns {Object|null} Result object or null on failure.
+ */
+function _DriveFileDetails_safeListDrives(params) {
+  try {
+    return _App_callWithBackoff(function () {
+      return Drive.Drives.list(params);
+    });
+  } catch (e) {
+    Logger.warn(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'safeListDrives', "Shared Drives listing failed or unsupported: " + e.message);
+    return null;
+  }
+}
+
 
 
 
@@ -623,17 +614,6 @@ function _DriveFileDetails_getMimeTypeFromFriendly(friendlyType) {
   }
 }
 
-function _DriveFileDetails_initializeHeaders(sheet) {
-  var headers = SyncEngine.getTool('DRIVE_SYNC').HEADERS;
-  sheet.getRange(1, 1, 1, headers.length).setValues([headers])
-    .setFontWeight(SHEET_THEME.LAYOUT.HEADER_WEIGHT)
-    .setBackground(SHEET_THEME.HEADER)
-    .setFontColor(SHEET_THEME.TEXT)
-    .setBorder(true, true, true, true, true, true, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
-
-  sheet.setFrozenRows(1);
-}
-
 // Stage 1: Data validations removed, using registry instead.
 
 // --- Handlers ---
@@ -669,7 +649,7 @@ function _DriveFileDetails_handleCreate(rowObj, res) {
   res.url = file.webViewLink;
   res.mime = file.mimeType;
 
-  return "Created (" + (friendlyType || 'Folder') + ")";
+  return SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Created (" + (friendlyType || 'Folder') + ")";
 }
 
 function _DriveFileDetails_resolveFolderIdFromPath(pathString) {
@@ -755,7 +735,7 @@ function _DriveFileDetails_handleClone(rowObj, res) {
   res.mime = file.mimeType;
   res.size = _DriveFileDetails_formatBytes(file.size);
 
-  return "Cloned";
+  return SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Cloned";
 }
 
 function _DriveFileDetails_handleUpdate(rowObj) {
@@ -853,14 +833,14 @@ function _DriveFileDetails_handleUpdate(rowObj) {
 
   if (permChanges) changes.push("Permissions");
 
-  return changes.length > 0 ? "Updated: " + changes.join(", ") : "No Changes Needed";
+  return changes.length > 0 ? SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Updated: " + changes.join(", ") : "No Changes Needed";
 }
 
 function _DriveFileDetails_handleDelete(rowObj) {
   var fileId = rowObj['Item ID'];
   if (!fileId) throw new Error("Cannot Delete: Item ID is missing.");
   _App_callWithBackoff(function () { Drive.Files.update({ trashed: true }, fileId, null, { supportsAllDrives: true }); });
-  return "Deleted (Trashed)";
+  return SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Deleted (Trashed)";
 }
 
 function DriveFileDetails_fillActivePath(folderId, pathString) {

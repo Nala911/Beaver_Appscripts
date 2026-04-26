@@ -52,7 +52,6 @@ var SyncEngine = (function() {
         }
 
         registry[key] = config;
-        // console.log("SyncEngine: Registered " + key);
     }
 
     /**

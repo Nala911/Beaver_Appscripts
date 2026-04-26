@@ -25,9 +25,8 @@ The system logic is split into sequential modules evaluated in order:
 - `09_Engine_UI.js`: UI abstractions for opening sidebars and dialogs.
 - `UI.js`: The central UI orchestrator. Responsible for creating the custom "🦫 WorkspaceSync Tools" menu (`onOpen`), providing the global wrapper for the Theme Editor sidebar, and connecting user actions to the tools.
 - `SidebarShared.html`: Shared HTML, CSS, and JS components to eliminate redundant sidebar code and infinite spinners.
-- `Logger.js`: Unified logging system. Provides `Logger.info`, `Logger.error`, etc., using a buffered transporter architecture with `CacheService` and `LockService` for performant, concurrent-safe logging. Registers itself with `SyncEngine`.
-- `SystemAudit.js`: Runs comprehensive audits across all registered tools, verifying sheet integrity, API access, and schema setup, and generates AI debug output logs.
-- `Logger_SidebarController.js`: Backend controller for the Developer Log sidebar, handling client-to-server interactions like fetching logs and running system audits.
+- `Logger.js`: Error boundary and execution wrapper. Provides the `Logger.run` context for catching and reporting system-level failures via return objects. All console-based logging is strictly forbidden.
+- `SystemAudit.js`: Runs comprehensive diagnostic audits across all registered tools, verifying sheet integrity, API access, and schema setup. Outputs results directly to the Theme Studio UI.
 - `appsscript.json` / `.clasp.json`: Google Apps Script configuration and Clasp deployment environment details.
 
 ### Tool Modules & Connections
@@ -47,7 +46,7 @@ Each tool has a Backend file, a Frontend sidebar file, and a global Entry Functi
 | **Pipeline** | `PipelineControl_Code.js` | `PipelineControl_Sidebar.html` | `PipelineControl_openSidebar` |
 | **Google Chat Spaces** | `ChatSpaceSync_Code.js` | `ChatSpaceSync_Sidebar.html` | `ChatSpaceSync_openSidebar` |
 | **Gmail Filters** | `GmailFilters_Code.js` | `GmailFilters_Sidebar.html` | `GmailFilters_openSidebar` |
-| **Developer Log** | `Logger.js`, `SystemAudit.js`, `Logger_SidebarController.js` | `Logger_Sidebar.html` | `Logger_openSidebar` |
+
 | **Theme Editor** | (Inside `UI.js`) | `ThemeEditor_Sidebar.html` | `UI_openThemeDialog` |
 
 > [!CAUTION]
@@ -73,7 +72,7 @@ Each tool relies on specific Google APIs. Do NOT use an API in a tool that doesn
 | **Google Chat Spaces** | `Chat` (Advanced) | Yes — `Chat API v1` |
 | **Gmail Filters** | `Gmail` (Advanced) | Yes — `Gmail API v1` |
 | **Pipeline** | `PropertiesService`, `SpreadsheetApp`, `ScriptApp` | No |
-| **Developer Log** | `CacheService`, `Session`, `Utilities` | No |
+
 | **Theme Editor** | `PropertiesService` only | No |
 
 ## 🗝️ PropertiesService Key Registry
@@ -94,8 +93,7 @@ All keys used across the codebase. **Do NOT invent new key names** — check her
 | `selectedContactGroups` | `ContactsSync_Code.js` | `UserProperties` | JSON array of selected contact group IDs |
 | `FORMSSYNC_CURRENT_FORM` | `FormsSync_Code.js` | `DocumentProperties` | Stores currently synced form ID |
 | `FORMS_SELECTED_FORM` | `FormsSync_Code.js` | `UserProperties` | Stores user's selected form ID for sidebar auto-selection |
-| `ENABLE_DEBUG_LOGGING` | `Logger.js` | `DocumentProperties` | Global on/off for debug logging ('true'/'false') |
-| `LOGGER_MAX_ROWS` | `Logger.js` | `DocumentProperties` | Max rows to keep in the Log sheet |
+
 
 ## 🏗️ Architectural Patterns
 
@@ -139,11 +137,24 @@ All client-to-server communication must use the `SyncSidebar.run()` wrapper loca
 3. **Execution**: Sidebar calls `SyncSidebar.run('ToolName_publicFunc')` -> Backend function -> `Logger.run()` for automatic logging/error tracking.
 4. **Response**: Backend returns standardized object via `_App_ok("Success msg", { payload })` or `_App_fail("Error")`.
 
-### 🛠️ Developer Logging Architecture
-The project employs a robust, asynchronous-style logging system.
-- **Transporter Pattern**: Logs are first queued into `CacheService`.
-- **Orchestration**: `Logger.run()` serves as an execution supervisor.
-- **Concurrency Safety**: Uses `LockService.getDocumentLock()` during the "flush" phase.
+### 🛠️ Developer Reporting & Error Architecture
+The project employs a silent, user-centric error handling system that prioritizes spreadsheet feedback over background logs:
+- **Silent Backend**: Handled by `Logger.js` which provides a clean `try/catch` wrapper (`Logger.run`) for public entry points. All technical console logging (`info`/`error`) is strictly forbidden to maintain zero noise in the Apps Script execution logs.
+- **System-Wide UI Errors**: Critical system-level failures are surfaced via a copyable modal overlay in the sidebar, providing technical details for support without requiring console access.
+- **Row-Level Feedback**: All granular, data-specific feedback (success or failure) is reported directly in the **Status** column of the tool sheet. The `_App_BatchProcessor` facilitates this by returning structured result objects to the `onBatchComplete` hook. All statuses MUST use the standardized `SHEET_THEME.STATUS_PREFIXES` (✅, ❌, ⚠️).
+
+### 📐 Unified Reporting Architecture
+To maintain a professional and consistent user experience, all tools must adhere to the following reporting standards:
+1. **Row-Level Status**:
+   - **Success**: Must be prefixed with `SHEET_THEME.STATUS_PREFIXES.SUCCESS` (✅).
+   - **Failure**: Must be prefixed with `SHEET_THEME.STATUS_PREFIXES.ERROR` (❌) and contain clear, actionable error details.
+   - **Warning**: Must be prefixed with `SHEET_THEME.STATUS_PREFIXES.WARNING` (⚠️) for non-blocking issues.
+2. **General/System Errors**:
+   - All errors surfaced in the sidebar via `SyncSidebar.handleError` should specify a `severity` level:
+     - `mild`: Blue "Notice" modal for informational non-errors.
+     - `medium`: Amber "Warning" modal for recoverable issues.
+     - `critical`: Red "System Error" modal for blocking/critical failures (Default).
+3. **Unification**: These standards are enforced via the `SHEET_THEME` configuration and the `SidebarShared.html` engine.
 
 ### 🔄 Unified Batch Processing (`_App_BatchProcessor`)
 To ensure consistency and performance across all tools, row-by-row operations must use the centralized processor in `03_Core_Utils.js`.

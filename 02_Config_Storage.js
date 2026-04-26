@@ -57,8 +57,7 @@ function _App_getProperty(propConfig) {
         try {
             result = JSON.parse(valStr);
         } catch (e) {
-            console.warn("Failed to parse JSON for property " + cacheKey, e);
-            result = null;
+            return null;
         }
     }
 

@@ -20,9 +20,11 @@ SyncEngine.registerTool('TASKS', {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [
             { header: 'Action', type: 'ACTION' },
+            { header: 'Status', type: 'STATUS' },
             {
                 header: 'List Name', type: 'DROPDOWN', allowInvalid: true, options: function () {
                     var lists = [];
+                    var resultStatus = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Success";
                     try {
                         var response = _App_callWithBackoff(function () { return Tasks.Tasklists.list(); });
                         (response.items || []).forEach(function (l) {
@@ -215,6 +217,7 @@ function _TasksSync_processHierarchy(tasks, listName) {
 
       rows.push([
         '',                               // Action
+        '',                               // Status
         listName,                         // List Name
         displayTitle,                     // Title
         task.notes || '',                 // Notes
@@ -366,7 +369,7 @@ function _TasksSync_pushTasks() {
       if (!taskId) throw new Error('Missing Task ID');
       Tasks.Tasks.remove(targetListId, taskId);
       _TasksSync_throttle(counter, 1);
-      logMsg = 'Removed successfully';
+      return { action: "", status: SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Deleted", _rowNumber: item._rowNumber };
     }
     else if (action === 'Move') {
       if (!taskId) throw new Error('Missing Task ID');
@@ -400,7 +403,7 @@ function _TasksSync_pushTasks() {
           var inserted = Tasks.Tasks.get(targetListId, insertedId);
           _TasksSync_throttle(counter, 1);
 
-          rowUpdates.taskId = inserted.id;
+            rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Added";
           rowUpdates.etag = inserted.etag;
           rowUpdates.lastSync = new Date();
           logMsg = 'Moved to ' + listName;
@@ -409,31 +412,35 @@ function _TasksSync_pushTasks() {
     }
 
     rowUpdates.action = '';
+    rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + logMsg;
     
-    var reference = 'Row ' + item._rowNumber + ' (' + (item['Title'] || 'Unknown') + ')';
-    Logger.info(SyncEngine.getTool('TASKS').TITLE, reference, logMsg);
-
     return rowUpdates;
 
   }, {
-    onBatchComplete: function (batchResults) {
-      var rowNumbers = [];
-      var updates = [];
-      batchResults.forEach(function (res) {
-        if (res && res._rowNumber !== undefined) {
-          rowNumbers.push(res._rowNumber);
-          updates.push({
-            'Action': res.action,
-            'Task ID': res.taskId,
-            'Version Token': res.etag,
-            'Last Sync': res.lastSync
-          });
+      onBatchComplete: function (batchResults) {
+        var rowNumbers = [];
+        var patchData = [];
+        var prefixes = SHEET_THEME.STATUS_PREFIXES;
+        batchResults.forEach(function (res) {
+          if (res && res._rowNumber !== undefined) {
+            rowNumbers.push(res._rowNumber);
+            if (res.isError) {
+              patchData.push({ 'Status': prefixes.ERROR + res.error });
+            } else {
+              patchData.push({
+                'Action': res.action,
+                'Status': res.status,
+                'Task ID': res.taskId,
+                'Version Token': res.etag,
+                'Last Sync': res.lastSync
+              });
+            }
+          }
+        });
+        if (rowNumbers.length > 0) {
+          SheetManager.batchPatchRows('TASKS', rowNumbers, patchData);
         }
-      });
-      if (rowNumbers.length > 0) {
-        SheetManager.batchPatchRows('TASKS', rowNumbers, updates);
       }
-    }
   });
 
   SpreadsheetApp.flush();

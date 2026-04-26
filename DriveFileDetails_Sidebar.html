@@ -570,7 +570,7 @@
             try {
                 if (typeof lucide !== 'undefined') lucide.createIcons();
             } catch (e) {
-                console.warn('Lucide icons failed to load:', e);
+                // Silently skip if icons fail
             }
 
             setStatus('working', 'Scanning...');
@@ -592,8 +592,8 @@
             });
         };
 
-        function log(msg, type = '') {
-            console.log(`[DriveSync ${type}] ${msg}`);
+        function log(msg, type) {
+            // No-op
             if (type === 'error' || (typeof msg === 'string' && msg.startsWith('Error:'))) {
                 SyncSidebar.showToast(msg, true);
             }
@@ -785,9 +785,8 @@
         }
 
         function handleError(err) {
-            log(err, 'error');
+            SyncSidebar.handleError(err, { context: 'Sidebar Operation' });
             setStatus('error');
-            SyncSidebar.logClientError(err, 'Sidebar Operation');
         }
 
     </script>

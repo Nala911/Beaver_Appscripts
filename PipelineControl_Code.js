@@ -21,6 +21,7 @@ SyncEngine.registerTool('PIPELINE', {
         ],
         COL_SCHEMA: [
             { header: 'ON/OFF', type: 'CHECKBOX' },
+            { header: 'Status', type: 'STATUS' },
             { header: 'Pipeline Name', type: 'TEXT' },
             { header: 'Source URL', type: 'URL' },
             { header: 'Source Range', type: 'TEXT' },
@@ -122,8 +123,25 @@ function PipelineControl_processPipelines() {
             var sheet = SheetManager.getSheet('PIPELINE');
 
             _App_BatchProcessor('PIPELINE', activeScheduled, function (item) {
-                _PipelineControl_runPipeline(sheet, item._rowNumber, item);
-                return { success: true };
+                var statusMsg = _PipelineControl_runPipeline(item);
+                return { _rowNumber: item._rowNumber, status: statusMsg };
+            }, {
+                onBatchComplete: function(results) {
+                    var rowNumbers = [];
+                    var patchData = [];
+                    var prefixes = SHEET_THEME.STATUS_PREFIXES;
+                    results.forEach(function (res) {
+                        if (res && res._rowNumber) {
+                            rowNumbers.push(res._rowNumber);
+                            if (res.isError) {
+                                patchData.push({ 'Status': prefixes.ERROR + res.error, 'Last Run Time': new Date() });
+                            } else {
+                                patchData.push({ 'Status': prefixes.SUCCESS + res.status, 'Last Run Time': new Date() });
+                            }
+                        }
+                    });
+                    if (rowNumbers.length > 0) SheetManager.batchPatchRows('PIPELINE', rowNumbers, patchData);
+                }
             });
             return _App_ok('Scheduled pipelines processed.', { processedCount: activeScheduled.length });
         });
@@ -140,8 +158,25 @@ function PipelineControl_runAllPipelines() {
             var sheet = SheetManager.getSheet('PIPELINE');
 
             var stats = _App_BatchProcessor('PIPELINE', pendingPipelines, function (item) {
-                _PipelineControl_runPipeline(sheet, item._rowNumber, item);
-                return { success: true };
+                var statusMsg = _PipelineControl_runPipeline(item);
+                return { _rowNumber: item._rowNumber, status: statusMsg };
+            }, {
+                onBatchComplete: function(results) {
+                    var rowNumbers = [];
+                    var patchData = [];
+                    var prefixes = SHEET_THEME.STATUS_PREFIXES;
+                    results.forEach(function (res) {
+                        if (res && res._rowNumber) {
+                            rowNumbers.push(res._rowNumber);
+                            if (res.isError) {
+                                patchData.push({ 'Status': prefixes.ERROR + res.error, 'Last Run Time': new Date() });
+                            } else {
+                                patchData.push({ 'Status': prefixes.SUCCESS + res.status, 'Last Run Time': new Date() });
+                            }
+                        }
+                    });
+                    if (rowNumbers.length > 0) SheetManager.batchPatchRows('PIPELINE', rowNumbers, patchData);
+                }
             });
 
             var resultMsg = 'Execution complete. Processed ' + stats.processedCount + ' pipelines.';
@@ -244,25 +279,37 @@ function PipelineControl_runSelectedPipelines(rowIndexes) {
                 for(var i=0; i<headers.length; i++) {
                     rowObj[headers[i]] = rowArray[i];
                 }
-                _PipelineControl_runPipeline(sheet, item.rowIndex, rowObj);
+                var statusMsg = _PipelineControl_runPipeline(rowObj);
 
-                var updatedLastRun = sheet.getRange(item.rowIndex, 8).getValue();
                 return {
-                    rowIndex: item.rowIndex,
-                    lastStatus: "Check Logs",
-                    lastRun: updatedLastRun ? updatedLastRun.toString() : ""
+                    _rowNumber: item.rowIndex,
+                    status: statusMsg
                 };
+            }, {
+                onBatchComplete: function(results) {
+                    var rowNumbers = [];
+                    var patchData = [];
+                    var prefixes = SHEET_THEME.STATUS_PREFIXES;
+                    results.forEach(function (res) {
+                        if (res && res._rowNumber) {
+                            rowNumbers.push(res._rowNumber);
+                            if (res.isError) {
+                                patchData.push({ 'Status': prefixes.ERROR + res.error, 'Last Run Time': new Date() });
+                            } else {
+                                patchData.push({ 'Status': prefixes.SUCCESS + res.status, 'Last Run Time': new Date() });
+                            }
+                        }
+                    });
+                    if (rowNumbers.length > 0) SheetManager.batchPatchRows('PIPELINE', rowNumbers, patchData);
+                }
             });
 
-            return _App_ok('Selected pipelines completed', stats.results);
+            return _App_ok('Selected pipelines completed', {});
         });
     });
 }
 
-function _PipelineControl_runPipeline(sheet, rowIdx, rowObj) {
-    var logMessage = "";
-    var isSuccess = false;
-    var errorObj = null;
+function _PipelineControl_runPipeline(rowObj) {
     var pipelineName = rowObj['Pipeline Name'];
 
     function getSheetFromUrl(url) {
@@ -278,92 +325,74 @@ function _PipelineControl_runPipeline(sheet, rowIdx, rowObj) {
         return ss.getSheets()[0];
     }
 
-    try {
-        var sourceUrl = rowObj['Source URL'];
-        var sourceRangeA1 = rowObj['Source Range'];
-        var destUrl = rowObj['Destination URL'];
-        var destStartCell = rowObj['Destination Cell'];
+    var sourceUrl = rowObj['Source URL'];
+    var sourceRangeA1 = rowObj['Source Range'];
+    var destUrl = rowObj['Destination URL'];
+    var destStartCell = rowObj['Destination Cell'];
 
-        if (!destStartCell || destStartCell.toString().trim() === "") {
-            destStartCell = "A1";
-        }
-
-        if (!sourceUrl || !destUrl) {
-            throw new Error(`Missing details -> Source URL: ${sourceUrl ? 'OK' : 'Blank'}, Dest URL: ${destUrl ? 'OK' : 'Blank'}`);
-        }
-
-        var sSheet;
-        try {
-            sSheet = getSheetFromUrl(sourceUrl);
-        } catch (e) {
-            throw new Error("Cannot access Source URL (Check permissions or URL validity)");
-        }
-        if (!sSheet) throw new Error("Source sheet not found");
-
-        var values;
-        var isSheetLevelSync = false;
-        if (sourceRangeA1 && String(sourceRangeA1).trim() !== "") {
-            values = sSheet.getRange(String(sourceRangeA1).trim()).getValues();
-        } else {
-            isSheetLevelSync = true;
-            values = sSheet.getDataRange().getValues();
-        }
-        
-        if (values.length === 0) throw new Error("Source range empty");
-
-        var dSheet;
-        try {
-            dSheet = getSheetFromUrl(destUrl);
-        } catch (e) {
-            throw new Error("Cannot access Destination URL (Check permissions or URL validity)");
-        }
-        if (!dSheet) throw new Error("Destination sheet not found");
-
-        var numRows = values.length;
-        var numCols = values[0].length;
-
-        if (numRows > 0 && numCols > 0) {
-            if (isSheetLevelSync) {
-                dSheet.clearContents();
-            }
-
-            var destRange = dSheet.getRange(destStartCell);
-            var startRow = destRange.getRow();
-            var startCol = destRange.getColumn();
-
-            var reqRows = startRow + numRows - 1;
-            var reqCols = startCol + numCols - 1;
-
-            if (dSheet.getMaxRows() < reqRows) {
-                dSheet.insertRowsAfter(dSheet.getMaxRows(), reqRows - dSheet.getMaxRows());
-            }
-            if (dSheet.getMaxColumns() < reqCols) {
-                dSheet.insertColumnsAfter(dSheet.getMaxColumns(), reqCols - dSheet.getMaxColumns());
-            }
-
-            dSheet.getRange(startRow, startCol, numRows, numCols).setValues(values);
-            if (isSheetLevelSync) SpreadsheetApp.flush();
-            
-            logMessage = "Synced " + numRows + " rows.";
-            isSuccess = true;
-        } else {
-            logMessage = "No data found in source range.";
-        }
-
-    } catch (e) {
-        logMessage = "Error: " + e.message;
-        errorObj = e;
-        isSuccess = false;
+    if (!destStartCell || destStartCell.toString().trim() === "") {
+        destStartCell = "A1";
     }
 
-    var timestamp = new Date();
-    sheet.getRange(rowIdx, 8).setValue(timestamp);
+    if (!sourceUrl || !destUrl) {
+        throw new Error(`Missing details -> Source URL: ${sourceUrl ? 'OK' : 'Blank'}, Dest URL: ${destUrl ? 'OK' : 'Blank'}`);
+    }
 
-    var reference = pipelineName ? pipelineName : ('Row ' + rowIdx);
-    if (isSuccess) {
-        Logger.info(SyncEngine.getTool('PIPELINE').TITLE, reference, logMessage);
+    var sSheet;
+    try {
+        sSheet = getSheetFromUrl(sourceUrl);
+    } catch (e) {
+        throw new Error("Cannot access Source URL (Check permissions or URL validity)");
+    }
+    if (!sSheet) throw new Error("Source sheet not found");
+
+    var values;
+    var isSheetLevelSync = false;
+    if (sourceRangeA1 && String(sourceRangeA1).trim() !== "") {
+        values = sSheet.getRange(String(sourceRangeA1).trim()).getValues();
     } else {
-        Logger.error(SyncEngine.getTool('PIPELINE').TITLE, reference, errorObj || logMessage);
+        isSheetLevelSync = true;
+        values = sSheet.getDataRange().getValues();
+    }
+    
+    if (values.length === 0) throw new Error("Source range empty");
+
+    var dSheet;
+    try {
+        dSheet = getSheetFromUrl(destUrl);
+    } catch (e) {
+        throw new Error("Cannot access Destination URL (Check permissions or URL validity)");
+    }
+    if (!dSheet) throw new Error("Destination sheet not found");
+
+    var numRows = values.length;
+    var numCols = values[0].length;
+
+    if (numRows > 0 && numCols > 0) {
+        if (isSheetLevelSync) {
+            dSheet.clearContents();
+        }
+
+        var destRange = dSheet.getRange(destStartCell);
+        var startRow = destRange.getRow();
+        var startCol = destRange.getColumn();
+
+        var reqRows = startRow + numRows - 1;
+        var reqCols = startCol + numCols - 1;
+
+        if (dSheet.getMaxRows() < reqRows) {
+            dSheet.insertRowsAfter(dSheet.getMaxRows(), reqRows - dSheet.getMaxRows());
+        }
+        if (dSheet.getMaxColumns() < reqCols) {
+            dSheet.insertColumnsAfter(dSheet.getMaxColumns(), reqCols - dSheet.getMaxColumns());
+        }
+
+        dSheet.getRange(startRow, startCol, numRows, numCols).setValues(values);
+        if (isSheetLevelSync) SpreadsheetApp.flush();
+        
+        return "Synced " + numRows + " rows.";
+    } else {
+        return "No data found in source range.";
     }
 }
 

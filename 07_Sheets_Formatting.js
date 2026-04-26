@@ -191,7 +191,7 @@ function _App_applyBodyFormatting(sheet, numDataRows, config) {
             sheet.getRange(startRow, readOnlyStartCol, actualRows, numReadOnlyAtEnd).setBackground(SHEET_THEME.READ_ONLY);
         }
     } catch (e) {
-        console.error("Error applying column colors:", e);
+        // Silently fail
     }
 
     // Apply Schema-driven validations and formats
@@ -207,6 +207,11 @@ function _App_applyBodyFormatting(sheet, numDataRows, config) {
             }
             if (colDef.type === 'URL' || colDef.italic) {
                 range.setFontStyle('italic');
+            }
+            
+            // Background Colors
+            if (colDef.type === 'STATUS' || colDef.type === 'READ_ONLY') {
+                range.setBackground(SHEET_THEME.READ_ONLY);
             }
 
             // Number Formats

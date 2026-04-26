@@ -20,6 +20,7 @@ SyncEngine.registerTool('CALENDAR_SYNC', {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [
             { header: 'Action', type: 'ACTION', options: ['CREATE', 'UPDATE', 'MOVE', 'REMOVE'] },
+            { header: 'Status', type: 'STATUS' },
             { header: 'Target Calendar Name', type: 'DROPDOWN', options: function() { try { return CalendarApp.getAllCalendars().map(function(c){return c.getName()}); } catch(e) { return []; } } },
             { header: 'Event Title', type: 'TEXT' },
             { header: 'Start Time', type: 'TEXT' },
@@ -107,7 +108,6 @@ function CalendarSync_pullEvents(request) {
     _App_ensureSheetExists('CALENDAR_SYNC');
 
     var allCals = _App_callWithBackoff(function () { return CalendarApp.getAllCalendars(); });
-    Logger.info(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Pull Events', 'Pull started — processing ' + allCals.length + ' calendars from ' + request.startDate + ' to ' + request.endDate);
 
     // Fetch Events
     var start = new Date(request.startDate);
@@ -135,10 +135,8 @@ function CalendarSync_pullEvents(request) {
           });
         });
         if (events.length > 0) {
-          Logger.info(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Pull Events', 'Pulled ' + events.length + ' event(s) from: ' + cal.getName());
         }
       } catch (err) {
-        Logger.error(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Pull Events — ' + cal.getName(), err);
       }
     });
 
@@ -156,7 +154,6 @@ function CalendarSync_pullEvents(request) {
 
     CalendarSync_savePreferences(null, request.startDate, request.endDate);
     var summary = 'Successfully imported ' + outputObjects.length + " events into '" + TARGET_SHEET_NAME + "'.";
-    Logger.info(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Pull Events', summary);
     return _App_ok(summary);
   });
 }
@@ -174,8 +171,6 @@ function CalendarSync_pushChanges() {
     var pendingItems = SheetManager.readPendingObjects('CALENDAR_SYNC');
 
     if (pendingItems.length === 0) return _App_ok("No pending actions found.");
-
-    Logger.info(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Global', 'Push started — processing ' + pendingItems.length + ' pending row(s)');
 
     var allCals = CalendarApp.getAllCalendars();
     var calMap = new Map();
@@ -195,9 +190,8 @@ function CalendarSync_pushChanges() {
         _rowNumber: item._rowNumber
       };
 
-      try {
-        var action = rowUpdates.action.toString().toUpperCase();
-        var targetCalName = item['Target Calendar Name'];
+      var action = rowUpdates.action.toString().toUpperCase();
+      var targetCalName = item['Target Calendar Name'];
         var targetCalId = calMap.get(targetCalName);
 
         var eventData = {
@@ -249,7 +243,7 @@ function CalendarSync_pushChanges() {
 
             rowUpdates.eventId = newEvent.getId();
             rowUpdates.calId = targetCalId;
-            rowUpdates.status = "✅ Created" + (optionErr ? " (⚠️ " + optionErr + ")" : "");
+            rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Created" + (optionErr ? " (" + SHEET_THEME.STATUS_PREFIXES.WARNING + optionErr + ")" : "");
             rowUpdates.action = "";
             break;
 
@@ -288,7 +282,7 @@ function CalendarSync_pushChanges() {
             });
             targetGuests.forEach(function (email) { eventToUpdate.addGuest(email); });
 
-            rowUpdates.status = "✅ Updated" + (updateOptionErr ? " (⚠️ " + updateOptionErr + ")" : "");
+            rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Updated" + (updateOptionErr ? " (" + SHEET_THEME.STATUS_PREFIXES.WARNING + updateOptionErr + ")" : "");
             rowUpdates.action = "";
             break;
 
@@ -305,7 +299,7 @@ function CalendarSync_pushChanges() {
             var eventToDel = _CalendarSync_findEvent(delCal, false, rowUpdates.eventId, eventData);
             if (eventToDel) {
               _App_callWithBackoff(function () { eventToDel.deleteEvent(); });
-              rowUpdates.status = "🗑️ Removed";
+              rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Removed";
               rowUpdates.action = "";
             } else {
               rowUpdates.status = "⚠️ Already Deleted (Event not found)";
@@ -317,29 +311,26 @@ function CalendarSync_pushChanges() {
             rowUpdates.status = "❓ Unknown Action '" + action + "'";
         }
 
-        var isError = rowUpdates.status && (rowUpdates.status.indexOf('❌') > -1 || rowUpdates.status.indexOf('⚠️') > -1);
-        if (isError) Logger.error(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Row ' + item._rowNumber, rowUpdates.status);
-        else if (rowUpdates.status) Logger.info(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Row ' + item._rowNumber, rowUpdates.status);
-
         return rowUpdates;
 
-      } catch (e) {
-        rowUpdates.status = e.message;
-        Logger.error(SyncEngine.getTool('CALENDAR_SYNC').TITLE, 'Row ' + item._rowNumber, e);
-        return rowUpdates;
-      }
     }, {
       onBatchComplete: function (batchResults) {
         var rowNumbers = [];
         var patchData = [];
+        var prefixes = SHEET_THEME.STATUS_PREFIXES;
         batchResults.forEach(function (res) {
           if (res && res._rowNumber !== undefined) {
             rowNumbers.push(res._rowNumber);
-            patchData.push({
-              'Action': res.action,
-              'Event ID': res.eventId,
-              'Original Calendar ID': res.calId
-            });
+            if (res.isError) {
+              patchData.push({ 'Status': prefixes.ERROR + res.error });
+            } else {
+              patchData.push({
+                'Action': res.action,
+                'Status': res.status,
+                'Event ID': res.eventId,
+                'Original Calendar ID': res.calId
+              });
+            }
           }
         });
         if (rowNumbers.length > 0) {

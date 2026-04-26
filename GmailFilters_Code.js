@@ -23,7 +23,7 @@ SyncEngine.registerTool('GMAIL_FILTERS', {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [
             { header: 'Action', type: 'ACTION', options: ['CREATE', 'UPDATE', 'DELETE'] },
-            { header: 'Status', type: 'TEXT' },
+            { header: 'Status', type: 'STATUS' },
             { header: 'Filter ID', type: 'TEXT' },
             { header: 'Criteria: From', type: 'TEXT' },
             { header: 'Criteria: To', type: 'TEXT' },
@@ -140,12 +140,11 @@ function GmailFilters_processAction() {
         var stats = _App_BatchProcessor('GMAIL_FILTERS', pendingItems, function (item) {
             var actionType = item['Action'];
             var filterId = item['Filter ID'];
-            var resultStatus = "✅ Success";
+            var resultStatus = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Success";
             var resultAction = "";
             var newFilterId = filterId;
 
-            try {
-                if (actionType === 'DELETE' || actionType === 'UPDATE') {
+            if (actionType === 'DELETE' || actionType === 'UPDATE') {
                     if (!filterId) throw new Error("Missing Filter ID for " + actionType);
                     try {
                         _App_callWithBackoff(function () {
@@ -154,14 +153,14 @@ function GmailFilters_processAction() {
                     } catch (e) {
                         // Special handling for Apps Script quirk: DELETE/REMOVE often returns 204 (No Content)
                         // which Apps Script occasionally misinterprets as an "Empty response" error.
-                        if (e.message && e.message.indexOf('Empty response') !== -1) {
-                            console.warn('Ignored "Empty response" for filter delete/update (likely success): ' + filterId);
+                        if (e.message.indexOf("Empty response") !== -1) {
+                            // Ignored "Empty response" for filter delete/update (likely success)
                         } else {
                             throw e;
                         }
                     }
                     if (actionType === 'DELETE') {
-                        return { action: "", status: "✅ Deleted", _rowNumber: item._rowNumber };
+                        return { action: "", status: SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Deleted", _rowNumber: item._rowNumber };
                     }
                 }
 
@@ -171,19 +170,14 @@ function GmailFilters_processAction() {
                         return Gmail.Users.Settings.Filters.create(filterResource, 'me');
                     });
                     newFilterId = createdFilter.id;
-                    resultStatus = (actionType === 'UPDATE') ? "✅ Updated" : "✅ Created";
+                    resultStatus = (actionType === 'UPDATE') ? SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Updated" : SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Created";
 
-                    // Handle retroactive application
-                    if (item['Action: Also apply filter to previous mails']) {
-                        var searchQuery = _GmailFilters_buildSearchQuery(filterResource.criteria);
-                        _GmailFilters_applyToExistingMessages(searchQuery, filterResource.action.addLabelIds || [], filterResource.action.removeLabelIds || []);
-                        resultStatus += " (+ Applied to existing)";
-                    }
+                // Handle retroactive application
+                if (item['Action: Also apply filter to previous mails']) {
+                    var searchQuery = _GmailFilters_buildSearchQuery(filterResource.criteria);
+                    _GmailFilters_applyToExistingMessages(searchQuery, filterResource.action.addLabelIds || [], filterResource.action.removeLabelIds || []);
+                    resultStatus += " (+ Applied to existing)";
                 }
-
-            } catch (e) {
-                Logger.error('GMAIL_FILTERS', 'Row ' + item._rowNumber, e.message);
-                return { action: actionType, status: "❌ " + e.message, _rowNumber: item._rowNumber };
             }
 
             return {
@@ -194,13 +188,24 @@ function GmailFilters_processAction() {
             };
         }, {
             onBatchComplete: function (batchResults) {
-                var rowNumbers = batchResults.map(r => r._rowNumber);
-                var patchData = batchResults.map(r => {
-                    var patch = { 'Action': r.action, 'Status': r.status };
-                    if (r['Filter ID']) patch['Filter ID'] = r['Filter ID'];
-                    return patch;
+                var rowNumbers = [];
+                var patchData = [];
+                var prefixes = SHEET_THEME.STATUS_PREFIXES;
+                batchResults.forEach(function (r) {
+                    if (r && r._rowNumber !== undefined) {
+                        rowNumbers.push(r._rowNumber);
+                        if (r.isError) {
+                            patchData.push({ 'Status': prefixes.ERROR + r.error });
+                        } else {
+                            var patch = { 'Action': r.action, 'Status': r.status };
+                            if (r['Filter ID']) patch['Filter ID'] = r['Filter ID'];
+                            patchData.push(patch);
+                        }
+                    }
                 });
-                SheetManager.batchPatchRows('GMAIL_FILTERS', rowNumbers, patchData);
+                if (rowNumbers.length > 0) {
+                    SheetManager.batchPatchRows('GMAIL_FILTERS', rowNumbers, patchData);
+                }
             }
         });
 

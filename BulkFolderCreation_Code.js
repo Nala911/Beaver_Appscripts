@@ -19,6 +19,7 @@ SyncEngine.registerTool('BULK_FOLDER', {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [
             { header: 'Action', type: 'ACTION', options: ['Create'] },
+            { header: 'Status', type: 'STATUS' },
             { header: 'Level 1', type: 'TEXT' },
             { header: 'Level 2', type: 'TEXT' },
             { header: 'Level 3', type: 'TEXT' }
@@ -188,17 +189,21 @@ function BulkFolderCreation_runBulkCreationSequence(targetFolderId) {
 
         _BulkFolderCreation_createFolderPath(targetFolderId, folderNames, folderCache);
 
-        Logger.success(SyncEngine.getTool('BULK_FOLDER').TITLE, 'Row ' + rowNum, '✅ Created: ' + folderNames.join('/'));
-        return { _rowNumber: rowNum };
+        return { _rowNumber: rowNum, status: SHEET_THEME.STATUS_PREFIXES.SUCCESS + 'Created: ' + folderNames.join('/') };
 
       }, {
         onBatchComplete: function (results) {
           var rowNumbers = [];
           var updates = [];
+          var prefixes = SHEET_THEME.STATUS_PREFIXES;
           results.forEach(function (res) {
             if (res && res._rowNumber) {
               rowNumbers.push(res._rowNumber);
-              updates.push({ 'Action': '' });
+              if (res.isError) {
+                updates.push({ 'Status': prefixes.ERROR + res.error });
+              } else {
+                updates.push({ 'Action': '', 'Status': res.status });
+              }
             }
           });
           if (rowNumbers.length > 0) {

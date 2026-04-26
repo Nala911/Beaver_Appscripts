@@ -69,7 +69,6 @@ function _App_callWithBackoff(func, retries) {
             );
             if (isRetriable && n < maxRetries) {
                 var waitMs = (Math.pow(2, n) * 1000) + Math.round(Math.random() * 1000);
-                console.warn('[_App_callWithBackoff] Retry ' + (n + 1) + '/' + maxRetries + ' in ' + waitMs + 'ms — ' + e.message);
                 Utilities.sleep(waitMs);
             } else {
                 throw e;
@@ -166,15 +165,19 @@ function _App_BatchProcessor(toolKey, items, processFn, options) {
                 stats.processedCount++;
             } catch (err) {
                 stats.errorCount++;
-                Logger.error(toolKey, "Item Index " + (item.originalIndex !== undefined ? item.originalIndex : globalIndex), err);
                 
                 if (opts.stopOnFailure) {
                     _App_clearProgress(toolKey);
                     throw err;
                 }
-                // Push null or error info to keep results array aligned if needed
-                segmentResults.push({ error: err.message });
-                stats.results.push({ error: err.message });
+                
+                // Return an error object to the tool so it can write to the Status column
+                var errObj = { isError: true, error: err.message };
+                if (item && item._rowNumber !== undefined) {
+                    errObj._rowNumber = item._rowNumber;
+                }
+                segmentResults.push(errObj);
+                stats.results.push(errObj);
             }
 
             // Optional: Frequent progress updates for UI responsiveness

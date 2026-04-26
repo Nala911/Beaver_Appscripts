@@ -317,9 +317,8 @@
                     SyncSidebar.showToast(res.message, !res.success);
                 },
                 onError: function(err) {
-                    SyncSidebar.toggleLoading(false);
+                    SyncSidebar.handleError(err, { context: 'Pull Filters', resetLoading: true });
                     setStatus('error');
-                    SyncSidebar.showToast(err.message || 'Pull failed', true);
                 }
             });
         }
@@ -339,9 +338,8 @@
                     SyncSidebar.showToast(res.message, !res.success);
                 },
                 onError: function(err) {
-                    SyncSidebar.toggleLoading(false);
+                    SyncSidebar.handleError(err, { context: 'Push Actions', resetLoading: true });
                     setStatus('error');
-                    SyncSidebar.showToast(err.message || 'Push failed', true);
                 }
             });
         }
