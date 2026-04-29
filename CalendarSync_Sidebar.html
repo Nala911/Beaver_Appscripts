@@ -304,7 +304,7 @@
           </div>
         </div>
 
-        <button class="btn btn-primary" onclick="runPull()">
+        <button class="btn btn-primary btn-pull" onclick="runPull()">
           <span class="material-icons-outlined">cloud_download</span>
           Pull Events
         </button>
@@ -317,7 +317,7 @@
         <span class="material-icons-outlined">sync</span> Sync Actions
       </div>
       <div class="card">
-        <button class="btn btn-success" onclick="runPush()">
+        <button class="btn btn-success btn-push" onclick="runPush()">
           <span class="material-icons-outlined">cloud_upload</span>
           Push Changes
         </button>
@@ -337,14 +337,19 @@
     }
 
     window.onload = function () {
-      const today = new Date();
-      const past = new Date(); past.setMonth(today.getMonth() - 1);
-      const future = new Date(); future.setMonth(today.getMonth() + 3);
+      SyncSidebar.initSidebar({
+        createIcons: false,
+        onLoad: function () {
+          const today = new Date();
+          const past = new Date(); past.setMonth(today.getMonth() - 1);
+          const future = new Date(); future.setMonth(today.getMonth() + 3);
 
-      document.getElementById('startDate').value = formatLocalDate(past);
-      document.getElementById('endDate').value = formatLocalDate(future);
+          document.getElementById('startDate').value = formatLocalDate(past);
+          document.getElementById('endDate').value = formatLocalDate(future);
 
-      loadData();
+          loadData();
+        }
+      });
     };
 
     function loadData() {
@@ -360,42 +365,41 @@
       if (data.savedEndDate) document.getElementById('endDate').value = data.savedEndDate.substring(0, 10);
     }
 
+    function getPullArgs() {
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+      return { startDate, endDate };
+    }
+
+    function validateDates() {
+      const args = getPullArgs();
+      if (!args.startDate || !args.endDate) {
+        SyncSidebar.showToast('Select dates', true);
+        return false;
+      }
+      return true;
+    }
+
     function runPull() {
-      SyncSidebar.run('CalendarSync_checkForUnsavedChanges', [], {
-        unwrap: false,
-        context: 'Check Changes',
-        onSuccess: hasChanges => {
-          if (hasChanges) {
-            SyncSidebar.showConfirmDialog("⚠️ WARNING: Unsaved changes detected in the 'Action' column.\n\nRunning 'Pull' will overwrite these changes and they will be LOST.\n\nDo you want to continue?", function() {
-              executePull();
-            });
-          } else {
-            executePull();
-          }
+      SyncSidebar.runPullAction({
+        unsavedCheckMethod: 'CalendarSync_checkForUnsavedChanges',
+        action: {
+          method: 'CalendarSync_pullEvents',
+          args: [getPullArgs()],
+          context: 'Pull Events',
+          loadingText: 'Importing…',
+          beforeRun: validateDates
         }
       });
     }
 
-    function executePull() {
-      const startDate = document.getElementById('startDate').value;
-      const endDate = document.getElementById('endDate').value;
-
-      if (!startDate || !endDate) return SyncSidebar.showToast("Select dates", true);
-
-      SyncSidebar.toggleLoading(true, "Importing…");
-      SyncSidebar.run('CalendarSync_pullEvents', [{ startDate, endDate }], {
-        context: 'Pull Events',
-        onSuccess: res => { SyncSidebar.toggleLoading(false); SyncSidebar.showToast(res.message, false); },
-        onError: () => { SyncSidebar.toggleLoading(false); }
-      });
-    }
-
     function runPush() {
-      SyncSidebar.toggleLoading(true, "Syncing…");
-      SyncSidebar.run('CalendarSync_pushChanges', [], {
-        context: 'Push Changes',
-        onSuccess: res => { SyncSidebar.toggleLoading(false); SyncSidebar.showToast(res.message, false); },
-        onError: () => { SyncSidebar.toggleLoading(false); }
+      SyncSidebar.runPushAction({
+        action: {
+          method: 'CalendarSync_pushChanges',
+          context: 'Push Changes',
+          loadingText: 'Syncing…'
+        }
       });
     }
   </script>

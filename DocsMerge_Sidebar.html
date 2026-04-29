@@ -572,14 +572,109 @@
 
         // ── Init ──
         window.onload = function () {
-            lucide.createIcons();
-            log("Booting system... Dashboard ready.", "success");
-            loadConfig();
+            SyncSidebar.initSidebar({
+                onLoad: function () {
+                    log("Booting system... Dashboard ready.", "success");
+                    loadConfig();
+                }
+            });
         };
 
         let currentMode = 'INDIVIDUAL';
         let searchTimeout = null;
         let searchDocTimeout = null;
+
+        function getSearchConfig(kind) {
+            return kind === 'folder' ? {
+                queryInputId: 'folder-query',
+                hiddenUrlInputId: 'folder-url',
+                resultsBoxId: 'folder-results',
+                selectedDisplayId: 'selected-folder-display',
+                searchMethod: 'DocsMerge_searchFolders',
+                resultKey: 'results',
+                resultIcon: 'folder',
+                emptyText: 'No folders found',
+                searchingText: 'Searching...',
+                errorText: 'Search failed',
+                selectedPlaceholder: 'Search again to change folder...'
+            } : {
+                queryInputId: 'doc-query',
+                hiddenUrlInputId: 'template-url',
+                resultsBoxId: 'doc-results',
+                selectedDisplayId: 'selected-doc-display',
+                searchMethod: 'DocsMerge_searchDocs',
+                resultKey: 'results',
+                resultIcon: 'file-text',
+                emptyText: 'No documents found',
+                searchingText: 'Searching...',
+                errorText: 'Search failed',
+                selectedPlaceholder: 'Search again to change doc...'
+            };
+        }
+
+        function resetSearchSelection(config) {
+            document.getElementById(config.hiddenUrlInputId).value = "";
+            document.getElementById(config.queryInputId).classList.remove('input-has-selection');
+            document.getElementById(config.selectedDisplayId).style.display = 'none';
+        }
+
+        function toggleSearchResults(config, show) {
+            document.getElementById(config.resultsBoxId).classList.toggle('active', show);
+        }
+
+        function renderSearchState(config, html) {
+            var resultsBox = document.getElementById(config.resultsBoxId);
+            resultsBox.innerHTML = html;
+            toggleSearchResults(config, true);
+        }
+
+        function applySelectedItem(config, item) {
+            document.getElementById(config.hiddenUrlInputId).value = item.url;
+            document.getElementById(config.queryInputId).value = "";
+            document.getElementById(config.queryInputId).placeholder = config.selectedPlaceholder;
+            document.getElementById(config.queryInputId).classList.add('input-has-selection');
+            toggleSearchResults(config, false);
+
+            var display = document.getElementById(config.selectedDisplayId);
+            display.style.display = 'flex';
+            display.querySelector('span').innerText = item.name;
+            lucide.createIcons();
+        }
+
+        function renderSearchResults(config, results) {
+            var resultsBox = document.getElementById(config.resultsBoxId);
+            resultsBox.innerHTML = '';
+
+            if (!results || results.length === 0) {
+                resultsBox.innerHTML = '<div class="folder-item">' + config.emptyText + '</div>';
+                return;
+            }
+
+            results.forEach(function (item) {
+                var div = document.createElement('div');
+                div.className = 'folder-item';
+                div.innerHTML = '<i data-lucide="' + config.resultIcon + '" style="width:14px;height:14px;"></i> ' + item.name;
+                div.onclick = function () {
+                    applySelectedItem(config, item);
+                };
+                resultsBox.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        function runSearch(config, query) {
+            renderSearchState(config, '<div class="folder-item">' + config.searchingText + '</div>');
+
+            SyncSidebar.run(config.searchMethod, [query], {
+                onSuccess: function (data) {
+                    renderSearchResults(config, data[config.resultKey]);
+                },
+                onError: function () {
+                    renderSearchState(config, '<div class="folder-item" style="color:var(--danger)">' + config.errorText + '</div>');
+                },
+                toast: false
+            });
+        }
 
         function loadConfig() {
             setStatus('working', 'Loading settings...');
@@ -628,145 +723,55 @@
         // ── Folder Search ──
         function debounceSearch() {
             clearTimeout(searchTimeout);
-            var query = document.getElementById('folder-query').value.trim();
-            var resultsBox = document.getElementById('folder-results');
+            var config = getSearchConfig('folder');
+            var query = document.getElementById(config.queryInputId).value.trim();
 
-            // Remove selection styling on user typing
-            document.getElementById('folder-url').value = "";
-            document.getElementById('folder-query').classList.remove('input-has-selection');
-            document.getElementById('selected-folder-display').style.display = 'none';
+            resetSearchSelection(config);
 
             if (query.length < 2) {
-                resultsBox.classList.remove('active');
+                toggleSearchResults(config, false);
                 return;
             }
 
             searchTimeout = setTimeout(function () {
-                resultsBox.innerHTML = '<div class="folder-item">Searching...</div>';
-                resultsBox.classList.add('active');
-
-                SyncSidebar.run('DocsMerge_searchFolders', [query], {
-                    onSuccess: function (data) {
-                        showSearchResults(data.results);
-                    },
-                    onError: function () {
-                        resultsBox.innerHTML = '<div class="folder-item" style="color:var(--danger)">Search failed</div>';
-                    },
-                    toast: false
-                });
+                runSearch(config, query);
             }, 600);
         }
 
-        function showSearchResults(results) {
-            var resultsBox = document.getElementById('folder-results');
-            resultsBox.innerHTML = '';
-
-            if (!results || results.length === 0) {
-                resultsBox.innerHTML = '<div class="folder-item">No folders found</div>';
-                return;
-            }
-
-            results.forEach(function (folder) {
-                var div = document.createElement('div');
-                div.className = 'folder-item';
-                div.innerHTML = '<i data-lucide="folder" style="width:14px;height:14px;"></i> ' + folder.name;
-                div.onclick = function () {
-                    selectFolder(folder);
-                };
-                resultsBox.appendChild(div);
-            });
-            lucide.createIcons();
-        }
-
         function selectFolder(folder) {
-            document.getElementById('folder-url').value = folder.url;
-            document.getElementById('folder-query').value = "";
-            document.getElementById('folder-query').placeholder = "Search again to change folder...";
-            document.getElementById('folder-query').classList.add('input-has-selection');
-            document.getElementById('folder-results').classList.remove('active');
-
-            var display = document.getElementById('selected-folder-display');
-            display.style.display = 'flex';
-            display.querySelector('span').innerText = folder.name;
-            lucide.createIcons();
+            applySelectedItem(getSearchConfig('folder'), folder);
         }
 
         // Hide results when clicking outside
         document.addEventListener('click', function (e) {
-            if (!e.target.closest('#folder-results') && !e.target.closest('#folder-query')) {
-                var resultsBox = document.getElementById('folder-results');
-                if (resultsBox) resultsBox.classList.remove('active');
-            }
-            if (!e.target.closest('#doc-results') && !e.target.closest('#doc-query')) {
-                var docBox = document.getElementById('doc-results');
-                if (docBox) docBox.classList.remove('active');
-            }
+            ['folder', 'doc'].forEach(function (kind) {
+                var config = getSearchConfig(kind);
+                if (!e.target.closest('#' + config.resultsBoxId) && !e.target.closest('#' + config.queryInputId)) {
+                    toggleSearchResults(config, false);
+                }
+            });
         });
 
         // ── Template Doc Search ──
         function debounceSearchDoc() {
             clearTimeout(searchDocTimeout);
-            var query = document.getElementById('doc-query').value.trim();
-            var resultsBox = document.getElementById('doc-results');
+            var config = getSearchConfig('doc');
+            var query = document.getElementById(config.queryInputId).value.trim();
 
-            // Remove selection styling on user typing
-            document.getElementById('template-url').value = "";
-            document.getElementById('doc-query').classList.remove('input-has-selection');
-            document.getElementById('selected-doc-display').style.display = 'none';
+            resetSearchSelection(config);
 
             if (query.length < 2) {
-                resultsBox.classList.remove('active');
+                toggleSearchResults(config, false);
                 return;
             }
 
             searchDocTimeout = setTimeout(function () {
-                resultsBox.innerHTML = '<div class="folder-item">Searching...</div>';
-                resultsBox.classList.add('active');
-
-                SyncSidebar.run('DocsMerge_searchDocs', [query], {
-                    onSuccess: function (data) {
-                        showSearchDocResults(data.results);
-                    },
-                    onError: function () {
-                        resultsBox.innerHTML = '<div class="folder-item" style="color:var(--danger)">Search failed</div>';
-                    },
-                    toast: false
-                });
+                runSearch(config, query);
             }, 600);
         }
 
-        function showSearchDocResults(results) {
-            var resultsBox = document.getElementById('doc-results');
-            resultsBox.innerHTML = '';
-
-            if (!results || results.length === 0) {
-                resultsBox.innerHTML = '<div class="folder-item">No documents found</div>';
-                return;
-            }
-
-            results.forEach(function (doc) {
-                var div = document.createElement('div');
-                div.className = 'folder-item';
-                div.innerHTML = '<i data-lucide="file-text" style="width:14px;height:14px;"></i> ' + doc.name;
-                div.onclick = function () {
-                    selectDoc(doc);
-                };
-                resultsBox.appendChild(div);
-            });
-            lucide.createIcons();
-        }
-
         function selectDoc(doc) {
-            document.getElementById('template-url').value = doc.url;
-            document.getElementById('doc-query').value = "";
-            document.getElementById('doc-query').placeholder = "Search again to change doc...";
-            document.getElementById('doc-query').classList.add('input-has-selection');
-            document.getElementById('doc-results').classList.remove('active');
-
-            var display = document.getElementById('selected-doc-display');
-            display.style.display = 'flex';
-            display.querySelector('span').innerText = doc.name;
-            lucide.createIcons();
+            applySelectedItem(getSearchConfig('doc'), doc);
         }
 
         function syncPlaceholders() {
@@ -778,12 +783,19 @@
             setStatus('working', 'Syncing columns...');
             log('Syncing placeholder columns from template...');
 
-            SyncSidebar.run('DocsMerge_syncPlaceholders', [url], {
-                onSuccess: function (res) {
-                    setStatus('ready');
-                    log(res.message, "success");
-                },
-                toast: false
+            SyncSidebar.runPullAction({
+                action: {
+                    method: 'DocsMerge_syncPlaceholders',
+                    args: [url],
+                    loadingText: 'Syncing placeholders...',
+                    showSuccessToast: false,
+                    toast: false,
+                    onSuccess: function (res) {
+                        setStatus('ready');
+                        log(res.message, "success");
+                    },
+                    onError: handleError
+                }
             });
         }
 
@@ -819,36 +831,36 @@
         }
 
         function executeBatch(config, startIndex) {
-            SyncSidebar.run('DocsMerge_executeBatch', [config, startIndex], {
-                onSuccess: function (res) {
-                    if (res.completed) {
-                        setStatus('ready');
-                        log("Batch complete! Processed: " + res.processed, "success");
-                    } else {
-                        log("Processed batch. " + res.remainingPending + " rows remaining. Resuming...", "success");
-                        executeBatch(config, res.nextIndex);
+            SyncSidebar.runPushAction({
+                action: {
+                    method: 'DocsMerge_executeBatch',
+                    args: [config, startIndex],
+                    loadingText: 'Generating documents...',
+                    showSuccessToast: false,
+                    toast: false,
+                    onSuccess: function (res) {
+                        if (res.completed) {
+                            setStatus('ready');
+                            log("Batch complete! Processed: " + res.processed, "success");
+                        } else {
+                            log("Processed batch. " + res.remainingPending + " rows remaining. Resuming...", "success");
+                            executeBatch(config, res.nextIndex);
+                        }
+                    },
+                    onError: function (err) {
+                        log("Batch halted due to error: " + err, "error");
+                        setStatus('error');
                     }
-                },
-                onError: function (err) {
-                    log("Batch halted due to error: " + err, "error");
-                    setStatus('error');
-                },
-                toast: false
+                }
             });
         }
 
         // ── Helpers ──
         function setStatus(state, workingText = 'Working...') {
-            var badge = document.getElementById('statusBadge');
-            badge.className = 'status-badge ' + state;
-
-            if (state === 'working') {
-                badge.innerHTML = '<div class="loader" style="width:10px;height:10px;border-width:1.5px;"></div> ' + workingText;
-            } else if (state === 'error') {
-                badge.innerHTML = 'Error';
-            } else {
-                badge.innerHTML = 'Ready';
-            }
+            SyncSidebar.setStatusBadge('statusBadge', state, {
+                workingText: workingText,
+                spinnerHtml: '<div class="loader" style="width:10px;height:10px;border-width:1.5px;"></div>'
+            });
         }
 
         function log(msg, type) {

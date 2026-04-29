@@ -342,7 +342,7 @@
         <i data-lucide="rocket" style="width:13px;"></i> Actions
         <i data-lucide="help-circle" class="help-trigger" data-help-target="help-actions" style="width:13px; margin-left: auto;"></i>
       </div>
-      <div class="card">
+      <div class="card sync-sidebar-action-stack">
         <button class="btn btn-push" id="btn-run" onclick="runExecuteActions()">
           <i data-lucide="send" style="width:15px;"></i> Send Custom Mail
         </button>
@@ -425,8 +425,9 @@
 
     // ── Init ──
     window.onload = function () {
-      lucide.createIcons();
-      refreshData();
+      SyncSidebar.initSidebar({
+        onLoad: refreshData
+      });
     };
 
     function refreshData() {
@@ -436,22 +437,13 @@
           updateQuota(res.remaining);
         },
         onError: function() {
-          const el = document.getElementById('quota-display');
-          el.innerText = "Error";
-          el.classList.remove('loading');
+          SyncSidebar.markQuotaError('quota-display');
         }
       });
     }
 
     function updateQuota(amount) {
-      const el = document.getElementById('quota-display');
-      el.innerText = amount || "0";
-      el.classList.remove('loading');
-      if (amount < 20) {
-        el.classList.add('danger');
-      } else {
-        el.classList.remove('danger');
-      }
+      SyncSidebar.updateQuotaDisplay('quota-display', amount, { emptyText: '0' });
     }
 
     // ── Run Main Action ──
@@ -459,17 +451,22 @@
       SyncSidebar.showConfirmDialog("Execute all 'SEND' and 'DRAFT' actions in the sheet using the provided Custom Subjects and Bodies?", function() {
         setStatus('working', 'Initializing...');
 
-        SyncSidebar.run('MailSender_executeActions', [], {
-          context: 'Execute Actions',
-          onSuccess: function (res) {
-            if (pollInterval) clearInterval(pollInterval);
-            setStatus('ready');
-            SyncSidebar.showToast(res.message || "Actions completed!");
-            refreshData();
-          },
-          onError: function(err) {
-            if (pollInterval) clearInterval(pollInterval);
-            handleError(err);
+        SyncSidebar.runPushAction({
+          action: {
+            method: 'MailSender_executeActions',
+            context: 'Execute Actions',
+            loadingText: 'Executing mail actions...',
+            showSuccessToast: false,
+            onSuccess: function (res) {
+              if (pollInterval) clearInterval(pollInterval);
+              setStatus('ready');
+              SyncSidebar.showToast(res.message || "Actions completed!");
+              refreshData();
+            },
+            onError: function(err) {
+              if (pollInterval) clearInterval(pollInterval);
+              handleError(err);
+            }
           }
         });
 
@@ -496,16 +493,10 @@
 
     // ── Helpers ──
     function setStatus(state, workingText = 'Working...') {
-      var badge = document.getElementById('statusBadge');
-      badge.className = 'status-badge ' + state;
-
-      if (state === 'working') {
-        badge.innerHTML = '<div class="loader" style="width:10px;height:10px;border-width:1.5px;"></div> ' + workingText;
-      } else if (state === 'error') {
-        badge.innerText = 'Error';
-      } else {
-        badge.innerText = 'Ready';
-      }
+      SyncSidebar.setStatusBadge('statusBadge', state, {
+        workingText: workingText,
+        spinnerHtml: '<div class="loader" style="width:10px;height:10px;border-width:1.5px;"></div>'
+      });
     }
 
     function handleError(err) {

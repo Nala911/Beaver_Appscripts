@@ -252,11 +252,11 @@
             <div class="section-label">
                 <span class="material-icons-outlined">sync</span> Sync Actions
             </div>
-            <div class="card" style="display:flex; gap:10px;">
-                <button class="btn btn-primary" onclick="pullData()" style="flex:1;">
+            <div class="card sync-sidebar-action-grid">
+                <button class="btn btn-primary btn-pull" onclick="pullData()" style="flex:1;">
                     <span class="material-icons-outlined">cloud_download</span> Pull
                 </button>
-                <button class="btn btn-success" onclick="pushData()" style="flex:1;">
+                <button class="btn btn-success btn-push" onclick="pushData()" style="flex:1;">
                     <span class="material-icons-outlined">cloud_upload</span> Push
                 </button>
             </div>
@@ -268,31 +268,20 @@
     <script>
         // --- INITIALIZATION ---
         window.onload = function () {
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-            
-            // Check for unsaved changes (Action column has data)
-            SyncSidebar.run('ContactsSync_checkForUnsavedChanges', [], {
-                context: 'Check Unsaved',
-                onSuccess: function (res) {
-                    if (res.data === true) {
-                        SyncSidebar.showToast('Unsaved changes detected. Push to sync.', false);
-                    }
-                }
-            });
+            SyncSidebar.initSidebar({});
         };
 
         // --- PULL LOGIC ---
 
         function pullData() {
-            SyncSidebar.toggleLoading(true, 'Pulling contacts…');
-            SyncSidebar.run('ContactsSync_pullContacts', [{ groupIds: ['all'] }], {
-                context: 'Pull Contacts',
-                onSuccess: function (res) {
-                    SyncSidebar.toggleLoading(false);
-                    SyncSidebar.showToast(res.message);
-                },
-                onError: function () { 
-                    SyncSidebar.toggleLoading(false); 
+            SyncSidebar.runPullAction({
+                unsavedCheckMethod: 'ContactsSync_checkForUnsavedChanges',
+                unsavedContext: 'Check Unsaved',
+                action: {
+                    method: 'ContactsSync_pullContacts',
+                    args: [{ groupIds: ['all'] }],
+                    context: 'Pull Contacts',
+                    loadingText: 'Pulling contacts…'
                 }
             });
         }
@@ -300,13 +289,17 @@
         // --- PUSH LOGIC ---
 
         function pushData() {
-            SyncSidebar.confirmAndRun('ContactsSync_getMissingGroups', [], 'ContactsSync_pushChanges', [], {
-                checkText: 'Checking groups...',
-                runText: 'Pushing changes...',
-                confirmPrefix: 'The following new contact groups will be created:\n\n',
-                runContext: 'Push Changes',
-                onSuccess: function (res) {
-                    SyncSidebar.showToast(res.message);
+            SyncSidebar.runPushAction({
+                checkMethod: 'ContactsSync_getMissingGroups',
+                runMethod: 'ContactsSync_pushChanges',
+                confirmOptions: {
+                    checkText: 'Checking groups...',
+                    runText: 'Pushing changes...',
+                    confirmPrefix: 'The following new contact groups will be created:\n\n',
+                    runContext: 'Push Changes',
+                    onSuccess: function (res) {
+                        SyncSidebar.showToast(res.message);
+                    }
                 }
             });
         }

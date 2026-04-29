@@ -301,61 +301,58 @@
     <script>
         // ── Init ──
         window.onload = function () {
-            lucide.createIcons();
+            SyncSidebar.initSidebar({});
         };
 
         function runPull() {
             setStatus('working');
-            SyncSidebar.toggleLoading(true, 'Pulling filters from Gmail...');
-
-            SyncSidebar.run('GmailFilters_pullFilters', [], {
-                context: 'Pull Filters',
-                unwrap: false,
-                onSuccess: function(res) {
-                    SyncSidebar.toggleLoading(false);
-                    setStatus(res.success ? 'ready' : 'error');
-                    SyncSidebar.showToast(res.message, !res.success);
-                },
-                onError: function(err) {
-                    SyncSidebar.handleError(err, { context: 'Pull Filters', resetLoading: true });
-                    setStatus('error');
+            SyncSidebar.runPullAction({
+                action: {
+                    method: 'GmailFilters_pullFilters',
+                    context: 'Pull Filters',
+                    unwrap: false,
+                    loadingText: 'Pulling filters from Gmail...',
+                    showSuccessToast: false,
+                    onSuccess: function(res) {
+                        setStatus(res.success ? 'ready' : 'error');
+                        SyncSidebar.showToast(res.message, !res.success);
+                    },
+                    onError: function(err) {
+                        SyncSidebar.handleError(err, { context: 'Pull Filters', resetLoading: true });
+                        setStatus('error');
+                    }
                 }
             });
         }
 
         function runPush() {
             setStatus('working');
-            SyncSidebar.toggleLoading(true, 'Checking filters and labels...');
-
-            SyncSidebar.confirmAndRun('GmailFilters_getMissingLabels', [], 'GmailFilters_processAction', [], {
-                checkText: 'Checking labels...',
-                runText: 'Pushing changes...',
-                confirmPrefix: 'The following new labels will be created in Gmail:\n\n',
-                runContext: 'Push Actions',
-                onSuccess: function(res) {
-                    SyncSidebar.toggleLoading(false);
-                    setStatus(res.success ? 'ready' : 'error');
-                    SyncSidebar.showToast(res.message, !res.success);
-                },
-                onError: function(err) {
-                    SyncSidebar.handleError(err, { context: 'Push Actions', resetLoading: true });
-                    setStatus('error');
+            SyncSidebar.runPushAction({
+                checkMethod: 'GmailFilters_getMissingLabels',
+                runMethod: 'GmailFilters_processAction',
+                confirmOptions: {
+                    checkText: 'Checking labels...',
+                    runText: 'Pushing changes...',
+                    confirmPrefix: 'The following new labels will be created in Gmail:\n\n',
+                    runContext: 'Push Actions',
+                    onSuccess: function(res) {
+                        SyncSidebar.toggleLoading(false);
+                        setStatus(res.success ? 'ready' : 'error');
+                        SyncSidebar.showToast(res.message, !res.success);
+                    },
+                    onError: function(err) {
+                        SyncSidebar.handleError(err, { context: 'Push Actions', resetLoading: true });
+                        setStatus('error');
+                    }
                 }
             });
         }
 
         // ── Helpers ──
         function setStatus(state) {
-            var badge = document.getElementById('statusBadge');
-            badge.className = 'status-badge ' + state;
-
-            if (state === 'working') {
-                badge.innerText = 'Working';
-            } else if (state === 'error') {
-                badge.innerText = 'Error';
-            } else {
-                badge.innerText = 'Ready';
-            }
+            SyncSidebar.setStatusBadge('statusBadge', state, {
+                workingText: 'Working'
+            });
         }
     </script>
 </body>

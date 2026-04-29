@@ -459,7 +459,7 @@
                     </button>
                 </div>
 
-                <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; padding: 0 4px;">
+                <div class="sync-sidebar-inline-options">
                     <input type="checkbox" id="chkShallow"
                         style="cursor: pointer; accent-color: var(--primary); width: 14px; height: 14px;">
                     <label for="chkShallow"
@@ -486,27 +486,25 @@
         let folderTopology = null;
 
         window.onload = function () {
-            try {
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-            } catch (e) {
-                // Silently skip if icons fail
-            }
+            SyncSidebar.initSidebar({
+                onLoad: function () {
+                    setStatus('working', 'Scanning...');
+                    document.getElementById('folderList').innerHTML = '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px;"><div class="loader" style="width:24px; height:24px; border-width: 3px;"></div><div style="margin-top:12px; color:var(--text); font-weight:600;">Building File System...</div><div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">This may take a minute</div></div>';
 
-            setStatus('working', 'Scanning...');
-            document.getElementById('folderList').innerHTML = '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px;"><div class="loader" style="width:24px; height:24px; border-width: 3px;"></div><div style="margin-top:12px; color:var(--text); font-weight:600;">Building File System...</div><div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">This may take a minute</div></div>';
+                    log("Scanning Google Drive folder hierarchy...");
 
-            log("Scanning Google Drive folder hierarchy...");
-
-            SyncSidebar.run('DriveFileDetails_getFolderHierarchy', [], {
-                context: 'Load Hierarchy',
-                onSuccess: function (data) {
-                    folderTopology = data.topology;
-                    log("File system scan complete.", "success");
-                    setStatus('ready');
-                    loadFolder(null, 'Root');
-                },
-                onError: function(err) {
-                    handleError(err);
+                    SyncSidebar.run('DriveFileDetails_getFolderHierarchy', [], {
+                        context: 'Load Hierarchy',
+                        onSuccess: function (data) {
+                            folderTopology = data.topology;
+                            log("File system scan complete.", "success");
+                            setStatus('ready');
+                            loadFolder(null, 'Root');
+                        },
+                        onError: function(err) {
+                            handleError(err);
+                        }
+                    });
                 }
             });
         };
@@ -515,17 +513,9 @@
             SyncSidebar.showToast(msg, type === 'error', { type: type });
         }
         function setStatus(state, msg) {
-            const badge = document.getElementById('statusBadge');
-
-            badge.className = 'status-badge ' + state;
-
-            if (state === 'working') {
-                badge.innerText = msg || 'Working...';
-            } else if (state === 'error') {
-                badge.innerText = 'Error';
-            } else {
-                badge.innerText = 'Ready';
-            }
+            SyncSidebar.setStatusBadge('statusBadge', state, {
+                workingText: msg || 'Working...'
+            });
         }
 
         function updateNavButtons() {
@@ -632,12 +622,19 @@
 
         function pullData() {
             const isShallow = document.getElementById('chkShallow').checked;
-            SyncSidebar.run('DriveFileDetails_pullFromDrive', [currentFolderId, isShallow], {
-                onSuccess: res => {
-                    log(res, 'success');
-                    setStatus('ready');
-                },
-                onError: handleError
+            setStatus('working', 'Pulling...');
+            SyncSidebar.runPullAction({
+                action: {
+                    method: 'DriveFileDetails_pullFromDrive',
+                    args: [currentFolderId, isShallow],
+                    loadingText: 'Pulling drive details...',
+                    onSuccess: function (res) {
+                        log(res, 'success');
+                        setStatus('ready');
+                    },
+                    onError: handleError,
+                    showSuccessToast: false
+                }
             });
         }
 
@@ -665,13 +662,18 @@
 
         function confirmPush() {
             document.getElementById('deleteModal').classList.remove('open');
-            SyncSidebar.run('DriveFileDetails_runPushSequence', [], {
-                onSuccess: logs => {
-                    logs.forEach(l => log(l));
-                    log("Sync Complete.", 'success');
-                    setStatus('ready');
-                },
-                onError: handleError
+            SyncSidebar.runPushAction({
+                action: {
+                    method: 'DriveFileDetails_runPushSequence',
+                    loadingText: 'Pushing drive changes...',
+                    onSuccess: function (logs) {
+                        logs.forEach(function (l) { log(l); });
+                        log("Sync Complete.", 'success');
+                        setStatus('ready');
+                    },
+                    onError: handleError,
+                    showSuccessToast: false
+                }
             });
         }
 

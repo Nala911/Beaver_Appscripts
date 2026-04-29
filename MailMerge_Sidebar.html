@@ -542,8 +542,9 @@
 
     // ── Init ──
     window.onload = function () {
-      lucide.createIcons();
-      refreshData();
+      SyncSidebar.initSidebar({
+        onLoad: refreshData
+      });
     };
 
     function refreshData() {
@@ -558,22 +559,13 @@
           updateQuota(data.remaining);
         },
         onError: function () {
-          const el = document.getElementById('quota-display');
-          el.innerText = "Error";
-          el.classList.remove('loading');
+          SyncSidebar.markQuotaError('quota-display');
         }
       });
     }
 
     function updateQuota(amount) {
-      const el = document.getElementById('quota-display');
-      el.innerText = amount;
-      el.classList.remove('loading');
-      if (amount < 20) {
-        el.classList.add('danger');
-      } else {
-        el.classList.remove('danger');
-      }
+      SyncSidebar.updateQuotaDisplay('quota-display', amount);
     }
 
     function populateDrafts(drafts) {
@@ -611,12 +603,19 @@
       setStatus('working', 'Syncing columns...');
       log('Syncing placeholder columns...');
 
-      SyncSidebar.run('MailMerge_syncPlaceholders', [draftId], {
-        onSuccess: function (res) {
-          setStatus('ready');
-          log(res.message, "success");
-        },
-        toast: false
+      SyncSidebar.runPullAction({
+        action: {
+          method: 'MailMerge_syncPlaceholders',
+          args: [draftId],
+          loadingText: 'Syncing placeholders...',
+          showSuccessToast: false,
+          toast: false,
+          onSuccess: function (res) {
+            setStatus('ready');
+            log(res.message, "success");
+          },
+          onError: handleError
+        }
       });
     }
 
@@ -632,17 +631,31 @@
           setStatus('working', 'Processing Items...');
           log("Running Mail Merge Engine... Please wait.");
           
-          SyncSidebar.run('MailMerge_executeActions', [draftId, start], {
-            onSuccess: function (response) { showResult(response, draftId); },
-            toast: false
+          SyncSidebar.runPushAction({
+            action: {
+              method: 'MailMerge_executeActions',
+              args: [draftId, start],
+              loadingText: 'Running mail merge...',
+              showSuccessToast: false,
+              toast: false,
+              onSuccess: function (response) { showResult(response, draftId); },
+              onError: handleError
+            }
           });
         });
       } else {
         setStatus('working', 'Processing Items...');
-        
-        SyncSidebar.run('MailMerge_executeActions', [draftId, start], {
-          onSuccess: function (response) { showResult(response, draftId); },
-          toast: false
+
+        SyncSidebar.runPushAction({
+          action: {
+            method: 'MailMerge_executeActions',
+            args: [draftId, start],
+            loadingText: 'Running mail merge...',
+            showSuccessToast: false,
+            toast: false,
+            onSuccess: function (response) { showResult(response, draftId); },
+            onError: handleError
+          }
         });
       }
     }
@@ -674,16 +687,10 @@
 
     // ── Helpers ──
     function setStatus(state, workingText = 'Working...') {
-      var badge = document.getElementById('statusBadge');
-      badge.className = 'status-badge ' + state;
-
-      if (state === 'working') {
-        badge.innerHTML = '<div class="loader" style="width:10px;height:10px;border-width:1.5px;"></div> ' + workingText;
-      } else if (state === 'error') {
-        badge.innerText = 'Error';
-      } else {
-        badge.innerText = 'Ready';
-      }
+      SyncSidebar.setStatusBadge('statusBadge', state, {
+        workingText: workingText,
+        spinnerHtml: '<div class="loader" style="width:10px;height:10px;border-width:1.5px;"></div>'
+      });
     }
 
     function log(msg, type) {

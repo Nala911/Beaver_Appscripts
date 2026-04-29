@@ -253,13 +253,13 @@
         <!-- Pull Section -->
         <div>
             <div class="section-label">
-                <span class="material-icons-outlined">file_download</span> Sync Inward
+                <span class="material-icons-outlined">file_download</span> Sync Actions
             </div>
             <div class="card">
                 <p style="color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
                     Pull form structure into the spreadsheet to edit questions and options.
                 </p>
-                <button class="btn btn-primary" onclick="pullForm()">
+                <button class="btn btn-primary btn-pull" onclick="pullForm()">
                     <span class="material-icons-outlined">download</span> Pull from Form
                 </button>
             </div>
@@ -268,13 +268,13 @@
         <!-- Push Section -->
         <div>
             <div class="section-label">
-                <span class="material-icons-outlined">file_upload</span> Sync Outward
+                <span class="material-icons-outlined">file_upload</span> Sync Actions
             </div>
             <div class="card">
                 <p style="color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
                     Apply changes made in the spreadsheet back to the Google Form.
                 </p>
-                <button class="btn btn-success" onclick="syncToForm()">
+                <button class="btn btn-success btn-push" onclick="syncToForm()">
                     <span class="material-icons-outlined">upload</span> Sync to Form
                 </button>
             </div>
@@ -286,7 +286,10 @@
     <script>
         // --- INITIALIZATION ---
         window.onload = function () {
-            loadForms();
+            SyncSidebar.initSidebar({
+                createIcons: false,
+                onLoad: loadForms
+            });
         };
 
         function loadForms() {
@@ -351,29 +354,22 @@
                 return;
             }
 
-            SyncSidebar.toggleLoading(true, 'Pulling form...');
-            SyncSidebar.run('FormsSync_pullForm', [formId], {
-                context: 'Pull Form',
-                onSuccess: function(res) {
-                    SyncSidebar.toggleLoading(false);
-                    SyncSidebar.showToast(res.message);
-                },
-                onError: function() {
-                    SyncSidebar.toggleLoading(false);
+            SyncSidebar.runPullAction({
+                action: {
+                    method: 'FormsSync_pullForm',
+                    args: [formId],
+                    context: 'Pull Form',
+                    loadingText: 'Pulling form...'
                 }
             });
         }
 
         function syncToForm() {
-            SyncSidebar.toggleLoading(true, 'Syncing to form...');
-            SyncSidebar.run('FormsSync_syncToForm', [], {
-                context: 'Sync to Form',
-                onSuccess: function(res) {
-                    SyncSidebar.toggleLoading(false);
-                    SyncSidebar.showToast(res.message);
-                },
-                onError: function() {
-                    SyncSidebar.toggleLoading(false);
+            SyncSidebar.runPushAction({
+                action: {
+                    method: 'FormsSync_syncToForm',
+                    context: 'Sync to Form',
+                    loadingText: 'Syncing to form...'
                 }
             });
         }

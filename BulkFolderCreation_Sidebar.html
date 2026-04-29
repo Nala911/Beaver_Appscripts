@@ -331,7 +331,12 @@
 
         // --- INITIALIZATION ---
         window.onload = function () {
-            loadExplorer('root');
+            SyncSidebar.initSidebar({
+                createIcons: false,
+                onLoad: function () {
+                    loadExplorer('root');
+                }
+            });
         };
 
         // --- EXPLORER LOGIC ---

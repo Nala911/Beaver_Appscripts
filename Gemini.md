@@ -8,13 +8,13 @@ This project uses **Clasp** (Command Line Apps Script Projects) for local develo
 - **Pull Code:** `clasp pull`
 - **Deploy/Push:** `clasp push`
 - **Open Script Editor:** `clasp open`
-- **Testing:** Since this is a Google Workspace add-on/script, testing is performed by running functions directly from the Apps Script editor or interacting with the "🦫 WorkspaceSync Tools" menu in the associated Google Sheet.
+- **Testing:** Since this is a Google Workspace add-on/script, testing is performed by running functions directly from the Apps Script editor or interacting with the "Workspace Sync Tools" menu in the associated Google Sheet.
 
 ## 🏛️ Ground Rules & Source Of Truth
 
-- Treat `BLUEPRINT.md` as the ultimate architectural map. It contains connection flows and the scope of external APIs.
+- Treat `Blueprint.md` as the ultimate architectural map. It contains connection flows and the scope of external APIs.
 - Treat `00_Config_Constants.js` as the source of truth for global state keys and sheet names.
-- **Do not invent new patterns.** If a tool needs local storage, use the properties registry. If a tool needs to modify the spreadsheet UI, it must use the `_App_` ecosystem.
+- **Do not invent new patterns.** If a tool needs local storage, declare it in `APP_PROPS` and access it through `_App_getProperty` / `_App_setProperty`. If a tool needs to modify the spreadsheet UI, it must use the `_App_` ecosystem.
 - Before adding a new tool, use `CalendarSync_Code.js` and `CalendarSync_Sidebar.html` as your primary architectural benchmark models.
 
 ## ⛔ "Do Not Touch" Core Modules
@@ -23,10 +23,10 @@ The system is split into two halves: the Core Engine and the Tool Modules. Agent
 
 **Core Engine Files (Do Not Modify for Feature Work):**
 - `00_Config_Constants.js` through `09_Engine_UI.js`
-- `01_SheetManager.js`
 - `UI.js`
 - `SidebarShared.html`
-- `Logger.js` and `SystemAudit.js`
+- `Logger.js`
+- `SystemAudit.js`
 
 If you are just editing or adding a feature (like Mail Merge, etc.), stick entirely to your tool's `_Code.js` and `_Sidebar.html` files.
 
@@ -42,9 +42,9 @@ If you are just editing or adding a feature (like Mail Merge, etc.), stick entir
 
 ### 1a. UI Naming Standards (Uniformity)
 To maintain a professional and consistent user experience, the following strings MUST match exactly:
-- **`TITLE`** (in `SyncEngine.registerTool`): Must match `SHEET_NAMES[KEY]` exactly (including emoji).
-- **`MENU_LABEL`** (in `SyncEngine.registerTool`): Must match `SHEET_NAMES[KEY]` exactly (including emoji).
-- **`Blueprint.md` (Bold Tool Name)**: Must match `SHEET_NAMES[KEY]` but without the emoji.
+- **`TITLE`** (in `SyncEngine.registerTool`): Must match the tool's `SHEET_NAME` value exactly (including emoji).
+- **`MENU_LABEL`** (in `SyncEngine.registerTool`): Must match the tool's `SHEET_NAME` value exactly (including emoji).
+- **`Blueprint.md` (Bold Tool Name)**: Must match the tool's `SHEET_NAME` value but without the emoji.
 - **Sidebar Header (`.header-title`)**: Must match the base tool name (without emoji or suffixes like "Toolkit").
 - **Status Column**: Every tool sheet MUST include a `Status` column immediately following the `Action` column. It must be defined in `COL_SCHEMA` as `{ header: 'Status', type: 'STATUS' }`.
 - **Column Categories**: Formatting is strictly schema-driven. The engine assigns categories based on the `type` in `COL_SCHEMA`:
@@ -68,11 +68,12 @@ To ensure user clarity among confusing tools, the following help architecture is
 Every tool backend file must register itself with the engine at the very top of the script using `SyncEngine.registerTool(key, config)`. Do not hardcode columns inside backend logic; rely on the registry's `FORMAT_CONFIG.COL_SCHEMA`.
 
 ### 3. The Logger.run Contract
-Every public function called from a sidebar or the Ribbon UI must use the `Logger.run` execution wrapper to ensure errors are caught and propagated via the return contract. **Direct use of `console.log`, `console.warn`, or `console.error` is strictly prohibited.** System-level errors must be thrown to be caught by the wrapper, while row-level errors must be reported via the `Status` column.
+Every public function called from a sidebar or the Sheets menu must use the `Logger.run` execution wrapper to preserve a consistent execution boundary. **Direct use of `console.log`, `console.warn`, or `console.error` is strictly prohibited.** Expected validation failures should return `_App_fail(...)`; unexpected system-level errors should be thrown so `SyncSidebar` / Apps Script failure handlers can surface them. Row-level errors must be reported via the `Status` column.
+```javascript
 function MyTool_publicFunction() {
     return Logger.run('MY_TOOL', 'Action Context', function() {
         // ... logic
-        return { success: true, message: "Done" };
+        return _App_ok('Done');
     });
 }
 ```
@@ -84,7 +85,7 @@ All tools must implement the dual-layer reporting architecture:
 3. **General Errors**: Any system-wide errors in sidebars must use `SyncSidebar.handleError(err, { severity: 'mild|medium|critical' })` to surface a standardized modal box.
 
 ### 4. Return Contract
-Public functions called by `google.script.run` MUST return an object: `{ success: boolean, message: string }`.
+Public functions called by `google.script.run` MUST return `_App_ok(...)` or `_App_fail(...)` payloads, which serialize as `{ success, message, data, meta }`.
 
 ### 5. Trigger Management
 Background sync tools should manage their own `ScriptApp` triggers. Use an internal `_ToolName_manageTrigger` function called from the setting update handler to ensure triggers are created/removed in sync with user preferences.
@@ -94,13 +95,13 @@ Never use `PropertiesService.getDocumentProperties()` directly in a tool.
 - Define your new key strictly in `APP_PROPS` inside `00_Config_Constants.js`.
 - Use `_App_getProperty` and `_App_setProperty` from `02_Config_Storage.js`.
 
-### 8. Batch Processing & Time Limits
+### 7. Batch Processing & Time Limits
 Row-by-row data processing must use `_App_BatchProcessor` from `03_Core_Utils.js`. This utility handles progress tracking, backoff retries, and protects against the 6-minute script timeout. 
 - **Error Propagation**: The `processFn` should throw errors directly. 
 - **Status Reporting**: Use `SheetManager.batchPatchRows` within the `onBatchComplete` hook to write results (including `res.isError` details) into the `Status` column.
 
 ### 8. The Frontend Wrapper Contract (`SyncSidebar`)
-All client-to-server communication MUST use `SyncSidebar.run()`.
+All client-to-server communication MUST use `SyncSidebar.run()`, which unwraps the standard `{ success, message, data, meta }` payloads and provides consistent toast notifications.
 - **Automatic Locking**: This wrapper automatically locks all sidebar buttons and applies a "grayed-out" style during the call. 
 - **Overlapping Calls**: The engine uses a counter; buttons stay locked until *all* concurrent `SyncSidebar.run` calls complete.
 - **Opting Out**: For silent background tasks (like progress polling), use `SyncSidebar.run(method, args, { lockButtons: false })`.

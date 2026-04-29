@@ -15,38 +15,40 @@ The system logic is split into sequential modules evaluated in order:
 - `00_Config_Constants.js`: Global registries, `SHEET_NAMES`, `APP_PROPS`, and enum structures.
 - `01_Config_Theme.js`: Default theme definitions, colors, and `SHEET_THEME` proxy.
 - `01_SheetManager.js`: Centralized data access object (DAO). Uses `SyncEngine` configurations to map sheet data to JavaScript objects and vice-versa.
-- `02_Config_Storage.js`: Unified properties service wrappers (`setAppProp`, `getAppProp`).
+- `02_Config_Storage.js`: Unified properties service wrappers (`_App_getProperty`, `_App_setProperty`, `_App_deleteProperty`, `_App_getRawProperty`).
 - `03_Core_Utils.js`: Core utilities (`_App_throttle`, `_App_callWithBackoff`, `_App_setProgress`, etc.).
 - `04_Core_Validators.js`: Validation helpers for types and constraints.
 - `05_Core_State.js`: Global application state management.
-- `06_Sheets_Helpers.js`: Low-level spreadsheet operations (`_App_ensureSheetExists`, etc.).
+- `06_Sheets_Helpers.js`: Low-level spreadsheet helpers (`_App_canScaffoldSheet`, `_App_assertActiveSheet`, `_App_validateActiveSheet`).
 - `07_Sheets_Formatting.js`: UI/styling application to sheets (`_App_applyBodyFormatting`).
 - `08_Engine_Core.js`: The `SyncEngine` plugin registration and retrieval system.
-- `09_Engine_UI.js`: UI abstractions for opening sidebars and dialogs.
-- `UI.js`: The central UI orchestrator. Responsible for creating the custom "🦫 WorkspaceSync Tools" menu (`onOpen`), providing the global wrapper for the Settings sidebar, and connecting user actions to the tools.
+- `09_Engine_UI.js`: UI abstractions for opening sidebars/dialogs and scaffolding sheets (`_App_openSidebar`, `_App_launchTool`, `_App_ensureSheetExists`).
+- `UI.js`: The central UI orchestrator. Responsible for creating the custom "Workspace Sync Tools" menu (`onOpen`), providing the global wrapper for the Settings sidebar, and connecting user actions to the tools.
 - `SidebarShared.html`: Shared HTML, CSS, and JS components to eliminate redundant sidebar code and infinite spinners.
-- `Logger.js`: Error boundary and execution wrapper. Provides the `Logger.run` context for catching and reporting system-level failures via return objects. All console-based logging is strictly forbidden.
+- `Logger.js`: Silent execution boundary. Provides `Logger.run` and no-op logging methods; expected failures should return `_App_fail(...)`, while unexpected exceptions are rethrown to the caller. All console-based logging is strictly forbidden.
 - `SystemAudit.js`: Runs comprehensive diagnostic audits across all registered tools, verifying sheet integrity, API access, and schema setup. Outputs results directly to the Settings UI.
 - `appsscript.json` / `.clasp.json`: Google Apps Script configuration and Clasp deployment environment details.
 
 ### Tool Modules & Connections
 Each tool has a Backend file, a Frontend sidebar file, and a global Entry Function triggered by the custom menu in `UI.js`.
 
-| Tool Name | Backend (`.js`) | Frontend (`.html`) | UI Menu Entry Function |
-|---|---|---|---|
-| **Google Calendar** | `CalendarSync_Code.js` | `CalendarSync_Sidebar.html` | `CalendarSync_openSidebar` |
-| **Google Contacts** | `ContactsSync_Code.js` | `ContactsSync_Sidebar.html` | `ContactsSync_openSidebar` |
-| **Mail Merge** | `MailMerge_Code.js` | `MailMerge_Sidebar.html` | `MailMerge_openSidebar` |
-| **Mail Sender** | `MailSender_Code.js` | `MailSender_Sidebar.html` | `MailSender_openSidebar` |
-| **Docs Merge** | `DocsMerge_Code.js` | `DocsMerge_Sidebar.html` | `DocsMerge_openSidebar` |
-| **Google Forms** | `FormsSync_Code.js` | `FormsSync_Sidebar.html` | `FormsSync_openSidebar` |
-| **Bulk Folder Creation** | `BulkFolderCreation_Code.js` | `BulkFolderCreation_Sidebar.html` | `BulkFolderCreation_openSidebar` |
-| **Google Drive** | `DriveFileDetails_Code.js` | `DriveFileDetails_Sidebar.html` | `DriveFileDetails_openSidebar` |
-| **Pipeline** | `PipelineControl_Code.js` | `PipelineControl_Sidebar.html` | `PipelineControl_openSidebar` |
-| **Google Chat Spaces** | `ChatSpaceSync_Code.js` | `ChatSpaceSync_Sidebar.html` | `ChatSpaceSync_openSidebar` |
-| **Gmail Filters** | `GmailFilters_Code.js` | `GmailFilters_Sidebar.html` | `GmailFilters_openSidebar` |
+| Tool Name | Tool Key | Backend (`.js`) | Frontend (`.html`) | UI Menu Entry Function |
+|---|---|---|---|---|
+| **Google Calendar** | `CALENDAR_SYNC` | `CalendarSync_Code.js` | `CalendarSync_Sidebar.html` | `CalendarSync_openSidebar` |
+| **Google Contacts** | `CONTACTS_SYNC` | `ContactsSync_Code.js` | `ContactsSync_Sidebar.html` | `ContactsSync_openSidebar` |
+| **Mail Merge** | `MAIL_MERGE` | `MailMerge_Code.js` | `MailMerge_Sidebar.html` | `MailMerge_openSidebar` |
+| **Mail Sender** | `MAIL_SENDER` | `MailSender_Code.js` | `MailSender_Sidebar.html` | `MailSender_openSidebar` |
+| **Docs Merge** | `DOCS_MERGE` | `DocsMerge_Code.js` | `DocsMerge_Sidebar.html` | `DocsMerge_openSidebar` |
+| **Google Forms** | `FORMS_SYNC` | `FormsSync_Code.js` | `FormsSync_Sidebar.html` | `FormsSync_openSidebar` |
+| **Bulk Folder Creation** | `BULK_FOLDER` | `BulkFolderCreation_Code.js` | `BulkFolderCreation_Sidebar.html` | `BulkFolderCreation_openSidebar` |
+| **Google Drive** | `DRIVE_SYNC` | `DriveFileDetails_Code.js` | `DriveFileDetails_Sidebar.html` | `DriveFileDetails_openSidebar` |
+| **Pipeline** | `PIPELINE` | `PipelineControl_Code.js` | `PipelineControl_Sidebar.html` | `PipelineControl_openSidebar` |
+| **Google Chat Spaces** | `CHAT_SYNC` | `ChatSpaceSync_Code.js` | `ChatSpaceSync_Sidebar.html` | `ChatSpaceSync_openSidebar` |
+| **Gmail Filters** | `GMAIL_FILTERS` | `GmailFilters_Code.js` | `GmailFilters_Sidebar.html` | `GmailFilters_openSidebar` |
+| **Settings** | N/A | (Inside `UI.js`) | `Settings_Sidebar.html` | `UI_openSettingsDialog` |
 
-| **Settings** | (Inside `UI.js`) | `Settings_Sidebar.html` | `UI_openSettingsDialog` |
+> [!NOTE]
+> Every tool backend self-registers with `SyncEngine.registerTool('<KEY>', ...)` at the top of its file. `Settings` is owned directly by `UI.js` and is not a registered tool.
 
 > [!CAUTION]
 > **Large File Warning:** The following files are large (25KB+). Use surgical reads.
@@ -85,12 +87,14 @@ All keys used across the codebase. **Do NOT invent new key names** — check her
 | `DOCS_MERGE_FOLDER_URL` | `DocsMerge_Code.js` | `DocumentProperties` | Saved output folder URL |
 | `DOCS_MERGE_TEMPLATE_NAME` | `DocsMerge_Code.js` | `DocumentProperties` | Cached template file name |
 | `DOCS_MERGE_FOLDER_NAME` | `DocsMerge_Code.js` | `DocumentProperties` | Cached folder name |
+| `DOCS_MERGE_MASTER_DOC_ID` | `DocsMerge_Code.js` | `DocumentProperties` | Cached master document ID used to resume a multi-batch merge |
 | `selectedCalIds` | `CalendarSync_Code.js` | `UserProperties` | JSON array of selected calendar IDs |
 | `startDate` | `CalendarSync_Code.js` | `UserProperties` | Saved start date filter |
 | `endDate` | `CalendarSync_Code.js` | `UserProperties` | Saved end date filter |
 | `selectedContactGroups` | `ContactsSync_Code.js` | `UserProperties` | JSON array of selected contact group IDs |
+| `selectedChatSpaces` | `ChatSpaceSync_Code.js` | `UserProperties` | JSON array of selected chat space IDs |
 | `FORMSSYNC_CURRENT_FORM` | `FormsSync_Code.js` | `DocumentProperties` | Stores currently synced form ID |
-| `FORMS_SELECTED_FORM` | `FormsSync_Code.js` | `UserProperties` | Stores user's selected form ID for sidebar auto-selection |
+| `FORMSSYNC_SELECTED_FORM` | `FormsSync_Code.js` | `UserProperties` | Stores user's selected form ID for sidebar auto-selection; accessed through `APP_PROPS.FORMS_SELECTED_FORM` |
 
 
 ## 🏗️ Architectural Patterns
@@ -121,9 +125,23 @@ function ToolName_openSidebar() {
 Tools that require background execution should manage their own triggers programmatically.
 
 ### 6. Frontend Unified Wrapper (`SyncSidebar`)
-All client-to-server communication must use the `SyncSidebar.run()` wrapper located in `SidebarShared.html`. This utility abstracts `google.script.run`, standardizes loading states, unwraps the `{ success, message, data }` payloads, and provides consistent toast notifications. 
+All client-to-server communication must use the `SyncSidebar.run()` wrapper located in `SidebarShared.html`. This utility abstracts `google.script.run`, standardizes loading states, unwraps the `{ success, message, data, meta }` payloads, and provides consistent toast notifications.
 
 **Global Button Locking**: To prevent double-clicks and provide visual feedback, `SyncSidebar` automatically disables all buttons (`.btn` and `button` tags) and applies a grayed-out style during every server call. It uses an internal lock counter to ensure buttons are only re-enabled when the *last* active call finishes. Direct use of `google.script.run` is prohibited in feature sidebars.
+
+**Action Helpers**: Standard sidebar flows should use the higher-level helpers from `SidebarShared.html`:
+- `SyncSidebar.initSidebar()` for common startup and icon hydration.
+- `SyncSidebar.runPullAction()` for pull/import actions, especially where unsaved sheet changes may be overwritten.
+- `SyncSidebar.runPushAction()` for push/apply actions, including optional preflight confirmation steps.
+- `SyncSidebar.runAction()` for single-action or bespoke operations that still need standardized loading, success, and error behavior.
+
+### 6a. Shared Sidebar Shell
+`SidebarShared.html` also provides the canonical shared shell tokens and utility classes for sidebar composition:
+- Shared semantic action buttons: `btn-pull`, `btn-push`
+- Shared layout primitives: `sync-sidebar-action-grid`, `sync-sidebar-action-stack`, `sync-sidebar-inline-options`
+- Shared shell classes for headers, cards, descriptions, and section labels when a sidebar opts into deeper structural reuse
+
+Sync-oriented sidebars should converge on shared pull/push semantics and reuse these primitives instead of redefining the same action rail patterns locally.
 
 ### 7. Standard Tooltip & Help Architecture
 To maintain high usability without cluttering the UI, the project uses a standardized tooltip system:
@@ -142,12 +160,12 @@ To maintain high usability without cluttering the UI, the project uses a standar
 ## 🔌 Connection Flow (Frontend <-> Backend)
 1. **Trigger**: User clicks menu or sidebar button.
 2. **Launch**: `_App_openSidebar('TOOL_KEY')` handles sheet prep and sidebar rendering.
-3. **Execution**: Sidebar calls `SyncSidebar.run('ToolName_publicFunc')` -> Backend function -> `Logger.run()` for automatic logging/error tracking.
-4. **Response**: Backend returns standardized object via `_App_ok("Success msg", { payload })` or `_App_fail("Error")`.
+3. **Execution**: Sidebar calls `SyncSidebar.run('ToolName_publicFunc')` -> Backend function -> `Logger.run()` for a consistent execution boundary.
+4. **Response**: Backend returns standardized `_App_ok(...)` / `_App_fail(...)` payloads, usually carrying row or sidebar data in `data` and optional metadata in `meta`.
 
 ### 🛠️ Developer Reporting & Error Architecture
 The project employs a silent, user-centric error handling system that prioritizes spreadsheet feedback over background logs:
-- **Silent Backend**: Handled by `Logger.js` which provides a clean `try/catch` wrapper (`Logger.run`) for public entry points. All technical console logging (`info`/`error`) is strictly forbidden to maintain zero noise in the Apps Script execution logs.
+- **Silent Backend**: Handled by `Logger.js`, which provides `Logger.run` for public entry points and no-op logger methods for internal status calls. All technical console logging (`console.log` / `console.warn` / `console.error`) is strictly forbidden to maintain zero noise in the Apps Script execution logs.
 - **System-Wide UI Errors**: Critical system-level failures are surfaced via a copyable modal overlay in the sidebar, providing technical details for support without requiring console access.
 - **Row-Level Feedback**: All granular, data-specific feedback (success or failure) is reported directly in the **Status** column of the tool sheet. The `_App_BatchProcessor` facilitates this by returning structured result objects to the `onBatchComplete` hook. All statuses MUST use the standardized `SHEET_THEME.STATUS_PREFIXES` (✅, ❌, ⚠️).
 

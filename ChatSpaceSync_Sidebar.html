@@ -230,7 +230,7 @@
         <p style="color: var(--text-secondary); margin-bottom: 14px; line-height: 1.5;">
           Fetch all members from every Chat Space you belong to and import them into the sheet.
         </p>
-        <button class="btn btn-primary" onclick="runPull()">
+        <button class="btn btn-primary btn-pull" onclick="runPull()">
           <span class="material-icons-outlined">cloud_download</span>
           Pull All Members
         </button>
@@ -240,10 +240,10 @@
     <!-- Sync Actions -->
     <div>
       <div class="section-label">
-        <span class="material-icons-outlined">sync</span> Sync Changes
+        <span class="material-icons-outlined">sync</span> Sync Actions
       </div>
       <div class="card">
-        <button class="btn btn-success" onclick="runPush()">
+        <button class="btn btn-success btn-push" onclick="runPush()">
           <span class="material-icons-outlined">cloud_upload</span>
           Push Changes
         </button>
@@ -256,49 +256,26 @@
   <script>
     // --- INITIALIZATION ---
     window.onload = function () {
-      if (typeof lucide !== 'undefined') lucide.createIcons();
+      SyncSidebar.initSidebar({});
     };
 
     function runPull() {
-      SyncSidebar.run('ChatSpaceSync_checkForUnsavedChanges', [], {
-        unwrap: false,
-        context: 'Check Changes',
-        onSuccess: function (res) {
-          if (res.data === true) {
-            SyncSidebar.showConfirmDialog("⚠️ WARNING: Unsaved changes detected in the 'Action' column.\n\nRunning 'Pull' will overwrite these changes and they will be LOST.\n\nDo you want to continue?", function() {
-              executePull();
-            });
-          } else {
-            executePull();
-          }
-        }
-      });
-    }
-
-    function executePull() {
-      SyncSidebar.toggleLoading(true, "Importing all members…");
-      SyncSidebar.run('ChatSpaceSync_pullMembers', [], {
-        context: 'Pull Members',
-        onSuccess: function (res) { 
-          SyncSidebar.toggleLoading(false); 
-          SyncSidebar.showToast(res.message); 
-        },
-        onError: function () { 
-          SyncSidebar.toggleLoading(false); 
+      SyncSidebar.runPullAction({
+        unsavedCheckMethod: 'ChatSpaceSync_checkForUnsavedChanges',
+        action: {
+          method: 'ChatSpaceSync_pullMembers',
+          context: 'Pull Members',
+          loadingText: 'Importing all members…'
         }
       });
     }
 
     function runPush() {
-      SyncSidebar.toggleLoading(true, "Syncing changes…");
-      SyncSidebar.run('ChatSpaceSync_pushChanges', [], {
-        context: 'Push Changes',
-        onSuccess: function (res) { 
-          SyncSidebar.toggleLoading(false); 
-          SyncSidebar.showToast(res.message); 
-        },
-        onError: function () { 
-          SyncSidebar.toggleLoading(false); 
+      SyncSidebar.runPushAction({
+        action: {
+          method: 'ChatSpaceSync_pushChanges',
+          context: 'Push Changes',
+          loadingText: 'Syncing changes…'
         }
       });
     }

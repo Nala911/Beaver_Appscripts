@@ -1,4 +1,26 @@
 <style>
+  :root {
+    --sync-sidebar-primary: #6366f1;
+    --sync-sidebar-primary-light: #818cf8;
+    --sync-sidebar-surface: #ffffff;
+    --sync-sidebar-background: #f5f3ff;
+    --sync-sidebar-border: #e2e0f5;
+    --sync-sidebar-border-light: #f0eef9;
+    --sync-sidebar-text: #1e1b4b;
+    --sync-sidebar-text-secondary: #6b7280;
+    --sync-sidebar-success: #10b981;
+    --sync-sidebar-danger: #ef4444;
+    --sync-sidebar-warning: #d97706;
+    --sync-sidebar-info: #2563eb;
+    --sync-sidebar-gradient-pull: var(--gradient-pull, linear-gradient(135deg, #6366f1, #8b5cf6));
+    --sync-sidebar-gradient-push: var(--gradient-push, linear-gradient(135deg, #10b981, #14b8a6));
+    --sync-sidebar-gradient-header: var(--gradient-header, linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899));
+    --sync-sidebar-shadow-sm: 0 1px 3px rgba(99, 102, 241, 0.08);
+    --sync-sidebar-shadow-md: 0 4px 12px rgba(99, 102, 241, 0.10);
+    --sync-sidebar-radius: 12px;
+    --sync-sidebar-radius-sm: 8px;
+  }
+
   .btn:disabled, button:disabled {
     opacity: 0.6 !important;
     pointer-events: none !important;
@@ -143,9 +165,193 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     font-size: 0.9em;
   }
+
+  /* ── Shared Sidebar Shell ── */
+  .sync-sidebar-shell {
+    background: var(--background, var(--sync-sidebar-background));
+    color: var(--text, var(--sync-sidebar-text));
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .sync-sidebar-header {
+    background: var(--surface, var(--sync-sidebar-surface));
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .sync-sidebar-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--sync-sidebar-gradient-header);
+    border-radius: 0 0 2px 2px;
+  }
+  .sync-sidebar-header-icon,
+  .sync-sidebar-header .material-icons-outlined {
+    font-size: 22px;
+    background: var(--sync-sidebar-gradient-pull);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .sync-sidebar-header-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text, var(--sync-sidebar-text));
+    letter-spacing: -0.01em;
+  }
+  .sync-sidebar-container {
+    flex: 1;
+    padding: 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    min-height: 0;
+  }
+  .sync-sidebar-container::-webkit-scrollbar {
+    width: 5px;
+  }
+  .sync-sidebar-container::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.2);
+    border-radius: 10px;
+  }
+  .sync-sidebar-section-label {
+    font-weight: 700;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary, var(--sync-sidebar-text-secondary));
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sync-sidebar-section-label .material-icons-outlined,
+  .sync-sidebar-section-label i {
+    color: var(--primary-light, var(--sync-sidebar-primary-light));
+    font-size: 15px;
+  }
+  .sync-sidebar-card {
+    background: var(--surface, var(--sync-sidebar-surface));
+    border: 1px solid var(--border-light, var(--sync-sidebar-border-light));
+    border-radius: var(--radius, var(--sync-sidebar-radius));
+    box-shadow: var(--shadow-sm, var(--sync-sidebar-shadow-sm));
+    padding: 14px;
+    transition: box-shadow 0.25s ease;
+  }
+  .sync-sidebar-card:hover {
+    box-shadow: var(--shadow-md, var(--sync-sidebar-shadow-md));
+  }
+  .sync-sidebar-description {
+    color: var(--text-secondary, var(--sync-sidebar-text-secondary));
+    margin-bottom: 12px;
+    line-height: 1.45;
+  }
+  .sync-sidebar-action-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .sync-sidebar-action-grid.single {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sync-sidebar-action-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .sync-sidebar-inline-options {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+    padding: 0 4px;
+  }
+  .sync-sidebar-inline-options label {
+    color: var(--text-secondary, var(--sync-sidebar-text-secondary));
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .sync-sidebar-btn {
+    width: 100%;
+    padding: 0;
+    height: 40px;
+    border: none;
+    border-radius: var(--radius-sm, var(--sync-sidebar-radius-sm));
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+    letter-spacing: 0.01em;
+  }
+  .sync-sidebar-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    background: rgba(255, 255, 255, 0.15);
+    transition: opacity 0.2s ease;
+  }
+  .sync-sidebar-btn:hover::before {
+    opacity: 1;
+  }
+  .sync-sidebar-btn-pull,
+  .btn-pull {
+    background: var(--sync-sidebar-gradient-pull);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  }
+  .sync-sidebar-btn-push,
+  .btn-push {
+    background: var(--sync-sidebar-gradient-push);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+  }
+  .sync-sidebar-btn-secondary {
+    background: #eef2ff;
+    color: var(--text, var(--sync-sidebar-text));
+    box-shadow: none;
+  }
+  .sync-sidebar-btn-outline {
+    background: transparent;
+    color: var(--primary, var(--sync-sidebar-primary));
+    border: 1px solid var(--border, var(--sync-sidebar-border));
+    box-shadow: none;
+  }
+  .sync-sidebar-btn-pull:hover:not(:disabled),
+  .sync-sidebar-btn-push:hover:not(:disabled),
+  .btn-pull:hover:not(:disabled),
+  .btn-push:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+  .sync-sidebar-btn .material-icons-outlined {
+    font-size: 17px;
+  }
 </style>
 <script>
   var SyncSidebar = (function () {
+    var DEFAULT_UNSAVED_MESSAGE = "⚠️ WARNING: Unsaved changes detected in the 'Action' column.\n\nRunning 'Pull' will overwrite these changes and they will be LOST.\n\nDo you want to continue?";
+
     function getMessage(value) {
       if (value && typeof value === 'object' && value.message) return String(value.message);
       return String(value || 'Unknown error');
@@ -293,6 +499,107 @@
       setTimeout(function () {
         node.className = node.className.replace('show', '').trim();
       }, duration);
+    }
+
+    function resolveTarget(target) {
+      if (!target) return null;
+      if (typeof target === 'string') return document.getElementById(target);
+      return target;
+    }
+
+    function setStatusBadge(target, state, options) {
+      var opts = options || {};
+      var badge = resolveTarget(target);
+      if (!badge) return;
+
+      var badgeClass = opts.badgeClass || 'status-badge';
+      var readyText = opts.readyText || 'Ready';
+      var errorText = opts.errorText || 'Error';
+      var workingText = opts.workingText || 'Working...';
+      var spinnerHtml = opts.spinnerHtml || '';
+
+      badge.className = badgeClass + ' ' + state;
+
+      if (state === 'working') {
+        badge.innerHTML = spinnerHtml ? (spinnerHtml + ' ' + workingText) : workingText;
+      } else if (state === 'error') {
+        badge.innerText = errorText;
+      } else {
+        badge.innerText = readyText;
+      }
+    }
+
+    function extractUnsavedValue(result) {
+      if (result === true) return true;
+      if (result === false || result == null) return false;
+      if (typeof result === 'object') {
+        if (result.data === true) return true;
+        if (result.data === false) return false;
+        if (result.hasChanges === true) return true;
+        if (result.hasChanges === false) return false;
+      }
+      return Boolean(result);
+    }
+
+    function confirmIfUnsaved(checkMethod, checkArgs, runFn, options) {
+      var opts = options || {};
+      run(checkMethod, checkArgs, {
+        unwrap: false,
+        context: opts.context || 'Check Changes',
+        toast: opts.toast,
+        severity: opts.severity,
+        onSuccess: function (result) {
+          if (extractUnsavedValue(result)) {
+            showConfirmDialog(
+              opts.confirmMessage || "Unsaved changes detected.\n\nContinuing may overwrite them.\n\nDo you want to proceed?",
+              function () {
+                if (typeof runFn === 'function') runFn(result);
+              },
+              opts.onCancel,
+              {
+                title: opts.title || 'Unsaved Changes',
+                confirmText: opts.confirmText || 'Proceed',
+                cancelText: opts.cancelText || 'Cancel'
+              }
+            );
+          } else if (typeof runFn === 'function') {
+            runFn(result);
+          }
+        },
+        onError: opts.onError
+      });
+    }
+
+    function updateQuotaDisplay(target, amount, options) {
+      var opts = options || {};
+      var node = resolveTarget(target);
+      if (!node) return;
+
+      var text = amount;
+      if (text === undefined || text === null || text === '') {
+        text = Object.prototype.hasOwnProperty.call(opts, 'emptyText') ? opts.emptyText : '';
+      }
+
+      node.innerText = String(text);
+      node.classList.remove('loading');
+
+      var threshold = typeof opts.threshold === 'number' ? opts.threshold : 20;
+      var numericAmount = Number(amount);
+      if (!isNaN(numericAmount) && numericAmount < threshold) {
+        node.classList.add('danger');
+      } else {
+        node.classList.remove('danger');
+      }
+    }
+
+    function markQuotaError(target, options) {
+      var opts = options || {};
+      var node = resolveTarget(target);
+      if (!node) return;
+
+      node.innerText = opts.errorText || 'Error';
+      node.classList.remove('loading');
+      node.classList.remove('danger');
     }
 
     function showCopyableError(msg, severity) {
@@ -584,17 +891,115 @@
         });
     }
 
+    function initSidebar(options) {
+      var opts = options || {};
+      if (opts.createIcons !== false && typeof lucide !== 'undefined' && lucide && typeof lucide.createIcons === 'function') {
+        try {
+          lucide.createIcons();
+        } catch (e) {
+          // Ignore icon hydration failures
+        }
+      }
+      if (typeof opts.onLoad === 'function') {
+        opts.onLoad();
+      }
+    }
+
+    function runAction(options) {
+      var opts = options || {};
+      if (typeof opts.beforeRun === 'function') {
+        var beforeResult = opts.beforeRun();
+        if (beforeResult === false) return;
+      }
+
+      if (opts.loadingText) {
+        toggleLoading(true, opts.loadingText, opts.loadingOptions);
+      }
+
+      run(opts.method, opts.args || [], {
+        context: opts.context,
+        unwrap: opts.unwrap,
+        toast: opts.toast,
+        severity: opts.severity,
+        lockButtons: opts.lockButtons,
+        timeoutMs: opts.timeoutMs,
+        onSuccess: function (res, raw) {
+          if (opts.loadingText) toggleLoading(false, null, opts.loadingOptions);
+          if (opts.statusTarget && typeof opts.setStatus !== 'function') {
+            setStatusBadge(opts.statusTarget, 'ready', opts.statusOptions);
+          }
+          if (opts.showSuccessToast !== false) {
+            var successMessage = opts.successMessage || (res && res.message);
+            if (successMessage) showToast(successMessage, false, opts.toastOptions);
+          }
+          if (typeof opts.onSuccess === 'function') opts.onSuccess(res, raw);
+        },
+        onError: function (err) {
+          if (opts.loadingText) toggleLoading(false, null, opts.loadingOptions);
+          if (typeof opts.onError === 'function') {
+            opts.onError(err);
+            return;
+          }
+          handleError(err, {
+            context: opts.context,
+            severity: opts.severity,
+            toast: opts.toast,
+            resetLoading: false
+          });
+        },
+        onFinally: opts.onFinally
+      });
+    }
+
+    function runPullAction(options) {
+      var opts = options || {};
+      var execute = function () {
+        runAction(opts.action);
+      };
+
+      if (!opts.unsavedCheckMethod) {
+        execute();
+        return;
+      }
+
+      confirmIfUnsaved(opts.unsavedCheckMethod, opts.unsavedCheckArgs || [], execute, {
+        context: opts.unsavedContext || 'Check Changes',
+        confirmMessage: opts.confirmMessage || DEFAULT_UNSAVED_MESSAGE,
+        title: opts.confirmTitle || 'Unsaved Changes',
+        confirmText: opts.confirmText || 'Proceed',
+        cancelText: opts.cancelText || 'Cancel',
+        onError: opts.onError
+      });
+    }
+
+    function runPushAction(options) {
+      var opts = options || {};
+      if (opts.checkMethod) {
+        confirmAndRun(opts.checkMethod, opts.checkArgs || [], opts.runMethod, opts.runArgs || [], opts.confirmOptions || {});
+        return;
+      }
+      runAction(opts.action);
+    }
+
     _initUI();
     installGlobalErrorHandlers();
 
     return {
+      initSidebar: initSidebar,
+      runAction: runAction,
+      runPullAction: runPullAction,
+      runPushAction: runPushAction,
       run: run,
       confirmAndRun: confirmAndRun,
+      confirmIfUnsaved: confirmIfUnsaved,
       showConfirmDialog: showConfirmDialog,
       unwrap: unwrap,
       handleError: handleError,
       showToast: showToast,
-      toggleLoading: toggleLoading
+      toggleLoading: toggleLoading,
+      setStatusBadge: setStatusBadge,
+      updateQuotaDisplay: updateQuotaDisplay,
+      markQuotaError: markQuotaError
     };
   })();
 </script>
