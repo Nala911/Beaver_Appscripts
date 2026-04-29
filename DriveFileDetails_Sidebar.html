@@ -485,13 +485,6 @@
         let folderStack = [];
         let folderTopology = null;
 
-        // Global Error Catcher
-        window.onerror = function (msg, url, line, col, error) {
-            const detail = `Error: ${msg}\nURL: ${url}\nLine: ${line}, Col: ${col}${error ? '\nStack: ' + error.stack : ''}`;
-            SyncSidebar.logClientError(detail, 'Global Error');
-            return false; // let default handler run too
-        };
-
         window.onload = function () {
             try {
                 if (typeof lucide !== 'undefined') lucide.createIcons();

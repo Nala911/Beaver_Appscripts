@@ -180,7 +180,6 @@
         const isMainBtn = buttonEl.id === 'btnRunSelected';
         const originalHtml = buttonEl.innerHTML;
 
-        buttonEl.disabled = true;
         if (isMainBtn) {
             buttonEl.innerHTML = `<div class="spinner-small" style="margin-right:8px;"></div> Running...`;
         } else {
@@ -203,15 +202,14 @@
         SyncSidebar.run('PipelineControl_runSelectedPipelines', [rowIndexes], {
             context: 'Run Execution',
             onSuccess: function() {
-                buttonEl.disabled = false;
-                buttonEl.innerHTML = originalHtml;
                 SyncSidebar.showToast("Execution complete.");
                 loadDashboard();
             },
             onError: function() {
-                buttonEl.disabled = false;
-                buttonEl.innerHTML = originalHtml;
                 loadDashboard();
+            },
+            onFinally: function() {
+                buttonEl.innerHTML = originalHtml;
             }
         });
     }
@@ -241,18 +239,15 @@
     function toggleSystem() {
         var toggleConfig = document.getElementById('systemToggle');
         var isChecked = toggleConfig.checked;
-        toggleConfig.disabled = true;
         updateStatusText(isChecked);
 
         SyncSidebar.run('PipelineControl_setSystemStatus', [isChecked], {
             context: 'Toggle System',
             onSuccess: function() {
-                toggleConfig.disabled = false;
                 SyncSidebar.showToast("System status updated.");
             },
             onError: function() {
                 toggleConfig.checked = !isChecked;
-                toggleConfig.disabled = false;
                 updateStatusText(!isChecked);
             }
         });
@@ -263,20 +258,16 @@
             var btn = document.getElementById('btnFormat');
             var originalHtml = btn.innerHTML;
 
-            btn.disabled = true;
             btn.innerHTML = `<div class="spinner-small-primary" style="border-top-color: var(--primary); border-width: 2px; margin-right:8px;"></div> Formatting...`;
             SyncSidebar.showToast("Setting up headers...");
 
             SyncSidebar.run('PipelineControl_formatControlCenter', [], {
                 context: 'Format Sheet',
                 onSuccess: function(res) {
-                    btn.disabled = false;
-                    btn.innerHTML = originalHtml;
                     SyncSidebar.showToast(res.message);
                     loadDashboard();
                 },
-                onError: function() {
-                    btn.disabled = false;
+                onFinally: function() {
                     btn.innerHTML = originalHtml;
                 }
             });

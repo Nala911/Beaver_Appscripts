@@ -9,7 +9,7 @@
   }
 
   /* ── Unified Toast ── */
-  .toast {
+  .sync-sidebar-toast {
     visibility: hidden;
     min-width: 250px;
     background: #1f2937;
@@ -28,18 +28,18 @@
     opacity: 0;
     transition: opacity 0.3s, bottom 0.3s;
   }
-  .toast.show {
+  .sync-sidebar-toast.show {
     visibility: visible;
     opacity: 1;
     bottom: 40px;
   }
-  .toast.error-toast { background: #dc2626; }
-  .toast.success-toast { background: #059669; }
-  .toast.warning-toast { background: #d97706; }
-  .toast.info-toast { background: #2563eb; }
+  .sync-sidebar-toast.error-toast { background: #dc2626; }
+  .sync-sidebar-toast.success-toast { background: #059669; }
+  .sync-sidebar-toast.warning-toast { background: #d97706; }
+  .sync-sidebar-toast.info-toast { background: #2563eb; }
 
   /* ── Unified Loading Overlay ── */
-  .loading-overlay {
+  .sync-sidebar-loading-overlay {
     display: none;
     position: fixed;
     inset: 0;
@@ -52,7 +52,7 @@
     gap: 15px;
     font-family: sans-serif;
   }
-  .spinner {
+  .sync-sidebar-spinner {
     border: 3px solid #f3f4f6;
     border-top: 3px solid #6366f1;
     border-radius: 50%;
@@ -61,7 +61,7 @@
     animation: spin-shared 0.8s linear infinite;
   }
   @keyframes spin-shared { to { transform: rotate(360deg); } }
-  .loading-text {
+  .sync-sidebar-loading-text {
     font-size: 14px;
     font-weight: 600;
     color: #374151;
@@ -78,7 +78,7 @@
   .help-trigger:hover {
     color: #6366f1;
   }
-  #global-smart-tooltip {
+  #sync-sidebar-tooltip {
     display: none;
     position: fixed;
     background: #ffffff;
@@ -97,45 +97,45 @@
     opacity: 0;
     transition: opacity 0.2s ease-out;
   }
-  #global-smart-tooltip p { margin-bottom: 8px; }
-  #global-smart-tooltip p:last-child { margin-bottom: 0; }
-  #global-smart-tooltip strong { color: #6366f1; font-weight: 600; }
-  #global-smart-tooltip ul, #global-smart-tooltip ol { padding-left: 18px; margin-top: 4px; }
-  #global-smart-tooltip li { margin-bottom: 4px; }
+  #sync-sidebar-tooltip p { margin-bottom: 8px; }
+  #sync-sidebar-tooltip p:last-child { margin-bottom: 0; }
+  #sync-sidebar-tooltip strong { color: #6366f1; font-weight: 600; }
+  #sync-sidebar-tooltip ul, #sync-sidebar-tooltip ol { padding-left: 18px; margin-top: 4px; }
+  #sync-sidebar-tooltip li { margin-bottom: 4px; }
 
   /* ── Standard Help Guide Card ── */
-  .help-guide-card {
+  .sync-sidebar-help-guide-card {
     background: rgba(99, 102, 241, 0.05);
     border: 1px dashed rgba(99, 102, 241, 0.3) !important;
     padding: 14px;
     border-radius: 12px;
   }
-  .help-guide-list {
+  .sync-sidebar-help-guide-list {
     display: flex;
     flex-direction: column;
     gap: 12px;
   }
-  .help-guide-item {
+  .sync-sidebar-help-guide-item {
     display: flex;
     align-items: flex-start;
     gap: 12px;
   }
-  .help-guide-item i {
+  .sync-sidebar-help-guide-item i {
     flex-shrink: 0;
     width: 16px;
     height: 16px;
     margin-top: 2px;
   }
-  .help-guide-item div {
+  .sync-sidebar-help-guide-item div {
     font-size: 12px;
     line-height: 1.5;
     color: #1e1b4b;
   }
-  .help-guide-item strong {
+  .sync-sidebar-help-guide-item strong {
     color: #1e1b4b;
     font-weight: 600;
   }
-  .help-guide-item code {
+  .sync-sidebar-help-guide-item code {
     background: rgba(99, 102, 241, 0.1);
     color: #4f46e5;
     padding: 1px 4px;
@@ -152,22 +152,22 @@
     }
 
     function _initUI() {
-        if (!document.getElementById('loadingOverlay')) {
+        if (!document.getElementById('sync-sidebar-loading-overlay')) {
             var overlay = document.createElement('div');
-            overlay.id = 'loadingOverlay';
-            overlay.className = 'loading-overlay';
-            overlay.innerHTML = '<div class="spinner"></div><div id="loadingText" class="loading-text">Processing...</div>';
+            overlay.id = 'sync-sidebar-loading-overlay';
+            overlay.className = 'sync-sidebar-loading-overlay';
+            overlay.innerHTML = '<div class="sync-sidebar-spinner"></div><div id="sync-sidebar-loading-text" class="sync-sidebar-loading-text">Processing...</div>';
             document.body.appendChild(overlay);
         }
-        if (!document.getElementById('toast')) {
+        if (!document.getElementById('sync-sidebar-toast')) {
             var toast = document.createElement('div');
-            toast.id = 'toast';
-            toast.className = 'toast';
+            toast.id = 'sync-sidebar-toast';
+            toast.className = 'sync-sidebar-toast';
             document.body.appendChild(toast);
         }
-        if (!document.getElementById('global-smart-tooltip')) {
+        if (!document.getElementById('sync-sidebar-tooltip')) {
             var tip = document.createElement('div');
-            tip.id = 'global-smart-tooltip';
+            tip.id = 'sync-sidebar-tooltip';
             document.body.appendChild(tip);
         }
         _initHelpSystem();
@@ -182,7 +182,7 @@
         var contentSource = document.getElementById(targetId);
         if (!contentSource) return;
 
-        var tooltip = document.getElementById('global-smart-tooltip');
+        var tooltip = document.getElementById('sync-sidebar-tooltip');
         tooltip.innerHTML = contentSource.innerHTML;
         tooltip.style.display = 'block';
         
@@ -214,7 +214,7 @@
         var trigger = e.target.closest('.help-trigger');
         if (!trigger) return;
         
-        var tooltip = document.getElementById('global-smart-tooltip');
+        var tooltip = document.getElementById('sync-sidebar-tooltip');
         tooltip.style.opacity = '0';
         setTimeout(function() {
           if (tooltip.style.opacity === '0') {
@@ -269,8 +269,8 @@
 
     function toggleLoading(show, text, options) {
       var opts = options || {};
-      var overlay = document.getElementById(opts.overlayId || 'loadingOverlay');
-      var textNode = document.getElementById(opts.textId || 'loadingText');
+      var overlay = document.getElementById(opts.overlayId || 'sync-sidebar-loading-overlay');
+      var textNode = document.getElementById(opts.textId || 'sync-sidebar-loading-text');
 
       // Sync button locking with loading state
       toggleButtonLock(show);
@@ -281,13 +281,13 @@
 
     function showToast(message, isError, options) {
       var opts = options || {};
-      var node = document.getElementById(opts.toastId || 'toast');
+      var node = document.getElementById(opts.toastId || 'sync-sidebar-toast');
       if (!node) return;
 
       node.innerText = getMessage(message);
       
       var type = opts.type || (isError ? 'error' : 'success');
-      node.className = 'toast ' + type + '-toast show';
+      node.className = 'sync-sidebar-toast ' + type + '-toast show';
       
       var duration = opts.duration || (isError ? 8000 : 3500);
       setTimeout(function () {
@@ -480,6 +480,16 @@
       showCopyableError(msg, opts.severity || 'critical');
     }
 
+    function finalizeRun(opts) {
+      if (opts && typeof opts.onFinally === 'function') {
+        try {
+          opts.onFinally();
+        } catch (err) {
+          showCopyableError(getMessage(err), 'critical');
+        }
+      }
+    }
+
     function run(methodName, args, options) {
       var opts = options || {};
       var timeoutMs = typeof opts.timeoutMs === 'number' ? opts.timeoutMs : 20000;
@@ -492,7 +502,11 @@
         if (settled) return;
         settled = true;
         if (lockButtons) toggleButtonLock(false);
-        handleError(new Error(methodName + ' timed out after ' + timeoutMs + 'ms.'), opts);
+        try {
+          handleError(new Error(methodName + ' timed out after ' + timeoutMs + 'ms.'), opts);
+        } finally {
+          finalizeRun(opts);
+        }
       }, timeoutMs);
 
       var runner = google.script.run
@@ -508,6 +522,8 @@
             }
           } catch (err) {
             handleError(err, opts);
+          } finally {
+            finalizeRun(opts);
           }
         })
         .withFailureHandler(function (err) {
@@ -515,7 +531,11 @@
           settled = true;
           clearTimeout(timeoutId);
           if (lockButtons) toggleButtonLock(false);
-          handleError(err, opts);
+          try {
+            handleError(err, opts);
+          } finally {
+            finalizeRun(opts);
+          }
         });
 
       runner[methodName].apply(runner, args || []);
@@ -564,11 +584,6 @@
         });
     }
 
-    function logClientError(msg, context) {
-        console.error('[' + (context || 'Client Error') + '] ' + msg);
-        showCopyableError(msg, 'critical');
-    }
-
     _initUI();
     installGlobalErrorHandlers();
 
@@ -579,8 +594,7 @@
       unwrap: unwrap,
       handleError: handleError,
       showToast: showToast,
-      toggleLoading: toggleLoading,
-      logClientError: logClientError
+      toggleLoading: toggleLoading
     };
   })();
 </script>

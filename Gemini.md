@@ -52,18 +52,17 @@ To maintain a professional and consistent user experience, the following strings
     - **Read-Only**: `type: 'STATUS'`, `type: 'READ_ONLY'`, `type: 'ID'`
     - **Editable**: All other types (`TEXT`, `URL`, `DROPDOWN`, `CHECKBOX`, `EMAIL`, etc.)
 - **Frozen Columns**: To ensure these system columns remain visible at all times, all tools MUST set `FROZEN_COLS: 2` in their registration metadata.
-- **Sidebar Documentation**: Every tool sidebar MUST include a "Help & Guide" section at the bottom, using the standardized `.help-guide-card` architecture.
+- **Sidebar Documentation**: Only tool sidebars that benefit from guided onboarding need a "Help & Guide" section at the bottom, using the standardized `.sync-sidebar-help-guide-card` architecture.
 
 ### 1b. Sidebar Help & Documentation (Uniformity)
-To ensure user clarity across all tools, the following help architecture is mandatory:
-- No need to cover all informations unnecessarly, only potential confusing ones can be included.
+To ensure user clarity among confusing tools, the following help architecture is mandatory:
+- It is not for all tools, only confusing tools need a "Help & Guide" section. Also, dont need to cover all informations unnecessarily, only potential confusing ones can be included.
 - **Location**: A dedicated section at the bottom of the sidebar labeled "Help & Guide".
-- **Structure**: Uses the `.help-guide-card` container from `SidebarShared.html`.
-- **Mandatory Tooltips**:
-    - `help-getting-started`: A 3-step quick start guide (Icon: `help-circle`, Color: `primary`).
-    - `help-columns-guide`: Detailed explanation of tool-specific columns (Icon: `help-circle`, Color: `primary`).
-    - `help-tips`: Performance or behavioral "gotchas" (Icon: `lightbulb`, Color: `warning`).
-- **Trigger**: Every section label MUST include a `help-trigger` icon on the far right if applicable.
+- **Structure**: Uses the `.sync-sidebar-help-guide-card` container from `SidebarShared.html`.
+- **Tooltips**: 
+    - `help-getting-started`: A 3-step quick start guide (Icon: `help-circle`, Color: `secondary`). Only if needed, if not skip this.
+    - `help-columns-guide`: Detailed explanation of tool-specific columns (Icon: `help-circle`, Color: `secondary`). Only if needed, if not skip this.
+    - `help-tips`: Performance or behavioral "gotchas" (Icon: `lightbulb`, Color: `secondary`). Only if needed, if not skip this.
 
 ### 2. The SyncEngine Contract
 Every tool backend file must register itself with the engine at the very top of the script using `SyncEngine.registerTool(key, config)`. Do not hardcode columns inside backend logic; rely on the registry's `FORMAT_CONFIG.COL_SCHEMA`.

@@ -1,11 +1,4 @@
 <script>
-// Global Error Catcher
-        window.onerror = function (msg, url, line, col, error) {
-            const detail = `Error: ${msg}\nURL: ${url}\nLine: ${line}, Col: ${col}${error ? '\nStack: ' + error.stack : ''}`;
-            SyncSidebar.logClientError(detail, 'Global Error');
-            return false;
-        };
-
         let currentTheme = null;
         let defaultTheme = null;
 
@@ -27,9 +20,9 @@
             mapDataToInputs(currentTheme);
             bindLivePreviewEvents();
 
-            document.getElementById('loadingOverlay').style.opacity = '0';
+            document.getElementById('settings-loading-overlay').style.opacity = '0';
             setTimeout(() => {
-                document.getElementById('loadingOverlay').style.display = 'none';
+                document.getElementById('settings-loading-overlay').style.display = 'none';
                 document.getElementById('settings-dashboard').style.display = 'grid';
             }, 300);
         }
@@ -40,22 +33,18 @@
             if (!btn.dataset.originalText) btn.dataset.originalText = btn.innerHTML;
             const originalText = btn.dataset.originalText;
             
-            btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;margin:0;margin-right:8px;border-top-color:white;"></div> Saving...';
-            btn.disabled = true;
+            btn.innerHTML = '<div class="sync-sidebar-spinner" style="width:16px;height:16px;border-width:2px;margin:0;margin-right:8px;border-top-color:white;"></div> Saving...';
 
             const updatedTheme = mapInputsToData(currentTheme);
 
             SyncSidebar.run('UI_saveThemeConfig', [updatedTheme], {
                 context: 'Save Theme',
                 onSuccess: function(res) {
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
                     SyncSidebar.showToast(res.message);
                     currentTheme = updatedTheme;
                 },
-                onError: function() {
+                onFinally: function() {
                     btn.innerHTML = originalText;
-                    btn.disabled = false;
                 }
             });
         }
@@ -67,20 +56,16 @@
                 const originalText = btn.dataset.originalText;
 
                 btn.innerHTML = 'Resetting...';
-                btn.disabled = true;
 
                 SyncSidebar.run('UI_resetThemeConfig', [], {
                     context: 'Reset Theme',
                     onSuccess: function(res) {
-                        btn.innerHTML = originalText;
-                        btn.disabled = false;
                         SyncSidebar.showToast(res.message);
                         mapDataToInputs(defaultTheme);
                         currentTheme = JSON.parse(JSON.stringify(defaultTheme));
                     },
-                    onError: function() {
+                    onFinally: function() {
                         btn.innerHTML = originalText;
-                        btn.disabled = false;
                     }
                 });
             });
@@ -275,7 +260,6 @@
             const btn = document.getElementById('btn-run-audit');
             const originalText = btn.innerHTML;
             btn.innerHTML = 'Running...';
-            btn.disabled = true;
 
             const container = document.getElementById('audit-results-container');
             container.style.display = 'flex';
@@ -284,14 +268,13 @@
             SyncSidebar.run('System_runAudit', [], {
                 context: 'System Audit',
                 onSuccess: function(res) {
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
                     renderAuditResults(res.data || res);
                 },
                 onError: function() {
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
                     container.innerHTML = '<div style="color:#dc2626; padding:10px;">Audit failed to run. Check connectivity or system health.</div>';
+                },
+                onFinally: function() {
+                    btn.innerHTML = originalText;
                 }
             });
         }

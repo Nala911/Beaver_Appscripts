@@ -131,7 +131,7 @@ To maintain high usability without cluttering the UI, the project uses a standar
 - **`data-help-target`**: An attribute on the trigger that points to the `ID` of a hidden content element.
 - **Hidden Content Container**: A `div` at the bottom of the HTML file (set to `display: none`) containing multiple divs with specific IDs (e.g., `help-getting-started`).
 - **Global Event Handlers**: `SidebarShared.html` contains the logic to calculate tooltip positioning, handle boundary overflows, and manage transitions.
-- **Guide Section**: Every sidebar includes a bottom "Help & Guide" card using standardized `.help-guide-card` and `.help-guide-item` classes.
+- **Guide Section**: Sidebars that need guided onboarding can include a bottom "Help & Guide" card using standardized `.sync-sidebar-help-guide-card` and `.sync-sidebar-help-guide-item` classes.
 
 ## 🌍 Global Variables & State
 
