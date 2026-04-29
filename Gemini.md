@@ -28,7 +28,7 @@ The system is split into two halves: the Core Engine and the Tool Modules. Agent
 - `SidebarShared.html`
 - `Logger.js` and `SystemAudit.js`
 
-If you are just editing or adding a feature (like Mail Merge, Tasks Sync, etc.), stick entirely to your tool's `_Code.js` and `_Sidebar.html` files.
+If you are just editing or adding a feature (like Mail Merge, etc.), stick entirely to your tool's `_Code.js` and `_Sidebar.html` files.
 
 ## ⚙️ Mandatory Code Contracts
 
@@ -47,6 +47,23 @@ To maintain a professional and consistent user experience, the following strings
 - **`Blueprint.md` (Bold Tool Name)**: Must match `SHEET_NAMES[KEY]` but without the emoji.
 - **Sidebar Header (`.header-title`)**: Must match the base tool name (without emoji or suffixes like "Toolkit").
 - **Status Column**: Every tool sheet MUST include a `Status` column immediately following the `Action` column. It must be defined in `COL_SCHEMA` as `{ header: 'Status', type: 'STATUS' }`.
+- **Column Categories**: Formatting is strictly schema-driven. The engine assigns categories based on the `type` in `COL_SCHEMA`:
+    - **Action**: `type: 'ACTION'`
+    - **Read-Only**: `type: 'STATUS'`, `type: 'READ_ONLY'`, `type: 'ID'`
+    - **Editable**: All other types (`TEXT`, `URL`, `DROPDOWN`, `CHECKBOX`, `EMAIL`, etc.)
+- **Frozen Columns**: To ensure these system columns remain visible at all times, all tools MUST set `FROZEN_COLS: 2` in their registration metadata.
+- **Sidebar Documentation**: Every tool sidebar MUST include a "Help & Guide" section at the bottom, using the standardized `.help-guide-card` architecture.
+
+### 1b. Sidebar Help & Documentation (Uniformity)
+To ensure user clarity across all tools, the following help architecture is mandatory:
+- No need to cover all informations unnecessarly, only potential confusing ones can be included.
+- **Location**: A dedicated section at the bottom of the sidebar labeled "Help & Guide".
+- **Structure**: Uses the `.help-guide-card` container from `SidebarShared.html`.
+- **Mandatory Tooltips**:
+    - `help-getting-started`: A 3-step quick start guide (Icon: `help-circle`, Color: `primary`).
+    - `help-columns-guide`: Detailed explanation of tool-specific columns (Icon: `help-circle`, Color: `primary`).
+    - `help-tips`: Performance or behavioral "gotchas" (Icon: `lightbulb`, Color: `warning`).
+- **Trigger**: Every section label MUST include a `help-trigger` icon on the far right if applicable.
 
 ### 2. The SyncEngine Contract
 Every tool backend file must register itself with the engine at the very top of the script using `SyncEngine.registerTool(key, config)`. Do not hardcode columns inside backend logic; rely on the registry's `FORMAT_CONFIG.COL_SCHEMA`.
@@ -83,6 +100,13 @@ Row-by-row data processing must use `_App_BatchProcessor` from `03_Core_Utils.js
 - **Error Propagation**: The `processFn` should throw errors directly. 
 - **Status Reporting**: Use `SheetManager.batchPatchRows` within the `onBatchComplete` hook to write results (including `res.isError` details) into the `Status` column.
 
+### 8. The Frontend Wrapper Contract (`SyncSidebar`)
+All client-to-server communication MUST use `SyncSidebar.run()`.
+- **Automatic Locking**: This wrapper automatically locks all sidebar buttons and applies a "grayed-out" style during the call. 
+- **Overlapping Calls**: The engine uses a counter; buttons stay locked until *all* concurrent `SyncSidebar.run` calls complete.
+- **Opting Out**: For silent background tasks (like progress polling), use `SyncSidebar.run(method, args, { lockButtons: false })`.
+- **Redundancy**: DO NOT manually disable buttons in sidebar code (e.g., `btn.disabled = true`); rely entirely on the core wrapper to maintain UI state.
+
 ## 🤖 Gemini Workflow Rules
 
 1. **Minimize file reads**: ONLY read the specific tool files needed.
@@ -106,6 +130,8 @@ Before completing any task, mentally run this checklist. Do not proceed until yo
 - [ ] If my tool processes rows, did I use `_App_BatchProcessor` and `SheetManager.batchPatchRows`?
 - [ ] Is my sidebar strictly including `<?!= _App_include('SidebarShared'); ?>` to inherit standard WorkspaceSync UI libraries?
 - [ ] Are all backend calls in the sidebar routed through `SyncSidebar.run()` instead of raw `google.script.run`?
+- [ ] Did I use `lockButtons: false` for background polling tasks to avoid UI jitter?
+- [ ] Did I remove all manual `btn.disabled = true` logic, relying on the `SyncSidebar` core instead?
 
 ## 🚀 Adding a New Tool
 
@@ -114,6 +140,6 @@ Since humans do not code here, follow the **CalendarSync Benchmark**:
 2. Duplicate `CalendarSync_Sidebar.html` and rename it to `<NewName>_Sidebar.html`.
 3. Add the `SHEET_NAMES` entry to `00_Config_Constants.js`.
 4. Update the plugin registration inside `<NewName>_Code.js` (Key, Sheet Name, Title, etc.).
-5. Ensure `COL_SCHEMA` includes the mandatory `Status` column (type: `STATUS`) as the second entry.
+5. Ensure `COL_SCHEMA` includes the mandatory `Status` column (type: `STATUS`) as the second entry. Do NOT use legacy positional properties like `numReadOnlyColsAtEnd`.
 6. Implement backend logic with `Logger.run` and `_App_ok`.
 7. Implement frontend logic using the `SyncSidebar.run` wrapper and native CSS variables (NO TailwindCSS).

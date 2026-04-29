@@ -13,10 +13,9 @@ SyncEngine.registerTool('CHAT_SYNC', {
     SIDEBAR_HTML: 'ChatSpaceSync_Sidebar',
     SIDEBAR_WIDTH: 400,
     FROZEN_ROWS: 1,
-    FROZEN_COLS: 0,
+    FROZEN_COLS: 2,
     COL_WIDTHS: [120, 250, 250, 150, 150, 200, 250],
     FORMAT_CONFIG: {
-        numReadOnlyColsAtEnd: 2,
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [
             { header: 'Action', type: 'ACTION', options: ['ADD_MEMBER', 'REMOVE_MEMBER'] },

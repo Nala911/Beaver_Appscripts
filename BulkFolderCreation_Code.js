@@ -12,13 +12,12 @@ SyncEngine.registerTool('BULK_FOLDER', {
     SIDEBAR_HTML: 'BulkFolderCreation_Sidebar',
     SIDEBAR_WIDTH: 400,
     FROZEN_ROWS: 1,
-    FROZEN_COLS: 1,
-    COL_WIDTHS: [100, 200, 200, 200],
+    FROZEN_COLS: 2,
+    COL_WIDTHS: [100, 200, 200, 200, 200],
     FORMAT_CONFIG: {
-        numReadOnlyColsAtEnd: 0,
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [
-            { header: 'Action', type: 'ACTION', options: ['Create'] },
+            { header: 'Action', type: 'ACTION', options: ['CREATE'] },
             { header: 'Status', type: 'STATUS' },
             { header: 'Level 1', type: 'TEXT' },
             { header: 'Level 2', type: 'TEXT' },
@@ -30,7 +29,8 @@ SyncEngine.registerTool('BULK_FOLDER', {
 // Column-index aliases — kept for backward compatibility.
 // Metadata (title, sidebar, headers, widths) now lives in SyncEngine.getTool('BULK_FOLDER').
 var BULKFOLDER_COL = {
-  ACTION: 0
+  ACTION: 0,
+  STATUS: 1
 };
 
 // --- MENU & UI HANDLERS ---
@@ -118,8 +118,8 @@ function BulkFolderCreation_runBulkCreationSequence(targetFolderId) {
       var pendingRows = SheetManager.readPendingObjects('BULK_FOLDER');
 
       if (pendingRows.length === 0) {
-        Logger.warn(SyncEngine.getTool('BULK_FOLDER').TITLE, 'Global', "No pending 'Create' actions found.");
-        return _App_ok("No pending 'Create' actions found.");
+        Logger.warn(SyncEngine.getTool('BULK_FOLDER').TITLE, 'Global', "No pending 'CREATE' actions found.");
+        return _App_ok("No pending 'CREATE' actions found.");
       }
 
       var headers = SheetManager.getHeaders('BULK_FOLDER');
@@ -301,6 +301,6 @@ function _BulkFolderCreation_applyDataValidations(sheet) {
   var maxRows = sheet.getMaxRows();
   if (maxRows < 2) return;
 
-  var actionRule = SpreadsheetApp.newDataValidation().requireValueInList(['Create'], true).setAllowInvalid(false).build();
+  var actionRule = SpreadsheetApp.newDataValidation().requireValueInList(['CREATE'], true).setAllowInvalid(false).build();
   sheet.getRange(2, BULKFOLDER_COL.ACTION + 1, maxRows - 1, 1).setDataValidation(actionRule);
 }

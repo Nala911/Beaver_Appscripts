@@ -264,54 +264,6 @@
             width: 0%;
             transition: width 0.3s ease;
         }
-
-        /* ── Loading Overlay ── */
-        .loading-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(245, 243, 255, 0.85);
-            backdrop-filter: blur(6px);
-            z-index: 100;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .spinner {
-            border: 3px solid var(--border-light);
-            border-top: 3px solid var(--primary);
-            border-radius: 50%;
-            width: 28px;
-            height: 28px;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* ── Toast ── */
-        .toast {
-            visibility: hidden;
-            min-width: 220px;
-            background: var(--text);
-            color: #fff;
-            text-align: center;
-            border-radius: var(--radius-sm);
-            padding: 11px 18px;
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 12px;
-            font-weight: 500;
-            z-index: 101;
-        }
-
-        .toast.show { visibility: visible; animation: toastIn 0.35s ease; }
-        .toast.error-toast { background: var(--danger); }
-
-        @keyframes toastIn { from { bottom: 0; opacity: 0; } to { bottom: 30px; opacity: 1; } }
     </style>
 </head>
 
@@ -371,15 +323,7 @@
         </div>
     </div>
 
-    <!-- UI Elements -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="spinner"></div>
-        <div class="loading-text" id="loadingText">Processing...</div>
-    </div>
-    <div id="toast" class="toast">Done</div>
-
     <?!= _App_include('SidebarShared'); ?>
-
     <script>
         let currentFolderId = "root";
         let isProcessing = false;
@@ -395,9 +339,6 @@
         function loadExplorer(id) {
             const list = document.getElementById('folder-list');
             list.innerHTML = '<div style="display: flex; justify-content: center; padding: 40px;"><div class="spinner"></div></div>';
-
-            document.getElementById('btn-run').disabled = true;
-            document.getElementById('btn-back').disabled = true;
 
             SyncSidebar.run('BulkFolderCreation_getDriveNavData', [id], {
                 context: 'Fetch Nav Data',
@@ -416,7 +357,6 @@
             list.innerHTML = ''; 
 
             document.getElementById('selected-folder-name').textContent = data.current.name;
-            document.getElementById('btn-run').disabled = false;
 
             const bcContainer = document.getElementById('breadcrumbs');
             bcContainer.innerHTML = '';
@@ -458,6 +398,7 @@
             });
 
             document.getElementById('btn-back').disabled = data.breadcrumbs.length <= 1;
+            document.getElementById('btn-run').disabled = false;
         }
 
         function goUp() {
@@ -474,7 +415,6 @@
             isProcessing = true;
 
             const btn = document.getElementById('btn-run');
-            btn.disabled = true;
             btn.innerHTML = '<span class="material-icons-outlined">sync</span> Processing...';
 
             document.getElementById('progress-area').style.display = 'block';
@@ -500,6 +440,7 @@
             SyncSidebar.run('BulkFolderCreation_getProgress', [], {
                 unwrap: false,
                 toast: false,
+                lockButtons: false,
                 resetLoading: false,
                 context: 'Poll Progress',
                 onSuccess: function (res) {

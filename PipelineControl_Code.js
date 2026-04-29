@@ -15,7 +15,6 @@ SyncEngine.registerTool('PIPELINE', {
     FROZEN_COLS: 2,
     COL_WIDTHS: [60, 200, 200, 200, 200, 200, 200, 200],
     FORMAT_CONFIG: {
-        numReadOnlyColsAtEnd: 1,
         conditionalRules: [
             { type: 'custom', formula: '=$A2=TRUE', color: SHEET_THEME.STATUS.SUCCESS, scope: 'actionOnly', actionCol: 'A' }
         ],

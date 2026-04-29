@@ -1,11 +1,4 @@
 <script>
-    // Global Error Catcher
-    window.onerror = function (msg, url, line, col, error) {
-        const detail = `Error: ${msg}\nURL: ${url}\nLine: ${line}, Col: ${col}${error ? '\nStack: ' + error.stack : ''}`;
-        google.script.run._App_logClientError(detail, 'Global Error');
-        return false;
-    };
-
     let pipelineData = [];
     let allSelected = false;
 
@@ -266,29 +259,27 @@
     }
 
     function formatSheet() {
-        if (!confirm("WARNING: This will clear the active sheet and set it up for the Pipeline. Are you sure you want to proceed?")) {
-            return;
-        }
+        SyncSidebar.showConfirmDialog("WARNING: This will clear the active sheet and set it up for the Pipeline. Are you sure you want to proceed?", function() {
+            var btn = document.getElementById('btnFormat');
+            var originalHtml = btn.innerHTML;
 
-        var btn = document.getElementById('btnFormat');
-        var originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<div class="spinner-small-primary" style="border-top-color: var(--primary); border-width: 2px; margin-right:8px;"></div> Formatting...`;
+            SyncSidebar.showToast("Setting up headers...");
 
-        btn.disabled = true;
-        btn.innerHTML = `<div class="spinner-small-primary" style="border-top-color: var(--primary); border-width: 2px; margin-right:8px;"></div> Formatting...`;
-        SyncSidebar.showToast("Setting up headers...");
-
-        SyncSidebar.run('PipelineControl_formatControlCenter', [], {
-            context: 'Format Sheet',
-            onSuccess: function(res) {
-                btn.disabled = false;
-                btn.innerHTML = originalHtml;
-                SyncSidebar.showToast(res.message);
-                loadDashboard();
-            },
-            onError: function() {
-                btn.disabled = false;
-                btn.innerHTML = originalHtml;
-            }
+            SyncSidebar.run('PipelineControl_formatControlCenter', [], {
+                context: 'Format Sheet',
+                onSuccess: function(res) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                    SyncSidebar.showToast(res.message);
+                    loadDashboard();
+                },
+                onError: function() {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                }
+            });
         });
     }
 </script>

@@ -347,18 +347,14 @@
         // ── Helpers ──
         function setStatus(state) {
             var badge = document.getElementById('statusBadge');
-            var btns = document.querySelectorAll('.btn');
             badge.className = 'status-badge ' + state;
 
             if (state === 'working') {
                 badge.innerText = 'Working';
-                btns.forEach(function (b) { b.disabled = true; });
             } else if (state === 'error') {
                 badge.innerText = 'Error';
-                btns.forEach(function (b) { b.disabled = false; });
             } else {
                 badge.innerText = 'Ready';
-                btns.forEach(function (b) { b.disabled = false; });
             }
         }
     </script>

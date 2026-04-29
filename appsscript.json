@@ -3,11 +3,6 @@
   "dependencies": {
     "enabledAdvancedServices": [
       {
-        "userSymbol": "Tasks",
-        "serviceId": "tasks",
-        "version": "v1"
-      },
-      {
         "userSymbol": "Drive",
         "serviceId": "drive",
         "version": "v3"
@@ -41,7 +36,6 @@
     "https://www.googleapis.com/auth/documents",
     "https://www.googleapis.com/auth/presentations",
     "https://www.googleapis.com/auth/forms",
-    "https://www.googleapis.com/auth/tasks",
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/drive.readonly",

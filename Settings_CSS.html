@@ -65,20 +65,7 @@
             flex-direction: column;
         }
 
-        /* Loading Overlay */
-        #loading-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(255, 255, 255, 0.9);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            transition: opacity 0.3s ease;
-        }
-
-        .spinner {
+        header {
             width: 36px;
             height: 36px;
             border: 3px solid var(--border-color);
@@ -544,31 +531,19 @@
             background-color: var(--sheet-status-warning);
         }
 
-        /* Toast */
-        #toast {
-            position: fixed;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%) translateY(100px);
-            background: #323232;
-            color: white;
-            padding: 14px 24px;
-            border-radius: var(--radius-sm);
-            font-size: 14px;
-            font-weight: 400;
-            box-shadow: var(--shadow-md);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 1001;
-            display: flex;
-            align-items: center;
-            gap: 12px;
+        /* Layout modifications for non-styling tabs */
+        .dashboard-container.hide-preview {
+            grid-template-columns: 260px 1fr;
+        }
+        
+        .dashboard-container.hide-preview .preview-col {
+            display: none;
         }
 
-        #toast.show {
-            transform: translateX(-50%) translateY(0);
-        }
-
-        #toast.error {
-            background: var(--error-color);
+        .dashboard-container.hide-preview .settings-col {
+            border-right: none;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
         }
 </style>

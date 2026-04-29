@@ -13,13 +13,12 @@ SyncEngine.registerTool('FORMS_SYNC', {
     SIDEBAR_HTML: 'FormsSync_Sidebar',
     SIDEBAR_WIDTH: 300,
     FROZEN_ROWS: 1,
-    FROZEN_COLS: 0,
+    FROZEN_COLS: 2,
     COL_WIDTHS: [100, 300, 150, 250, 250, 100, 120],
     FORMAT_CONFIG: {
-        numReadOnlyColsAtEnd: 1,
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [
-            { header: 'Action', type: 'ACTION', options: ['CREATE', 'UPDATE', 'REMOVE'] },
+            { header: 'Action', type: 'ACTION', options: ['CREATE', 'UPDATE', 'DELETE'] },
             { header: 'Status', type: 'STATUS' },
             { header: 'Question Title', type: 'TEXT' },
             { header: 'Type', type: 'DROPDOWN', options: ['MULTIPLE_CHOICE', 'CHECKBOX', 'LIST', 'TEXT', 'PARAGRAPH_TEXT', 'DATE', 'TIME', 'DATETIME', 'DURATION', 'SCALE', 'GRID', 'CHECKBOX_GRID', 'FILE_UPLOAD', 'PAGE_BREAK', 'SECTION_HEADER', 'IMAGE', 'VIDEO'] },
@@ -273,12 +272,12 @@ function _FormsSync_syncToForm() {
                         }
                         updateObj.action = "";
                     }
-                    else if (action === "REMOVE") {
+                    else if (action === "DELETE") {
                         if (!id) throw new Error("Missing ID");
                         var delItem = _App_callWithBackoff(function () { return form.getItemById(parseInt(id, 10)); });
                         if (delItem) {
                             _App_callWithBackoff(function () { form.deleteItem(delItem); });
-                            updateObj.status = "🗑️ Removed";
+                            updateObj.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Deleted";
                         } else {
                             updateObj.status = SHEET_THEME.STATUS_PREFIXES.WARNING + "Already Deleted";
                         }

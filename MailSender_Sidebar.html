@@ -4,7 +4,7 @@
 <head>
   <base target="_top">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     /* ── Design Tokens ── */
     :root {
@@ -18,16 +18,18 @@
       --text: #1e1b4b;
       --text-secondary: #6b7280;
       --success: #10b981;
-      --danger: #ef4444;
-      --danger-bg: #fef2f2;
+      --success-dark: #059669;
+      --success-bg: #ecfdf5;
       --warning: #f59e0b;
       --warning-bg: #fffbeb;
+      --danger: #ef4444;
+      --danger-bg: #fef2f2;
+      --hover-bg: #f5f3ff;
       --gradient-pull: linear-gradient(135deg, #6366f1, #8b5cf6);
       --gradient-push: linear-gradient(135deg, #10b981, #14b8a6);
       --gradient-header: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);
       --shadow-sm: 0 1px 3px rgba(99, 102, 241, 0.08);
       --shadow-md: 0 4px 12px rgba(99, 102, 241, 0.10);
-      --shadow-lg: 0 8px 24px rgba(99, 102, 241, 0.14);
       --radius: 12px;
       --radius-sm: 8px;
     }
@@ -42,9 +44,9 @@
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background: var(--background);
       color: var(--text);
+      height: 100vh;
       display: flex;
       flex-direction: column;
-      height: 100vh;
       overflow: hidden;
       font-size: 13px;
       -webkit-font-smoothing: antialiased;
@@ -56,7 +58,7 @@
       padding: 14px 16px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      justify-content: space-between;
       flex-shrink: 0;
       position: relative;
     }
@@ -72,37 +74,93 @@
       border-radius: 0 0 2px 2px;
     }
 
-    .header .material-icons-outlined {
-      font-size: 22px;
+    .header-title {
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      letter-spacing: -0.01em;
+    }
+
+    .header-title i {
       background: var(--gradient-pull);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
 
-    .header-title {
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--text);
-      letter-spacing: -0.01em;
+    .status-badge {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: var(--success-bg);
+      color: var(--success);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.3s ease;
+      letter-spacing: 0.01em;
     }
 
-    /* ── Main Container ── */
-    .container {
+    .status-badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    .status-badge.working {
+      background: var(--warning-bg);
+      color: var(--warning);
+      animation: pulse-badge 1.5s ease-in-out infinite;
+    }
+
+    .status-badge.working::before {
+      background: var(--warning);
+      animation: pulse-dot 1s ease-in-out infinite;
+    }
+
+    .status-badge.error {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    .status-badge.error::before {
+      background: var(--danger);
+    }
+
+    @keyframes pulse-badge {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.6; }
+    }
+
+    /* ── Main Scroll Area ── */
+    .main {
       flex: 1;
+      overflow-y: auto;
       padding: 16px 14px;
       display: flex;
       flex-direction: column;
       gap: 16px;
-      overflow-y: auto;
       min-height: 0;
     }
 
-    .container::-webkit-scrollbar {
+    .main::-webkit-scrollbar {
       width: 5px;
     }
 
-    .container::-webkit-scrollbar-thumb {
+    .main::-webkit-scrollbar-thumb {
       background: rgba(99, 102, 241, 0.2);
       border-radius: 10px;
     }
@@ -120,12 +178,11 @@
       gap: 6px;
     }
 
-    .section-label .material-icons-outlined {
-      font-size: 15px;
+    .section-label i {
       color: var(--primary-light);
     }
 
-    /* ── Cards ── */
+    /* ── Card Wrapper ── */
     .card {
       background: var(--surface);
       border: 1px solid var(--border-light);
@@ -139,13 +196,13 @@
       box-shadow: var(--shadow-md);
     }
 
-    /* ── Widgets ── */
+    /* ── Dash Widgets ── */
     .quota-card {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 24px;
+      padding: 20px;
       text-align: center;
     }
 
@@ -159,7 +216,7 @@
     }
 
     .quota-number {
-      font-size: 36px;
+      font-size: 32px;
       font-weight: 800;
       color: var(--primary);
       line-height: 1;
@@ -178,13 +235,12 @@
     /* ── Buttons ── */
     .btn {
       width: 100%;
-      padding: 0;
-      height: 40px;
       border: none;
+      height: 40px;
       border-radius: var(--radius-sm);
       font-family: inherit;
-      font-size: 13px;
       font-weight: 600;
+      font-size: 13px;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -194,6 +250,7 @@
       position: relative;
       overflow: hidden;
       letter-spacing: 0.01em;
+      padding: 0 16px;
     }
 
     .btn::before {
@@ -210,9 +267,10 @@
     }
 
     .btn:disabled {
-      opacity: 0.5;
+      opacity: 0.45;
       cursor: not-allowed;
-      pointer-events: none;
+      transform: none !important;
+      box-shadow: none !important;
     }
 
     .btn-push {
@@ -221,146 +279,59 @@
       box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
     }
 
-    .btn-push:hover {
+    .btn-push:hover:not(:disabled) {
       transform: translateY(-1px);
       box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
     }
 
-    .btn-push:active {
+    .btn-push:active:not(:disabled) {
       transform: translateY(0);
       box-shadow: 0 1px 4px rgba(16, 185, 129, 0.3);
     }
 
-    .btn .material-icons-outlined {
-      font-size: 17px;
-    }
-
-    /* ── Loading Overlay ── */
-    .loading-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(245, 243, 255, 0.85);
-      backdrop-filter: blur(6px);
-      z-index: 100;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .spinner {
-      border: 3px solid var(--border-light);
-      border-top: 3px solid var(--primary);
-      border-right: 3px solid var(--primary-light);
+    /* ── Loader ── */
+    .loader {
+      border: 2.5px solid var(--border-light);
+      border-top: 2.5px solid var(--primary);
+      border-right: 2.5px solid var(--primary-light);
       border-radius: 50%;
-      width: 28px;
-      height: 28px;
+      width: 14px;
+      height: 14px;
       animation: spin 0.8s ease-in-out infinite;
     }
 
-    /* Small spinner for quota */
-    .quota-card .spinner {
-      width: 24px;
-      height: 24px;
-    }
-
     @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    .loading-text {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    /* ── Toast ── */
-    .toast {
-      visibility: hidden;
-      min-width: 220px;
-      background: var(--text);
-      color: #fff;
-      text-align: center;
-      border-radius: var(--radius-sm);
-      padding: 11px 18px;
-      position: fixed;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 12px;
-      font-weight: 500;
-      z-index: 101;
-      box-shadow: var(--shadow-lg);
-    }
-
-    .toast.show {
-      visibility: visible;
-      animation: toastIn 0.35s ease, toastOut 0.35s ease 3.15s;
-    }
-
-    .toast.error-toast {
-      background: var(--danger);
-    }
-
-    .toast.warning-toast {
-      background: var(--warning);
-      color: #000;
-    }
-
-    @keyframes toastIn {
-      from {
-        bottom: 0;
-        opacity: 0;
-        transform: translateX(-50%) scale(0.95);
-      }
-
-      to {
-        bottom: 30px;
-        opacity: 1;
-        transform: translateX(-50%) scale(1);
-      }
-    }
-
-    @keyframes toastOut {
-      from {
-        bottom: 30px;
-        opacity: 1;
-        transform: translateX(-50%) scale(1);
-      }
-
-      to {
-        bottom: 0;
-        opacity: 0;
-        transform: translateX(-50%) scale(0.95);
-      }
+      to { transform: rotate(360deg); }
     }
   </style>
-    <?!= _App_include('SidebarShared'); ?>
 </head>
 
 <body>
 
   <!-- Header -->
   <div class="header">
-    <span class="material-icons-outlined">mail</span>
-    <div class="header-title">Mail Sender</div>
+    <div class="header-title">
+      <i data-lucide="mail" style="width:18px;"></i>
+      Mail Sender
+    </div>
+    <div id="statusBadge" class="status-badge">
+      Ready
+    </div>
   </div>
 
   <!-- Main Content -->
-  <div class="container">
+  <div class="main">
 
     <!-- Dashboard Widget -->
     <div>
       <div class="section-label">
-        <span class="material-icons-outlined">bar_chart</span> Usage Stats
+        <i data-lucide="bar-chart-2" style="width:13px;"></i> Usage Stats
+        <i data-lucide="help-circle" class="help-trigger" data-help-target="help-usage-stats" style="width:13px; margin-left: auto;"></i>
       </div>
       <div class="card quota-card">
         <div class="quota-label">Daily Email Quota</div>
         <div id="quota-display" class="quota-number loading">
-          <div class="spinner"></div>
+          <div class="loader" style="width:24px; height:24px; border-width:3px; margin: 0 auto;"></div>
         </div>
       </div>
     </div>
@@ -368,31 +339,93 @@
     <!-- Actions -->
     <div>
       <div class="section-label">
-        <span class="material-icons-outlined">rocket_launch</span> Actions
+        <i data-lucide="rocket" style="width:13px;"></i> Actions
+        <i data-lucide="help-circle" class="help-trigger" data-help-target="help-actions" style="width:13px; margin-left: auto;"></i>
       </div>
       <div class="card">
         <button class="btn btn-push" id="btn-run" onclick="runExecuteActions()">
-          <span class="material-icons-outlined">send</span> Send Custom Mail
+          <i data-lucide="send" style="width:15px;"></i> Send Custom Mail
         </button>
+      </div>
+    </div>
+
+    <!-- Help & Guide -->
+    <div>
+      <div class="section-label">
+        <i data-lucide="book-open" style="width:13px;"></i> Help & Guide
+        <i data-lucide="help-circle" class="help-trigger" data-help-target="help-getting-started" style="width:13px; margin-left: auto;"></i>
+      </div>
+      <div class="card help-guide-card">
+        <div class="help-guide-list">
+          <div class="help-guide-item">
+            <i data-lucide="help-circle" class="help-trigger" data-help-target="help-columns-guide" style="color: var(--primary);"></i>
+            <div>
+              <strong>Column Guide:</strong> Learn about PDF HTML, Attachments, and BCC.
+            </div>
+          </div>
+          <div class="help-guide-item">
+            <i data-lucide="lightbulb" class="help-trigger" data-help-target="help-tips" style="color: var(--warning);"></i>
+            <div>
+              <strong>Pro Tips:</strong> HTML-to-PDF conversion and bulk sending.
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
   </div>
 
-  <!-- Loading Overlay -->
-  <div class="loading-overlay" id="loadingOverlay">
-    <div class="spinner"></div>
-    <div class="loading-text" id="loadingText">Processing...</div>
+  <!-- Help Content (Hidden) -->
+  <div style="display: none;">
+    <div id="help-getting-started">
+      <p><strong>Getting Started</strong></p>
+      <p>Follow these steps to send custom emails:</p>
+      <ol>
+        <li><strong>Fill Content:</strong> Enter subjects and bodies directly into the sheet.</li>
+        <li><strong>Action:</strong> Set the Action column to <code>SEND</code> or <code>DRAFT</code>.</li>
+        <li><strong>Run:</strong> Click <strong>Send Custom Mail</strong> in the sidebar.</li>
+      </ol>
+    </div>
+
+    <div id="help-columns-guide">
+      <p><strong>Core Columns Guide</strong></p>
+      <ul>
+        <li><strong>Email Subject / Body:</strong> The actual text sent to recipients.</li>
+        <li><strong>PDF HTML:</strong> Raw HTML that will be converted to a PDF attachment.</li>
+        <li><strong>PDF Name:</strong> The name of the generated PDF file.</li>
+        <li><strong>Attachments:</strong> Comma-separated Drive File IDs or URLs.</li>
+      </ul>
+    </div>
+
+    <div id="help-usage-stats">
+      <p><strong>Email Quota</strong></p>
+      <p>This shows how many emails you can still send today via Google Services.</p>
+    </div>
+
+    <div id="help-actions">
+      <p><strong>Mail Sender Actions</strong></p>
+      <ul>
+        <li><strong>SEND:</strong> Immediately sends the email to the recipient.</li>
+        <li><strong>DRAFT:</strong> Creates a draft in your Gmail account for manual review.</li>
+      </ul>
+    </div>
+
+    <div id="help-tips">
+      <p><strong>Pro Tips</strong></p>
+      <ul>
+        <li><strong>HTML to PDF:</strong> Use <code>&lt;table&gt;</code>, <code>&lt;h1&gt;</code>, and inline CSS for professional PDF attachments.</li>
+        <li><strong>Bulk Sending:</strong> Ideal for unique, one-off messages that don't follow a fixed template.</li>
+      </ul>
+    </div>
   </div>
 
-  <!-- Toast Notification -->
-  <div id="toast" class="toast">Done</div>
-
+  <?!= _App_include('SidebarShared'); ?>
   <script>
     let pollInterval = null;
 
     // ── Init ──
     window.onload = function () {
+      lucide.createIcons();
       refreshData();
     };
 
@@ -400,7 +433,7 @@
       SyncSidebar.run('MailSender_getQuota', [], {
         context: 'Refresh Quota',
         onSuccess: function (res) {
-          updateQuota(res.data);
+          updateQuota(res.remaining);
         },
         onError: function() {
           const el = document.getElementById('quota-display');
@@ -423,42 +456,61 @@
 
     // ── Run Main Action ──
     function runExecuteActions() {
-      const confirmAction = confirm("Execute all 'SEND' and 'DRAFT' actions in the sheet using the provided Custom Subjects and Bodies?");
-      if (!confirmAction) return;
+      SyncSidebar.showConfirmDialog("Execute all 'SEND' and 'DRAFT' actions in the sheet using the provided Custom Subjects and Bodies?", function() {
+        setStatus('working', 'Initializing...');
 
-      SyncSidebar.toggleLoading(true, "Initializing...");
+        SyncSidebar.run('MailSender_executeActions', [], {
+          context: 'Execute Actions',
+          onSuccess: function (res) {
+            if (pollInterval) clearInterval(pollInterval);
+            setStatus('ready');
+            SyncSidebar.showToast(res.message || "Actions completed!");
+            refreshData();
+          },
+          onError: function(err) {
+            if (pollInterval) clearInterval(pollInterval);
+            handleError(err);
+          }
+        });
 
-      SyncSidebar.run('MailSender_executeActions', [], {
-        context: 'Execute Actions',
-        onSuccess: function (res) {
-          if (pollInterval) clearInterval(pollInterval);
-          SyncSidebar.toggleLoading(false);
-          SyncSidebar.showToast(res.message);
-          refreshData();
-        },
-        onError: function() {
-          if (pollInterval) clearInterval(pollInterval);
-          SyncSidebar.toggleLoading(false);
-        }
+        // Start polling for progress
+        pollInterval = setInterval(fetchProgress, 1500);
       });
-
-      // Start polling for progress
-      pollInterval = setInterval(fetchProgress, 1500);
     }
 
     function fetchProgress() {
       SyncSidebar.run('MailSender_getProgress', [], {
         unwrap: false,
         toast: false,
+        lockButtons: false,
         resetLoading: false,
         context: 'Poll Progress',
         onSuccess: function (res) {
           const data = res && res.data ? res.data : null;
           if (data && typeof data.total !== 'undefined' && typeof data.current !== 'undefined' && data.total > 0) {
-            document.getElementById('loadingText').innerText = "Processing " + data.current + " of " + data.total + "...";
+            setStatus('working', 'Processing ' + data.current + ' of ' + data.total + '...');
           }
         }
       });
+    }
+
+    // ── Helpers ──
+    function setStatus(state, workingText = 'Working...') {
+      var badge = document.getElementById('statusBadge');
+      badge.className = 'status-badge ' + state;
+
+      if (state === 'working') {
+        badge.innerHTML = '<div class="loader" style="width:10px;height:10px;border-width:1.5px;"></div> ' + workingText;
+      } else if (state === 'error') {
+        badge.innerText = 'Error';
+      } else {
+        badge.innerText = 'Ready';
+      }
+    }
+
+    function handleError(err) {
+      SyncSidebar.handleError(err, { context: 'Sidebar Operation' });
+      setStatus('error');
     }
   </script>
 </body>

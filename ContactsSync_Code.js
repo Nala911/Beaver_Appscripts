@@ -13,13 +13,12 @@ SyncEngine.registerTool('CONTACTS_SYNC', {
     SIDEBAR_HTML: 'ContactsSync_Sidebar',
     SIDEBAR_WIDTH: 400,
     FROZEN_ROWS: 1,
-    FROZEN_COLS: 0,
+    FROZEN_COLS: 2,
     COL_WIDTHS: [120, 130, 130, 180, 140, 140, 140, 100, 150, 120, 100, 80, 160, 250, 140],
     FORMAT_CONFIG: {
-        numReadOnlyColsAtEnd: 1,
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [
-            { header: 'Action', type: 'ACTION', options: ['CREATE', 'UPDATE', 'REMOVE'] },
+            { header: 'Action', type: 'ACTION', options: ['CREATE', 'UPDATE', 'DELETE'] },
             { header: 'Status', type: 'STATUS' },
             { header: 'First Name', type: 'TEXT' },
             { header: 'Last Name', type: 'TEXT' },
@@ -341,10 +340,10 @@ function ContactsSync_pushChanges() {
                         rowUpdates.action = "";
                         break;
 
-                    case "REMOVE":
+                    case "DELETE":
                         if (!rowUpdates.contactId) throw new Error("⚠️ Missing Contact ID");
                         try { People.People.deleteContact(rowUpdates.contactId); } catch (e) { }
-                        rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Removed";
+                        rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Deleted";
                         rowUpdates.action = "";
                         break;
 
@@ -460,7 +459,7 @@ function _ContactsSync_applyDataValidationsInternal(sheet) {
     if (maxRows < 2) return;
     var headers = SheetManager.getHeaders('CONTACTS_SYNC');
     var actionColIndex = headers.indexOf('Action') + 1;
-    var ruleAction = SpreadsheetApp.newDataValidation().requireValueInList(["CREATE", "UPDATE", "REMOVE"], true).build();
+    var ruleAction = SpreadsheetApp.newDataValidation().requireValueInList(["CREATE", "UPDATE", "DELETE"], true).build();
     if (actionColIndex > 0) sheet.getRange(2, actionColIndex, maxRows - 1).setDataValidation(ruleAction);
 }
 

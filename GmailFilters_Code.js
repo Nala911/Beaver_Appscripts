@@ -19,12 +19,11 @@ SyncEngine.registerTool('GMAIL_FILTERS', {
     FROZEN_COLS: 2,
     COL_WIDTHS: [150, 150, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200],
     FORMAT_CONFIG: {
-        numReadOnlyColsAtEnd: 0,
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [
             { header: 'Action', type: 'ACTION', options: ['CREATE', 'UPDATE', 'DELETE'] },
             { header: 'Status', type: 'STATUS' },
-            { header: 'Filter ID', type: 'TEXT' },
+            { header: 'Filter ID', type: 'ID' },
             { header: 'Criteria: From', type: 'TEXT' },
             { header: 'Criteria: To', type: 'TEXT' },
             { header: 'Criteria: Subject', type: 'TEXT' },

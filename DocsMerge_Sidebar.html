@@ -428,6 +428,7 @@
         <div>
             <div class="section-label">
                 <i data-lucide="settings" style="width:13px;"></i> Export Mode
+                <i data-lucide="help-circle" class="help-trigger" data-help-target="help-tips" style="width:13px; margin-left: auto;"></i>
             </div>
             <div class="card" style="flex-direction: row; gap: 8px; padding: 10px;">
                 <button class="btn btn-outline active" style="flex:1; height: 32px;" id="mode-individual"
@@ -449,6 +450,7 @@
         <div>
             <div class="section-label">
                 <i data-lucide="link" style="width:13px;"></i> Configuration URLs
+                <i data-lucide="help-circle" class="help-trigger" data-help-target="help-getting-started" style="width:13px; margin-left: auto;"></i>
             </div>
             <div class="card">
                 <div>
@@ -487,6 +489,7 @@
         <div>
             <div class="section-label">
                 <i data-lucide="zap" style="width:13px;"></i> Actions
+                <i data-lucide="help-circle" class="help-trigger" data-help-target="help-actions" style="width:13px; margin-left: auto;"></i>
             </div>
             <div class="btn-group">
                 <button class="btn btn-pull btn-full" id="btn-sync" onclick="syncPlaceholders()">
@@ -498,6 +501,70 @@
             </div>
         </div>
 
+        <!-- Help & Guide -->
+        <div>
+            <div class="section-label">
+                <i data-lucide="book-open" style="width:13px;"></i> Help & Guide
+                <i data-lucide="help-circle" class="help-trigger" data-help-target="help-getting-started" style="width:13px; margin-left: auto;"></i>
+            </div>
+            <div class="card help-guide-card">
+                <div class="help-guide-list">
+                    <div class="help-guide-item">
+                        <i data-lucide="help-circle" class="help-trigger" data-help-target="help-columns-guide" style="color: var(--primary);"></i>
+                        <div>
+                            <strong>Column Guide:</strong> Learn about Action, Document Name, and Merged File Link.
+                        </div>
+                    </div>
+                    <div class="help-guide-item">
+                        <i data-lucide="lightbulb" class="help-trigger" data-help-target="help-tips" style="color: var(--warning);"></i>
+                        <div>
+                            <strong>Pro Tips:</strong> Single vs Individual mode and placeholder sync.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Help Content (Hidden) -->
+    <div style="display: none;">
+        <div id="help-getting-started">
+            <p><strong>Getting Started</strong></p>
+            <p>Follow these steps to merge your first document:</p>
+            <ol>
+                <li><strong>Prepare Doc:</strong> Create a Google Doc with <code>{{placeholder}}</code> tags.</li>
+                <li><strong>Setup URLs:</strong> Search and select your Template Doc and Destination Folder.</li>
+                <li><strong>Sync & Run:</strong> Click <strong>Pull Placeholders</strong> to add columns, then click <strong>Run</strong>.</li>
+            </ol>
+        </div>
+
+        <div id="help-columns-guide">
+            <p><strong>Core Columns Guide</strong></p>
+            <ul>
+                <li><strong>Action:</strong> <code>Generate PDF</code> or <code>Generate Doc</code>.</li>
+                <li><strong>Document Name:</strong> The filename for the generated document.</li>
+                <li><strong>Merged File Link:</strong> This cell will be updated with a link to the final file.</li>
+                <li><strong>Dynamic Columns:</strong> These are created automatically based on your <code>{{tags}}</code>.</li>
+            </ul>
+        </div>
+
+        <div id="help-actions">
+            <p><strong>Docs Merge Process</strong></p>
+            <ul>
+                <li><strong>Pull Placeholders:</strong> Scans your template for tags and creates the corresponding columns in this sheet.</li>
+                <li><strong>Run Docs Merge:</strong> Processes rows where an Action is selected.</li>
+            </ul>
+        </div>
+
+        <div id="help-tips">
+            <p><strong>Pro Tips</strong></p>
+            <ul>
+                <li><strong>Individual Mode:</strong> Creates a separate file for every row in the folder.</li>
+                <li><strong>Single Mode:</strong> Merges all rows into one giant document (with page breaks).</li>
+                <li><strong>Permissions:</strong> Ensure you have 'Editor' access to the template and destination folder.</li>
+            </ul>
+        </div>
     </div>
 
     <?!= _App_include('SidebarShared'); ?>
@@ -736,19 +803,19 @@
                 ? "Generate individual documents for all 'Generate PDF/Doc' actions?"
                 : "Generate a single merged PDF for all 'Generate Doc/PDF' actions?";
 
-            if (!confirm(confirmMsg)) return;
+            SyncSidebar.showConfirmDialog(confirmMsg, function() {
+                setStatus('working', 'Initializing...');
 
-            setStatus('working', 'Initializing...');
+                const config = {
+                    templateUrl: templateUrl,
+                    folderUrl: folderUrl,
+                    templateName: templateName,
+                    folderName: folderName,
+                    mode: currentMode
+                };
 
-            const config = {
-                templateUrl: templateUrl,
-                folderUrl: folderUrl,
-                templateName: templateName,
-                folderName: folderName,
-                mode: currentMode
-            };
-
-            executeBatch(config, 0);
+                executeBatch(config, 0);
+            });
         }
 
         function executeBatch(config, startIndex) {
@@ -773,18 +840,14 @@
         // ── Helpers ──
         function setStatus(state, workingText = 'Working...') {
             var badge = document.getElementById('statusBadge');
-            var btns = document.querySelectorAll('.btn');
             badge.className = 'status-badge ' + state;
 
             if (state === 'working') {
                 badge.innerHTML = '<div class="loader" style="width:10px;height:10px;border-width:1.5px;"></div> ' + workingText;
-                btns.forEach(function (b) { b.disabled = true; });
             } else if (state === 'error') {
                 badge.innerHTML = 'Error';
-                btns.forEach(function (b) { b.disabled = false; });
             } else {
                 badge.innerHTML = 'Ready';
-                btns.forEach(function (b) { b.disabled = false; });
             }
         }
 

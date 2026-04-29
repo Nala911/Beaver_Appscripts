@@ -9,7 +9,6 @@ var SHEET_NAMES = {
     MAIL_MERGE: '📧 Mail Merge',
     MAIL_SENDER: '📩 Mail Sender',
     DOCS_MERGE: '📄 Docs Merge',
-    TASKS: '✅ Google Tasks',
     FORMS_SYNC: '📝 Google Forms',
     BULK_FOLDER: '📂 Bulk Folder Creation',
     DRIVE_SYNC: '💾 Google Drive',

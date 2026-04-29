@@ -4,14 +4,14 @@
 <head>
     <base target="_top">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <?!= _App_include('ThemeEditor_CSS') ?>
+    <?!= _App_include('Settings_CSS') ?>
 </head>
 
 <body>
 
-    <div id="loading-overlay">
+    <div id="loadingOverlay" class="loading-overlay">
         <div class="spinner"></div>
-        <p style="color: var(--text-secondary); font-size: 13px; font-weight: 500;">Loading Studio...</p>
+        <p style="color: var(--text-secondary); font-size: 13px; font-weight: 500;">Loading Settings...</p>
     </div>
 
     <header>
@@ -22,7 +22,7 @@
                 <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
                 <path d="M2 12h20"></path>
             </svg>
-            <h1>Theme Studio</h1>
+            <h1>Settings</h1>
         </div>
         <div class="header-actions">
             <button class="btn-secondary" onclick="resetTheme()" id="resetBtn">Reset to Defaults</button>
@@ -30,7 +30,7 @@
         </div>
     </header>
 
-    <main class="dashboard-container" id="theme-form" style="display:none;">
+    <main class="dashboard-container" id="settings-dashboard" style="display:none;">
 
         <!-- Column 1: Navigation -->
         <nav class="nav-col">
@@ -326,8 +326,6 @@
                 </div>
             </div>
 
-        </div>
-
             <!-- Section: Audit -->
             <div id="sec-audit" class="settings-section">
                 <h2 class="section-title">System Audit</h2>
@@ -401,17 +399,8 @@
         </div>
     </main>
 
-    <div id="toast">
-        <svg id="toast-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-        </svg>
-        <span id="toast-msg">Saved successfully!</span>
-    </div>
-
     <?!= _App_include('SidebarShared'); ?>
-    <?!= _App_include('ThemeEditor_JS') ?>
+    <?!= _App_include('Settings_JS') ?>
 </body>
 
 </html>

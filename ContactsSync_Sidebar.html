@@ -221,98 +221,6 @@
             font-size: 17px;
         }
 
-        /* ── Loading Overlay ── */
-        .loading-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(245, 243, 255, 0.85);
-            backdrop-filter: blur(6px);
-            z-index: 100;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .spinner {
-            border: 3px solid var(--border-light);
-            border-top: 3px solid var(--primary);
-            border-right: 3px solid var(--primary-light);
-            border-radius: 50%;
-            width: 28px;
-            height: 28px;
-            animation: spin 0.8s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        .loading-text {
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--text-secondary);
-        }
-
-        /* ── Toast ── */
-        .toast {
-            visibility: hidden;
-            min-width: 220px;
-            background: var(--text);
-            color: #fff;
-            text-align: center;
-            border-radius: var(--radius-sm);
-            padding: 11px 18px;
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 12px;
-            font-weight: 500;
-            z-index: 101;
-            box-shadow: var(--shadow-lg);
-        }
-
-        .toast.show {
-            visibility: visible;
-            animation: toastIn 0.35s ease, toastOut 0.35s ease 3.15s;
-        }
-
-        .toast.error-toast {
-            background: var(--danger);
-        }
-
-        @keyframes toastIn {
-            from {
-                bottom: 0;
-                opacity: 0;
-                transform: translateX(-50%) scale(0.95);
-            }
-
-            to {
-                bottom: 30px;
-                opacity: 1;
-                transform: translateX(-50%) scale(1);
-            }
-        }
-
-        @keyframes toastOut {
-            from {
-                bottom: 30px;
-                opacity: 1;
-                transform: translateX(-50%) scale(1);
-            }
-
-            to {
-                bottom: 0;
-                opacity: 0;
-                transform: translateX(-50%) scale(0.95);
-            }
-        }
-
         /* ── Empty State ── */
         .empty-state {
             padding: 30px 15px;
@@ -355,13 +263,6 @@
         </div>
 
     </div>
-
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="spinner"></div>
-        <div class="loading-text" id="loadingText">Processing…</div>
-    </div>
-    <div id="toast" class="toast">Done</div>
 
     <?!= _App_include('SidebarShared'); ?>
     <script>

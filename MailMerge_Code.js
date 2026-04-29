@@ -12,23 +12,22 @@ SyncEngine.registerTool('MAIL_MERGE', {
     SIDEBAR_HTML: 'MailMerge_Sidebar',
     SIDEBAR_WIDTH: 400,
     FROZEN_ROWS: 1,
-    FROZEN_COLS: 1,
-    COL_WIDTHS: [120, 200, 150, 150, 150, 250, 200],
+    FROZEN_COLS: 2,
+    COL_WIDTHS: [120, 200, 200, 150, 150, 250, 200],
     FORMAT_CONFIG: {
-        numReadOnlyColsAtEnd: 1,
         conditionalRules: [
             { type: 'pending', actionCol: 'A', scope: 'actionOnly' },
-            { type: 'success', statusCol: 'G', scope: 'fullRow' },
-            { type: 'error', statusCol: 'G', scope: 'fullRow' }
+            { type: 'success', statusCol: 'B', scope: 'fullRow' },
+            { type: 'error', statusCol: 'B', scope: 'fullRow' }
         ],
         COL_SCHEMA: [
             { header: 'Action', type: 'ACTION', options: ['SEND', 'DRAFT'] },
+            { header: 'Status', type: 'STATUS' },
             { header: 'To', type: 'TEXT' },
             { header: 'CC', type: 'EMAIL_LIST' },
             { header: 'BCC', type: 'EMAIL_LIST' },
             { header: 'Thread ID or Subject', type: 'TEXT' },
-            { header: 'Attachments', type: 'TEXT' },
-            { header: 'Status', type: 'TEXT' }
+            { header: 'Attachments', type: 'TEXT' }
         ]
     }
 });
@@ -101,7 +100,6 @@ function MailMerge_syncPlaceholders(draftId) {
       }
 
       var syncResult = SheetManager.syncDynamicColumns('MAIL_MERGE', placeholders, {
-        anchorHeader: 'Status',
         dynamicColWidth: 150
       });
 
@@ -216,7 +214,7 @@ function MailMerge_executeActions(draftId, startIndex) {
         // Headers for dynamic placeholders
         var headers = SheetManager.getHeaders('MAIL_MERGE');
 
-        for (var colIndex = 6; colIndex < headers.length; colIndex++) {
+        for (var colIndex = 2; colIndex < headers.length; colIndex++) {
           var header = headers[colIndex];
           if (!header) continue;
           var safeHeader = _MailMerge_escapeRegExp(header);

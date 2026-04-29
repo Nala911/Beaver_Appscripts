@@ -12,10 +12,9 @@ SyncEngine.registerTool('MAIL_SENDER', {
     SIDEBAR_HTML: 'MailSender_Sidebar',
     SIDEBAR_WIDTH: 400,
     FROZEN_ROWS: 1,
-    FROZEN_COLS: 1,
+    FROZEN_COLS: 2,
     COL_WIDTHS: [120, 200, 150, 150, 150, 250, 250, 300, 300, 200],
     FORMAT_CONFIG: {
-        numReadOnlyColsAtEnd: 0,
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [
             { header: 'Action', type: 'ACTION', options: ['SEND', 'DRAFT'] },
@@ -45,7 +44,7 @@ function MailSender_openSidebar() {
 function MailSender_getQuota() {
   return Logger.run('MAIL_SENDER', 'Get Quota', function () {
     var quota = MailApp.getRemainingDailyQuota();
-    return _App_ok('Remaining quota: ' + quota, quota);
+    return _App_ok('Remaining quota: ' + quota, { remaining: quota });
   });
 }
 

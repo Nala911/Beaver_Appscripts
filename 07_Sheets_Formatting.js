@@ -152,7 +152,6 @@ function _App_applyBodyFormatting(sheet, numDataRows, config) {
     if (actualRows < 1) return;
 
     var totalCols = config.COL_SCHEMA ? config.COL_SCHEMA.length : (config.totalCols || sheet.getLastColumn());
-    var numReadOnlyAtEnd = config.numReadOnlyColsAtEnd || 0;
 
     // 1. Base formatting
     var startRow = 2;
@@ -170,30 +169,6 @@ function _App_applyBodyFormatting(sheet, numDataRows, config) {
 
     sheet.setRowHeights(startRow, actualRows, SHEET_THEME.LAYOUT.BODY_ROW_HEIGHT);
 
-    try {
-        var startColForEditable = 1;
-
-        // 1. Action (Col 1)
-        if (!config.skipActionColoring) {
-            sheet.getRange(startRow, 1, actualRows, 1).setBackground(SHEET_THEME.ACTION);
-            startColForEditable = 2;
-        }
-
-        // 2. Editable Columns
-        var numEditable = endCol - (startColForEditable - 1) - numReadOnlyAtEnd;
-        if (numEditable > 0) {
-            sheet.getRange(startRow, startColForEditable, actualRows, numEditable).setBackground(SHEET_THEME.EDITABLE);
-        }
-
-        // 3. Read-Only Columns
-        if (numReadOnlyAtEnd > 0) {
-            var readOnlyStartCol = endCol - numReadOnlyAtEnd + 1;
-            sheet.getRange(startRow, readOnlyStartCol, actualRows, numReadOnlyAtEnd).setBackground(SHEET_THEME.READ_ONLY);
-        }
-    } catch (e) {
-        // Silently fail
-    }
-
     // Apply Schema-driven validations and formats
     if (config.COL_SCHEMA) {
         config.COL_SCHEMA.forEach(function(colDef, index) {
@@ -209,9 +184,20 @@ function _App_applyBodyFormatting(sheet, numDataRows, config) {
                 range.setFontStyle('italic');
             }
             
-            // Background Colors
-            if (colDef.type === 'STATUS' || colDef.type === 'READ_ONLY') {
+            // Background Colors (Schema-driven Categorization)
+            var category = colDef.category;
+            if (!category) {
+                if (colDef.type === 'ACTION') category = 'ACTION';
+                else if (colDef.type === 'STATUS' || colDef.type === 'READ_ONLY' || colDef.type === 'ID') category = 'READ_ONLY';
+                else category = 'EDITABLE';
+            }
+
+            if (category === 'ACTION') {
+                range.setBackground(SHEET_THEME.ACTION);
+            } else if (category === 'READ_ONLY') {
                 range.setBackground(SHEET_THEME.READ_ONLY);
+            } else {
+                range.setBackground(SHEET_THEME.EDITABLE);
             }
 
             // Number Formats

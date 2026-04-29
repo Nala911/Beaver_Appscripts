@@ -411,6 +411,7 @@
     <div>
       <div class="section-label">
         <i data-lucide="bar-chart-2" style="width:13px;"></i> Usage Stats
+        <i data-lucide="help-circle" class="help-trigger" data-help-target="help-usage-stats" style="width:13px; margin-left: auto;"></i>
       </div>
       <div class="card quota-card">
         <div class="quota-label">Daily Email Quota</div>
@@ -424,6 +425,7 @@
     <div id="draft-section">
       <div class="section-label">
         <i data-lucide="file-text" style="width:13px;"></i> Template Configuration
+        <i data-lucide="help-circle" class="help-trigger" data-help-target="help-template-config" style="width:13px; margin-left: auto;"></i>
       </div>
       <div class="card">
         <select id="draft-select">
@@ -432,13 +434,14 @@
       </div>
     </div>
 
-    <!-- Action Buttons -->
+    <!-- Actions -->
     <div>
       <div class="section-label">
         <i data-lucide="zap" style="width:13px;"></i> Actions
+        <i data-lucide="help-circle" class="help-trigger" data-help-target="help-actions" style="width:13px; margin-left: auto;"></i>
       </div>
       <div class="btn-group">
-        <button class="btn btn-outline btn-full" id="btn-sync" onclick="handleDraftSelection()">
+        <button class="btn btn-pull btn-full" id="btn-sync" onclick="handleDraftSelection()">
           <i data-lucide="columns" style="width:15px;"></i> Pull Placeholders
         </button>
         <button class="btn btn-push btn-full" id="btn-run" onclick="executeActions()">
@@ -447,6 +450,91 @@
       </div>
     </div>
 
+    <!-- Help & Guide -->
+    <div>
+      <div class="section-label">
+        <i data-lucide="book-open" style="width:13px;"></i> Help & Guide
+        <i data-lucide="help-circle" class="help-trigger" data-help-target="help-getting-started" style="width:13px; margin-left: auto;"></i>
+      </div>
+      <div class="card help-guide-card">
+        <div class="help-guide-list">
+          <div class="help-guide-item">
+            <i data-lucide="help-circle" class="help-trigger" data-help-target="help-columns-guide" style="color: var(--primary);"></i>
+            <div>
+              <strong>Column Guide:</strong> Learn about Action, To, Thread ID, and Attachments.
+            </div>
+          </div>
+          <div class="help-guide-item">
+            <i data-lucide="lightbulb" class="help-trigger" data-help-target="help-tips" style="color: var(--warning);"></i>
+            <div>
+              <strong>Pro Tips:</strong> Case-sensitivity, formatting, and quota limits.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Help Content (Hidden) -->
+  <div style="display: none;">
+    <div id="help-usage-stats">
+      <p><strong>Email Quota Guidance</strong></p>
+      <p>This shows your remaining daily sending limit from Google.</p>
+      <ul>
+        <li>Gmail accounts typically have 2,000/day.</li>
+        <li>Workspace accounts may have more.</li>
+        <li>Limits are shared across all your Add-ons.</li>
+      </ul>
+    </div>
+
+    <div id="help-template-config">
+      <p><strong>Mail Merge Templates</strong></p>
+      <p>Select a Gmail Draft to use as your template.</p>
+      <ul>
+        <li>Create a draft in Gmail first.</li>
+        <li>Use <code>{{Column Name}}</code> in the subject or body to auto-fill data.</li>
+        <li>Case must match your sheet headers exactly.</li>
+      </ul>
+    </div>
+
+    <div id="help-actions">
+      <p><strong>Mail Merge Process</strong></p>
+      <p>Follow these steps for a successful merge:</p>
+      <ul>
+        <li><strong>Pull Placeholders:</strong> Scans your draft for <code>{{tags}}</code> and creates the necessary columns in your sheet.</li>
+        <li><strong>Run Mail Merge:</strong> Processes rows where the <strong>'Action'</strong> column is set to <strong>'SEND'</strong> or <strong>'DRAFT'</strong>.</li>
+      </ul>
+    </div>
+
+    <div id="help-getting-started">
+      <p><strong>Getting Started</strong></p>
+      <p>Follow these 3 steps to run your first merge:</p>
+      <ol>
+        <li><strong>Gmail Draft:</strong> Create a draft with tags like <code>{{First Name}}</code>.</li>
+        <li><strong>Select & Sync:</strong> Choose the draft above and click <strong>Pull Placeholders</strong>.</li>
+        <li><strong>Execute:</strong> Fill the data, set Action to <strong>SEND</strong>, and click <strong>Run</strong>.</li>
+      </ol>
+    </div>
+
+    <div id="help-columns-guide">
+      <p><strong>Core Columns Guide</strong></p>
+      <ul>
+        <li><strong>Action:</strong> Set to <code>SEND</code> for immediate mailing or <code>DRAFT</code> to create Gmail drafts for review.</li>
+        <li><strong>To:</strong> Primary recipient email address.</li>
+        <li><strong>Thread ID or Subject:</strong> (Advanced) Paste a Gmail Thread ID to reply to a specific conversation.</li>
+        <li><strong>Attachments:</strong> Comma-separated list of Google Drive File IDs or URLs.</li>
+      </ul>
+    </div>
+
+    <div id="help-tips">
+      <p><strong>Pro Tips</strong></p>
+      <ul>
+        <li><strong>Case Sensitive:</strong> Tags like <code>{{Name}}</code> must match the column header exactly.</li>
+        <li><strong>HTML Support:</strong> Any formatting (bold, links, images) in your Gmail draft is preserved.</li>
+        <li><strong>Status:</strong> The tool updates the Status column automatically after each row.</li>
+      </ul>
+    </div>
   </div>
 
   <?!= _App_include('SidebarShared'); ?>
@@ -540,18 +628,23 @@
       var start = startIndex || 0;
 
       if (start === 0) {
-        var confirmAction = confirm("Execute all 'SEND' and 'DRAFT' actions in the sheet?");
-        if (!confirmAction) return;
-        setStatus('working', 'Processing Items...');
-        log("Running Mail Merge Engine... Please wait.");
+        SyncSidebar.showConfirmDialog("Execute all 'SEND' and 'DRAFT' actions in the sheet?", function() {
+          setStatus('working', 'Processing Items...');
+          log("Running Mail Merge Engine... Please wait.");
+          
+          SyncSidebar.run('MailMerge_executeActions', [draftId, start], {
+            onSuccess: function (response) { showResult(response, draftId); },
+            toast: false
+          });
+        });
       } else {
         setStatus('working', 'Processing Items...');
+        
+        SyncSidebar.run('MailMerge_executeActions', [draftId, start], {
+          onSuccess: function (response) { showResult(response, draftId); },
+          toast: false
+        });
       }
-
-      SyncSidebar.run('MailMerge_executeActions', [draftId, start], {
-        onSuccess: function (response) { showResult(response, draftId); },
-        toast: false
-      });
     }
 
     function showResult(response, draftId) {
@@ -582,18 +675,14 @@
     // ── Helpers ──
     function setStatus(state, workingText = 'Working...') {
       var badge = document.getElementById('statusBadge');
-      var btns = document.querySelectorAll('.btn');
       badge.className = 'status-badge ' + state;
 
       if (state === 'working') {
         badge.innerHTML = '<div class="loader" style="width:10px;height:10px;border-width:1.5px;"></div> ' + workingText;
-        btns.forEach(function (b) { b.disabled = true; });
       } else if (state === 'error') {
         badge.innerText = 'Error';
-        btns.forEach(function (b) { b.disabled = false; });
       } else {
         badge.innerText = 'Ready';
-        btns.forEach(function (b) { b.disabled = false; });
       }
     }
 

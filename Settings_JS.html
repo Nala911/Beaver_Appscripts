@@ -27,10 +27,10 @@
             mapDataToInputs(currentTheme);
             bindLivePreviewEvents();
 
-            document.getElementById('loading-overlay').style.opacity = '0';
+            document.getElementById('loadingOverlay').style.opacity = '0';
             setTimeout(() => {
-                document.getElementById('loading-overlay').style.display = 'none';
-                document.getElementById('theme-form').style.display = 'grid';
+                document.getElementById('loadingOverlay').style.display = 'none';
+                document.getElementById('settings-dashboard').style.display = 'grid';
             }, 300);
         }
 
@@ -61,28 +61,28 @@
         }
 
         function resetTheme() {
-            if (!confirm("Revert all styles back to WorkspaceSync defaults?")) return;
+            SyncSidebar.showConfirmDialog("Revert all styles back to WorkspaceSync defaults?", function() {
+                const btn = document.getElementById('resetBtn');
+                if (!btn.dataset.originalText) btn.dataset.originalText = btn.innerHTML;
+                const originalText = btn.dataset.originalText;
 
-            const btn = document.getElementById('resetBtn');
-            if (!btn.dataset.originalText) btn.dataset.originalText = btn.innerHTML;
-            const originalText = btn.dataset.originalText;
+                btn.innerHTML = 'Resetting...';
+                btn.disabled = true;
 
-            btn.innerHTML = 'Resetting...';
-            btn.disabled = true;
-
-            SyncSidebar.run('UI_resetThemeConfig', [], {
-                context: 'Reset Theme',
-                onSuccess: function(res) {
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                    SyncSidebar.showToast(res.message);
-                    mapDataToInputs(defaultTheme);
-                    currentTheme = JSON.parse(JSON.stringify(defaultTheme));
-                },
-                onError: function() {
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                }
+                SyncSidebar.run('UI_resetThemeConfig', [], {
+                    context: 'Reset Theme',
+                    onSuccess: function(res) {
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                        SyncSidebar.showToast(res.message);
+                        mapDataToInputs(defaultTheme);
+                        currentTheme = JSON.parse(JSON.stringify(defaultTheme));
+                    },
+                    onError: function() {
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                    }
+                });
             });
         }
 
@@ -95,6 +95,14 @@
             // Hide all sections, show target
             document.querySelectorAll('.settings-section').forEach(sec => sec.classList.remove('active'));
             document.getElementById('sec-' + tabId).classList.add('active');
+
+            // Toggle preview column based on tab
+            const dashboard = document.getElementById('settings-dashboard');
+            if (tabId === 'audit') {
+                dashboard.classList.add('hide-preview');
+            } else {
+                dashboard.classList.remove('hide-preview');
+            }
         }
 
         // Custom Segment Control Logic

@@ -11,7 +11,7 @@ function onOpen() {
 
     menu
       .addSeparator()
-      .addItem('⚙️ Theme Settings', 'UI_openThemeDialog')
+      .addItem('⚙️ Settings', 'UI_openSettingsDialog')
       .addToUi();
   });
 }
@@ -29,13 +29,13 @@ function onInstall(e) {
 // ==========================================
 
 
-function UI_openThemeDialog() {
-  return Logger.run('SYSTEM', 'Open Theme Dialog', function () {
-    const html = HtmlService.createTemplateFromFile('ThemeEditor_Sidebar').evaluate()
-      .setTitle('🎨 Theme Studio')
+function UI_openSettingsDialog() {
+  return Logger.run('SYSTEM', 'Open Settings Dialog', function () {
+    const html = HtmlService.createTemplateFromFile('Settings_Sidebar').evaluate()
+      .setTitle('⚙️ Settings')
       .setWidth(1200)
       .setHeight(800);
-    SpreadsheetApp.getUi().showModalDialog(html, '🎨 Theme Studio');
+    SpreadsheetApp.getUi().showModalDialog(html, '⚙️ Settings');
   });
 }
 

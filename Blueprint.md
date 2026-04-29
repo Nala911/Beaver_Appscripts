@@ -23,10 +23,10 @@ The system logic is split into sequential modules evaluated in order:
 - `07_Sheets_Formatting.js`: UI/styling application to sheets (`_App_applyBodyFormatting`).
 - `08_Engine_Core.js`: The `SyncEngine` plugin registration and retrieval system.
 - `09_Engine_UI.js`: UI abstractions for opening sidebars and dialogs.
-- `UI.js`: The central UI orchestrator. Responsible for creating the custom "🦫 WorkspaceSync Tools" menu (`onOpen`), providing the global wrapper for the Theme Editor sidebar, and connecting user actions to the tools.
+- `UI.js`: The central UI orchestrator. Responsible for creating the custom "🦫 WorkspaceSync Tools" menu (`onOpen`), providing the global wrapper for the Settings sidebar, and connecting user actions to the tools.
 - `SidebarShared.html`: Shared HTML, CSS, and JS components to eliminate redundant sidebar code and infinite spinners.
 - `Logger.js`: Error boundary and execution wrapper. Provides the `Logger.run` context for catching and reporting system-level failures via return objects. All console-based logging is strictly forbidden.
-- `SystemAudit.js`: Runs comprehensive diagnostic audits across all registered tools, verifying sheet integrity, API access, and schema setup. Outputs results directly to the Theme Studio UI.
+- `SystemAudit.js`: Runs comprehensive diagnostic audits across all registered tools, verifying sheet integrity, API access, and schema setup. Outputs results directly to the Settings UI.
 - `appsscript.json` / `.clasp.json`: Google Apps Script configuration and Clasp deployment environment details.
 
 ### Tool Modules & Connections
@@ -39,7 +39,6 @@ Each tool has a Backend file, a Frontend sidebar file, and a global Entry Functi
 | **Mail Merge** | `MailMerge_Code.js` | `MailMerge_Sidebar.html` | `MailMerge_openSidebar` |
 | **Mail Sender** | `MailSender_Code.js` | `MailSender_Sidebar.html` | `MailSender_openSidebar` |
 | **Docs Merge** | `DocsMerge_Code.js` | `DocsMerge_Sidebar.html` | `DocsMerge_openSidebar` |
-| **Google Tasks** | `TasksSync_Code.js` | `TasksSync_Sidebar.html` | `TasksSync_openSidebar` |
 | **Google Forms** | `FormsSync_Code.js` | `FormsSync_Sidebar.html` | `FormsSync_openSidebar` |
 | **Bulk Folder Creation** | `BulkFolderCreation_Code.js` | `BulkFolderCreation_Sidebar.html` | `BulkFolderCreation_openSidebar` |
 | **Google Drive** | `DriveFileDetails_Code.js` | `DriveFileDetails_Sidebar.html` | `DriveFileDetails_openSidebar` |
@@ -47,7 +46,7 @@ Each tool has a Backend file, a Frontend sidebar file, and a global Entry Functi
 | **Google Chat Spaces** | `ChatSpaceSync_Code.js` | `ChatSpaceSync_Sidebar.html` | `ChatSpaceSync_openSidebar` |
 | **Gmail Filters** | `GmailFilters_Code.js` | `GmailFilters_Sidebar.html` | `GmailFilters_openSidebar` |
 
-| **Theme Editor** | (Inside `UI.js`) | `ThemeEditor_Sidebar.html` | `UI_openThemeDialog` |
+| **Settings** | (Inside `UI.js`) | `Settings_Sidebar.html` | `UI_openSettingsDialog` |
 
 > [!CAUTION]
 > **Large File Warning:** The following files are large (25KB+). Use surgical reads.
@@ -65,7 +64,6 @@ Each tool relies on specific Google APIs. Do NOT use an API in a tool that doesn
 | **Mail Merge** | `GmailApp`, `DocumentApp` | No |
 | **Mail Sender** | `GmailApp`, `MailApp` | No |
 | **Docs Merge** | `DocumentApp`, `DriveApp` | No |
-| **Google Tasks** | `Tasks` (Advanced) | Yes — `Tasks API v1` |
 | **Google Forms** | `FormApp`, `DriveApp` | No |
 | **Bulk Folder Creation** | `DriveApp` | No |
 | **Google Drive** | `DriveApp`, `Drive` (Advanced) | Yes — `Drive API v3` |
@@ -73,7 +71,7 @@ Each tool relies on specific Google APIs. Do NOT use an API in a tool that doesn
 | **Gmail Filters** | `Gmail` (Advanced) | Yes — `Gmail API v1` |
 | **Pipeline** | `PropertiesService`, `SpreadsheetApp`, `ScriptApp` | No |
 
-| **Theme Editor** | `PropertiesService` only | No |
+| **Settings** | `PropertiesService` only | No |
 
 ## 🗝️ PropertiesService Key Registry
 
@@ -103,7 +101,7 @@ The codebase follows a strict and predictable design pattern across all tools. *
 The project uses a decentralized registration pattern to manage tools.
 - **`SyncEngine`**: A singleton in `08_Engine_Core.js` that handles tool registration (`registerTool`) and retrieval (`getTool`).
 - **Self-Registration**: Each tool module registers its own configuration block at the top of its file.
-- **Registry Metadata**: Configuration includes `REQUIRED_SERVICES`, `SHEET_NAME`, `TITLE`, `MENU_LABEL`, `MENU_ENTRYPOINT`, `MENU_ORDER`, `SIDEBAR_HTML`, `SIDEBAR_WIDTH`, `FROZEN_ROWS`, `FROZEN_COLS`, `COL_WIDTHS`, and a `FORMAT_CONFIG` object (containing `numReadOnlyColsAtEnd`, `conditionalRules`, and `COL_SCHEMA` for declarative column validations and types).
+- **Registry Metadata**: Configuration includes `REQUIRED_SERVICES`, `SHEET_NAME`, `TITLE`, `MENU_LABEL`, `MENU_ENTRYPOINT`, `MENU_ORDER`, `SIDEBAR_HTML`, `SIDEBAR_WIDTH`, `FROZEN_ROWS`, `FROZEN_COLS`, `COL_WIDTHS`, and a `FORMAT_CONFIG` object (containing `conditionalRules` and `COL_SCHEMA` for declarative column validations, types, and schema-driven background categorization).
 
 ### 2. Unified Utilities (`_App_`)
 Core logic is abstracted into `_App_` prefixed functions spread across `03_Core_Utils.js` to `09_Engine_UI.js`.
@@ -123,7 +121,17 @@ function ToolName_openSidebar() {
 Tools that require background execution should manage their own triggers programmatically.
 
 ### 6. Frontend Unified Wrapper (`SyncSidebar`)
-All client-to-server communication must use the `SyncSidebar.run()` wrapper located in `SidebarShared.html`. This utility abstracts `google.script.run`, standardizes loading states, unwraps the `{ success, message, data }` payloads, and provides consistent toast notifications. Direct use of `google.script.run` is prohibited in feature sidebars.
+All client-to-server communication must use the `SyncSidebar.run()` wrapper located in `SidebarShared.html`. This utility abstracts `google.script.run`, standardizes loading states, unwraps the `{ success, message, data }` payloads, and provides consistent toast notifications. 
+
+**Global Button Locking**: To prevent double-clicks and provide visual feedback, `SyncSidebar` automatically disables all buttons (`.btn` and `button` tags) and applies a grayed-out style during every server call. It uses an internal lock counter to ensure buttons are only re-enabled when the *last* active call finishes. Direct use of `google.script.run` is prohibited in feature sidebars.
+
+### 7. Standard Tooltip & Help Architecture
+To maintain high usability without cluttering the UI, the project uses a standardized tooltip system:
+- **`help-trigger`**: A CSS class applied to icons (usually `help-circle`).
+- **`data-help-target`**: An attribute on the trigger that points to the `ID` of a hidden content element.
+- **Hidden Content Container**: A `div` at the bottom of the HTML file (set to `display: none`) containing multiple divs with specific IDs (e.g., `help-getting-started`).
+- **Global Event Handlers**: `SidebarShared.html` contains the logic to calculate tooltip positioning, handle boundary overflows, and manage transitions.
+- **Guide Section**: Every sidebar includes a bottom "Help & Guide" card using standardized `.help-guide-card` and `.help-guide-item` classes.
 
 ## 🌍 Global Variables & State
 
