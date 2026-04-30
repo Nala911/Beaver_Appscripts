@@ -4,138 +4,8 @@
 <head>
     <base target="_top">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        /* ── Design Tokens (Standardized) ── */
-        :root {
-            --primary: #6366f1;
-            --primary-light: #818cf8;
-            --primary-bg: #eef2ff;
-            --surface: #ffffff;
-            --background: #f5f3ff;
-            --border: #e2e0f5;
-            --border-light: #f0eef9;
-            --text: #1e1b4b;
-            --text-secondary: #6b7280;
-            --success: #10b981;
-            --success-dark: #059669;
-            --danger: #ef4444;
-            --danger-bg: #fef2f2;
-            --gradient-pull: linear-gradient(135deg, #6366f1, #8b5cf6);
-            --gradient-push: linear-gradient(135deg, #10b981, #14b8a6);
-            --gradient-header: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);
-            --shadow-sm: 0 1px 3px rgba(99, 102, 241, 0.08);
-            --shadow-md: 0 4px 12px rgba(99, 102, 241, 0.10);
-            --shadow-lg: 0 8px 24px rgba(99, 102, 241, 0.14);
-            --radius: 12px;
-            --radius-sm: 8px;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--background);
-            color: var(--text);
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-            font-size: 13px;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        /* ── Header ── */
-        .header {
-            background: var(--surface);
-            padding: 14px 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-shrink: 0;
-            position: relative;
-        }
-
-        .header::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: var(--gradient-header);
-            border-radius: 0 0 2px 2px;
-        }
-
-        .header .material-icons-outlined {
-            font-size: 22px;
-            background: var(--gradient-pull);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .header-title {
-            font-size: 15px;
-            font-weight: 700;
-            color: var(--text);
-            letter-spacing: -0.01em;
-        }
-
-        /* ── Main Container ── */
-        .container {
-            flex: 1;
-            padding: 16px 14px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            overflow-y: auto;
-            min-height: 0;
-        }
-
-        .container::-webkit-scrollbar {
-            width: 5px;
-        }
-
-        .container::-webkit-scrollbar-thumb {
-            background: rgba(99, 102, 241, 0.2);
-            border-radius: 10px;
-        }
-
-        /* ── Section Labels ── */
-        .section-label {
-            font-weight: 700;
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-secondary);
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .section-label .material-icons-outlined {
-            font-size: 15px;
-            color: var(--primary-light);
-        }
-
-        /* ── Cards ── */
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border-light);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow-sm);
-            padding: 14px;
-            transition: box-shadow 0.25s ease;
-        }
-
-        .card:hover { box-shadow: var(--shadow-md); }
-
         /* ── Form Elements ── */
         .form-group { margin-bottom: 14px; }
 
@@ -189,42 +59,23 @@
         .link-card:hover { transform: translateY(-2px); }
         .link-card .material-icons-outlined { font-size: 20px; }
 
-        /* ── Buttons ── */
-        .btn {
-            width: 100%;
-            height: 40px;
-            border: none;
-            border-radius: var(--radius-sm);
-            font-family: inherit;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 7px;
-            transition: all 0.25s ease;
-            margin-bottom: 10px;
-        }
-
-        .btn-primary { background: var(--gradient-pull); color: white; }
-        .btn-success { background: var(--gradient-push); color: white; }
-        .btn:last-child { margin-bottom: 0; }
-    </style>
+        </style>
 </head>
 
 <body>
 
     <div class="header">
-        <span class="material-icons-outlined">dynamic_form</span>
-        <div class="header-title">Forms Sync</div>
+    <div class="header-title">
+      <i data-lucide="file-text" style="width:18px;"></i>
+      Forms Sync
     </div>
+  </div>
 
     <div class="container">
         <!-- Connect Section -->
         <div>
             <div class="section-label">
-                <span class="material-icons-outlined">link</span> Connect Form
+                <i data-lucide="link" style="width:16px;"></i> Connect Form
             </div>
             <div class="card">
                 <div class="form-group">
@@ -238,11 +89,11 @@
                     <div class="label" style="margin-top: 10px;">Quick Access</div>
                     <div class="link-grid">
                         <a id="link-edit" href="#" target="_blank" class="link-card">
-                            <span class="material-icons-outlined">edit_note</span>
+                            <i data-lucide="edit" style="width:16px;"></i>
                             <span>Edit Form</span>
                         </a>
                         <a id="link-responses" href="#" target="_blank" class="link-card">
-                            <span class="material-icons-outlined">analytics</span>
+                            <i data-lucide="bar-chart-2" style="width:16px;"></i>
                             <span>Responses</span>
                         </a>
                     </div>
@@ -253,14 +104,14 @@
         <!-- Pull Section -->
         <div>
             <div class="section-label">
-                <span class="material-icons-outlined">file_download</span> Sync Actions
+                <i data-lucide="download" style="width:16px;"></i> Sync Actions
             </div>
             <div class="card">
                 <p style="color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
                     Pull form structure into the spreadsheet to edit questions and options.
                 </p>
                 <button class="btn btn-primary btn-pull" onclick="pullForm()">
-                    <span class="material-icons-outlined">download</span> Pull from Form
+                    <i data-lucide="download" style="width:16px;"></i> Pull from Form
                 </button>
             </div>
         </div>
@@ -268,14 +119,14 @@
         <!-- Push Section -->
         <div>
             <div class="section-label">
-                <span class="material-icons-outlined">file_upload</span> Sync Actions
+                <i data-lucide="upload" style="width:16px;"></i> Sync Actions
             </div>
             <div class="card">
                 <p style="color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
                     Apply changes made in the spreadsheet back to the Google Form.
                 </p>
                 <button class="btn btn-success btn-push" onclick="syncToForm()">
-                    <span class="material-icons-outlined">upload</span> Sync to Form
+                    <i data-lucide="upload" style="width:16px;"></i> Sync to Form
                 </button>
             </div>
         </div>

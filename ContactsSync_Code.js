@@ -294,7 +294,7 @@ function ContactsSync_pushChanges() {
                         if (contactData.starred === true || contactData.starred === 'TRUE') {
                             People.ContactGroups.Members.modify({ resourceNamesToAdd: [createdPerson.resourceName] }, 'contactGroups/starred');
                         }
-                        rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Created";
+                        rowUpdates.status = _App_formatStatus('SUCCESS', "Created");
                         rowUpdates.action = "";
                         break;
 
@@ -336,19 +336,19 @@ function ContactsSync_pushChanges() {
                         if (contactData.starred === true || contactData.starred === 'TRUE') {
                             try { People.ContactGroups.Members.modify({ resourceNamesToAdd: [rowUpdates.contactId] }, 'contactGroups/starred'); } catch (e) { }
                         }
-                        rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Updated";
+                        rowUpdates.status = _App_formatStatus('SUCCESS', "Updated");
                         rowUpdates.action = "";
                         break;
 
                     case "DELETE":
                         if (!rowUpdates.contactId) throw new Error("⚠️ Missing Contact ID");
                         try { People.People.deleteContact(rowUpdates.contactId); } catch (e) { }
-                        rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Deleted";
+                        rowUpdates.status = _App_formatStatus('SUCCESS', "Deleted");
                         rowUpdates.action = "";
                         break;
 
                     default:
-                        rowUpdates.status = "❓ Unknown Action '" + action + "'";
+                        rowUpdates.status = _App_formatStatus('WARNING', "Unknown Action '" + action + "'");
                 }
 
                 return rowUpdates;
@@ -357,15 +357,13 @@ function ContactsSync_pushChanges() {
             onBatchComplete: function (batchResults) {
                 var rowNumbers = [];
                 var updatesArr = [];
-                var prefixes = SHEET_THEME.STATUS_PREFIXES;
-
                 batchResults.forEach(function (res) {
                     if (res && res._rowNumber !== undefined) {
                         rowNumbers.push(res._rowNumber);
                         if (res.isError) {
-                            updatesArr.push({ 'Status': prefixes.ERROR + res.error });
+                            updatesArr.push(_App_makeStatusPatch(res._rowNumber, 'ERROR', res.error));
                         } else {
-                            updatesArr.push({ 'Action': res.action, 'Status': res.status, 'Contact ID': res.contactId });
+                            updatesArr.push(_App_makeRowPatch(res._rowNumber, { 'Action': res.action, 'Status': res.status, 'Contact ID': res.contactId }));
                         }
                     }
                 });

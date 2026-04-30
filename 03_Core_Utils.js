@@ -32,6 +32,34 @@ function _App_withDocumentLock(lockName, callback, timeoutMs) {
 function _App_include(filename) {
     return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
+
+function _App_formatStatus(prefixKey, message) {
+    var theme = (typeof SHEET_THEME !== 'undefined' && SHEET_THEME && SHEET_THEME.STATUS_PREFIXES)
+        ? SHEET_THEME
+        : DEFAULT_SHEET_THEME;
+    var prefixes = theme.STATUS_PREFIXES || {};
+    var key = String(prefixKey || '').toUpperCase();
+    var prefix = prefixes[key] || '';
+    var text = (message === undefined || message === null) ? '' : String(message);
+    return prefix + text;
+}
+
+function _App_makeRowPatch(rowNumber, updates) {
+    var patch = {};
+    if (updates && typeof updates === 'object') {
+        Object.keys(updates).forEach(function (key) {
+            patch[key] = updates[key];
+        });
+    }
+    patch._rowNumber = rowNumber;
+    return patch;
+}
+
+function _App_makeStatusPatch(rowNumber, prefixKey, message, updates) {
+    var patch = _App_makeRowPatch(rowNumber, updates);
+    patch.Status = _App_formatStatus(prefixKey, message);
+    return patch;
+}
 // ==========================================
 // _App_throttle — Unified API Rate Limiter
 // ==========================================

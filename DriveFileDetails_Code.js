@@ -485,15 +485,13 @@ function DriveFileDetails_runPushSequence() {
         onBatchComplete: function (results) {
           var rowNumbers = [];
           var updatesArr = [];
-          var prefixes = SHEET_THEME.STATUS_PREFIXES;
-
           results.forEach(function (res) {
             if (res && res._rowNumber) {
               rowNumbers.push(res._rowNumber);
               if (res.isError) {
-                updatesArr.push({ 'Status': prefixes.ERROR + res.error });
+                updatesArr.push(_App_makeStatusPatch(res._rowNumber, 'ERROR', res.error));
               } else {
-                updatesArr.push(res.updates);
+                updatesArr.push(_App_makeRowPatch(res._rowNumber, res.updates));
               }
             }
           });
@@ -660,7 +658,7 @@ function _DriveFileDetails_handleCreate(rowObj, res) {
   res.url = file.webViewLink;
   res.mime = file.mimeType;
 
-  return SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Created (" + (friendlyType || 'Folder') + ")";
+  return _App_formatStatus('SUCCESS', "Created (" + (friendlyType || 'Folder') + ")");
 }
 
 function _DriveFileDetails_resolveFolderIdFromPath(pathString) {
@@ -807,14 +805,14 @@ function _DriveFileDetails_handleUpdate(rowObj) {
 
   if (permChanges) changes.push("Permissions");
 
-  return changes.length > 0 ? SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Updated: " + changes.join(", ") : SHEET_THEME.STATUS_PREFIXES.INFO + "No Changes Needed";
+  return changes.length > 0 ? _App_formatStatus('SUCCESS', "Updated: " + changes.join(", ")) : _App_formatStatus('INFO', "No Changes Needed");
 }
 
 function _DriveFileDetails_handleDelete(rowObj) {
   var fileId = rowObj['Item ID'];
   if (!fileId) throw new Error("Cannot Delete: Item ID is missing.");
   _App_callWithBackoff(function () { Drive.Files.update({ trashed: true }, fileId, null, { supportsAllDrives: true }); });
-  return SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Deleted (Trashed)";
+  return _App_formatStatus('SUCCESS', "Deleted (Trashed)");
 }
 
 function DriveFileDetails_fillActivePath(folderId, pathString) {

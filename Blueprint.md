@@ -24,7 +24,9 @@ The system logic is split into sequential modules evaluated in order:
 - `08_Engine_Core.js`: The `SyncEngine` plugin registration and retrieval system.
 - `09_Engine_UI.js`: UI abstractions for opening sidebars/dialogs and scaffolding sheets (`_App_openSidebar`, `_App_launchTool`, `_App_ensureSheetExists`).
 - `UI.js`: The central UI orchestrator. Responsible for creating the custom "Workspace Sync Tools" menu (`onOpen`), providing the global wrapper for the Settings sidebar, and connecting user actions to the tools.
-- `SidebarShared.html`: Shared HTML, CSS, and JS components to eliminate redundant sidebar code and infinite spinners.
+- `SidebarShared.html`: Shared HTML, CSS, and JS runtime for sidebars. Owns the common loading/toast/tooltip shell, `SyncSidebar` action helpers, global button locking, and reusable layout/action primitives consumed by tool sidebars.
+- `Settings_Sidebar.html`: Standalone settings dashboard sidebar. The legacy `Settings_CSS.html` / `Settings_JS.html` partials have been retired and their logic now lives here.
+- `PipelineControl_Sidebar.html`: Standalone pipeline dashboard sidebar. The legacy `PipelineControl_CSS.html` / `PipelineControl_JS.html` partials have been retired and their logic now lives here.
 - `Logger.js`: Silent execution boundary. Provides `Logger.run` and no-op logging methods; expected failures should return `_App_fail(...)`, while unexpected exceptions are rethrown to the caller. All console-based logging is strictly forbidden.
 - `SystemAudit.js`: Runs comprehensive diagnostic audits across all registered tools, verifying sheet integrity, API access, and schema setup. Outputs results directly to the Settings UI.
 - `appsscript.json` / `.clasp.json`: Google Apps Script configuration and Clasp deployment environment details.
@@ -125,7 +127,7 @@ function ToolName_openSidebar() {
 Tools that require background execution should manage their own triggers programmatically.
 
 ### 6. Frontend Unified Wrapper (`SyncSidebar`)
-All client-to-server communication must use the `SyncSidebar.run()` wrapper located in `SidebarShared.html`. This utility abstracts `google.script.run`, standardizes loading states, unwraps the `{ success, message, data, meta }` payloads, and provides consistent toast notifications.
+All client-to-server communication must use the `SyncSidebar` wrapper located in `SidebarShared.html`. `SyncSidebar.run()` abstracts `google.script.run`, standardizes loading states, unwraps the `{ success, message, data, meta }` payloads, and provides consistent toast notifications.
 
 **Global Button Locking**: To prevent double-clicks and provide visual feedback, `SyncSidebar` automatically disables all buttons (`.btn` and `button` tags) and applies a grayed-out style during every server call. It uses an internal lock counter to ensure buttons are only re-enabled when the *last* active call finishes. Direct use of `google.script.run` is prohibited in feature sidebars.
 
@@ -134,14 +136,19 @@ All client-to-server communication must use the `SyncSidebar.run()` wrapper loca
 - `SyncSidebar.runPullAction()` for pull/import actions, especially where unsaved sheet changes may be overwritten.
 - `SyncSidebar.runPushAction()` for push/apply actions, including optional preflight confirmation steps.
 - `SyncSidebar.runAction()` for single-action or bespoke operations that still need standardized loading, success, and error behavior.
+- Supporting shared utilities include `SyncSidebar.confirmIfUnsaved()`, `SyncSidebar.confirmAndRun()`, `SyncSidebar.setStatusBadge()`, `SyncSidebar.updateQuotaDisplay()`, `SyncSidebar.markQuotaError()`, `SyncSidebar.showToast()`, and `SyncSidebar.handleError()`.
+
+**Current Adoption Pattern**: Sync-oriented sidebars now primarily compose behavior through `initSidebar`, `runPullAction`, `runPushAction`, and `runAction` instead of hand-rolled `google.script.run` flows. This shared layer is the preferred path for all new or refactored sidebar interactions.
 
 ### 6a. Shared Sidebar Shell
 `SidebarShared.html` also provides the canonical shared shell tokens and utility classes for sidebar composition:
 - Shared semantic action buttons: `btn-pull`, `btn-push`
 - Shared layout primitives: `sync-sidebar-action-grid`, `sync-sidebar-action-stack`, `sync-sidebar-inline-options`
-- Shared shell classes for headers, cards, descriptions, and section labels when a sidebar opts into deeper structural reuse
+- Shared shell classes for headers, cards, section labels, button groups, and status badges: `header`, `header-title`, `card`, `sync-sidebar-card`, `section-label`, `sync-sidebar-section-label`, `btn-group`, `sync-sidebar-button-group`, `status-badge`
 
 Sync-oriented sidebars should converge on shared pull/push semantics and reuse these primitives instead of redefining the same action rail patterns locally.
+- **Icons**: All sidebars must use the Lucide icon framework exclusively (<i data-lucide="..."></i>).
+- **Styling Guidance**: Standard sync sidebars should avoid redefining generic shell styles and should rely on the tokens and primitives inside `SidebarShared.html`. Purpose-built dashboards such as `Settings_Sidebar.html` and `PipelineControl_Sidebar.html` may keep local, scoped layout styles when their UX is materially different, but should still reuse `SidebarShared.html` for runtime behaviors and shared overlays.
 
 ### 7. Standard Tooltip & Help Architecture
 To maintain high usability without cluttering the UI, the project uses a standardized tooltip system:

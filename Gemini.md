@@ -38,14 +38,14 @@ If you are just editing or adding a feature (like Mail Merge, etc.), stick entir
 - **Public Backend Functions:** `ToolName_FunctionName` (e.g., `MailMerge_openSidebar`). These are called from Sidebars or the UI menu.
 - **Internal Helper Functions:** `_ToolName_InternalFunction` (e.g., `_MailMerge_validateData`).
 - **Core System Utilities:** `_App_UtilityName` (e.g., `_App_launchTool`).
-- **HTML Includes (Partials):** `ToolName_CSS.html` or `ToolName_JS.html`. Use `<?!= _App_include('ToolName_Type'); ?>` to include them.
+- **Sidebar Composition:** Prefer a single `ToolName_Sidebar.html` that includes `<?!= _App_include('SidebarShared'); ?>`. Legacy tool-specific HTML partials such as `ToolName_CSS.html` / `ToolName_JS.html` are no longer the default pattern.
 
 ### 1a. UI Naming Standards (Uniformity)
 To maintain a professional and consistent user experience, the following strings MUST match exactly:
 - **`TITLE`** (in `SyncEngine.registerTool`): Must match the tool's `SHEET_NAME` value exactly (including emoji).
 - **`MENU_LABEL`** (in `SyncEngine.registerTool`): Must match the tool's `SHEET_NAME` value exactly (including emoji).
 - **`Blueprint.md` (Bold Tool Name)**: Must match the tool's `SHEET_NAME` value but without the emoji.
-- **Sidebar Header (`.header-title`)**: Must match the base tool name (without emoji or suffixes like "Toolkit").
+- **Sidebar Header**: Must use the `<div class="header">` structure with the `<i data-lucide="...">` explicitly placed *inside* the `<div class="header-title">` container to ensure uniform alignment. The text must match the base tool name (without emoji or suffixes).
 - **Status Column**: Every tool sheet MUST include a `Status` column immediately following the `Action` column. It must be defined in `COL_SCHEMA` as `{ header: 'Status', type: 'STATUS' }`.
 - **Column Categories**: Formatting is strictly schema-driven. The engine assigns categories based on the `type` in `COL_SCHEMA`:
     - **Action**: `type: 'ACTION'`
@@ -101,11 +101,13 @@ Row-by-row data processing must use `_App_BatchProcessor` from `03_Core_Utils.js
 - **Status Reporting**: Use `SheetManager.batchPatchRows` within the `onBatchComplete` hook to write results (including `res.isError` details) into the `Status` column.
 
 ### 8. The Frontend Wrapper Contract (`SyncSidebar`)
-All client-to-server communication MUST use `SyncSidebar.run()`, which unwraps the standard `{ success, message, data, meta }` payloads and provides consistent toast notifications.
+All client-to-server communication MUST use the `SyncSidebar` layer from `SidebarShared.html`. `SyncSidebar.run()` unwraps the standard `{ success, message, data, meta }` payloads and provides consistent toast notifications.
 - **Automatic Locking**: This wrapper automatically locks all sidebar buttons and applies a "grayed-out" style during the call. 
 - **Overlapping Calls**: The engine uses a counter; buttons stay locked until *all* concurrent `SyncSidebar.run` calls complete.
 - **Opting Out**: For silent background tasks (like progress polling), use `SyncSidebar.run(method, args, { lockButtons: false })`.
 - **Redundancy**: DO NOT manually disable buttons in sidebar code (e.g., `btn.disabled = true`); rely entirely on the core wrapper to maintain UI state.
+- **Preferred Helpers**: Default to `SyncSidebar.initSidebar()`, `SyncSidebar.runPullAction()`, `SyncSidebar.runPushAction()`, and `SyncSidebar.runAction()` instead of rebuilding the same orchestration in each sidebar.
+- **Styling Boundary**: Standard sync sidebars should reuse shared shell tokens from `SidebarShared.html`. Only specialized dashboards with materially different layouts, such as `Settings_Sidebar.html` or `PipelineControl_Sidebar.html`, should keep larger local style blocks.
 
 ## 🤖 Gemini Workflow Rules
 
@@ -142,4 +144,4 @@ Since humans do not code here, follow the **CalendarSync Benchmark**:
 4. Update the plugin registration inside `<NewName>_Code.js` (Key, Sheet Name, Title, etc.).
 5. Ensure `COL_SCHEMA` includes the mandatory `Status` column (type: `STATUS`) as the second entry. Do NOT use legacy positional properties like `numReadOnlyColsAtEnd`.
 6. Implement backend logic with `Logger.run` and `_App_ok`.
-7. Implement frontend logic using the `SyncSidebar.run` wrapper and native CSS variables (NO TailwindCSS).
+7. Implement frontend logic using `SidebarShared.html` plus the `SyncSidebar` helpers (`runPullAction`, `runPushAction`, `runAction`) and native CSS variables (NO TailwindCSS).

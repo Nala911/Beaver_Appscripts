@@ -6,6 +6,79 @@
  * Extensible rules engine for auditing tools and environment.
  * Each rule receives (cfg, sheet, report) and mutates the report.
  */
+function _Audit_inspectSidebarContract(cfg) {
+    if (!cfg || !cfg.SIDEBAR_HTML) return [];
+
+    var issues = [];
+    var content = '';
+    var shellCssExemptions = {
+        'Settings_Sidebar': true
+    };
+    try {
+        content = HtmlService.createHtmlOutputFromFile(cfg.SIDEBAR_HTML).getContent();
+    } catch (e) {
+        issues.push({
+            level: 'ERROR',
+            message: "Sidebar '" + cfg.SIDEBAR_HTML + "' could not be loaded for contract checks: " + e.message
+        });
+        return issues;
+    }
+    var hasSharedInclude = (
+        content.indexOf("_App_include('SidebarShared')") !== -1 ||
+        content.indexOf('_App_include("SidebarShared")') !== -1
+    );
+
+    if (!hasSharedInclude) {
+        issues.push({
+            level: 'ERROR',
+            message: "Sidebar '" + cfg.SIDEBAR_HTML + "' does not include SidebarShared.html."
+        });
+    }
+
+    if (content.indexOf('google.script.run') !== -1) {
+        issues.push({
+            level: 'ERROR',
+            message: "Sidebar '" + cfg.SIDEBAR_HTML + "' contains a raw google.script.run call. Use SyncSidebar.run()."
+        });
+    }
+
+    if (content.indexOf('SyncSidebar.run') === -1) {
+        issues.push({
+            level: 'ERROR',
+            message: "Sidebar '" + cfg.SIDEBAR_HTML + "' does not call SyncSidebar.run()."
+        });
+    }
+
+    if (content.indexOf('<style>') !== -1 && !shellCssExemptions[cfg.SIDEBAR_HTML]) {
+        var genericShellPatterns = [
+            /\.header\s*\{/,
+            /\.container\s*\{/,
+            /\.main\s*\{/,
+            /\.card\s*\{/,
+            /\.section-label\s*\{/
+        ];
+
+        var hasGenericShellCss = genericShellPatterns.some(function (pattern) {
+            return pattern.test(content);
+        });
+
+        if (hasGenericShellCss) {
+            issues.push({
+                level: 'WARN',
+                message: "Sidebar '" + cfg.SIDEBAR_HTML + "' still defines reusable shell CSS locally; prefer SidebarShared.html."
+            });
+        }
+    }
+
+    return issues;
+}
+
+function _Audit_renderHtmlTemplate(fileName) {
+    if (!fileName) return;
+
+    HtmlService.createTemplateFromFile(fileName).evaluate();
+}
+
 var AuditRules = [
     {
         name: 'Registry Metadata Integrity',
@@ -18,21 +91,35 @@ var AuditRules = [
 
             if (cfg.LAUNCH_MODE === TOOL_LAUNCH_MODES.SIDEBAR && cfg.SIDEBAR_HTML) {
                 try {
-                    HtmlService.createTemplateFromFile(cfg.SIDEBAR_HTML);
+                    _Audit_renderHtmlTemplate(cfg.SIDEBAR_HTML);
                 } catch (e) {
                     report.status = 'ERROR';
-                    report.issues.push("Sidebar HTML '" + cfg.SIDEBAR_HTML + "' is missing or invalid.");
+                    report.issues.push("Sidebar HTML '" + cfg.SIDEBAR_HTML + "' failed to render: " + e.message);
                 }
             }
 
             if (cfg.LAUNCH_MODE === TOOL_LAUNCH_MODES.MODAL && (cfg.MODAL_HTML || cfg.SIDEBAR_HTML)) {
                 try {
-                    HtmlService.createTemplateFromFile(cfg.MODAL_HTML || cfg.SIDEBAR_HTML);
+                    _Audit_renderHtmlTemplate(cfg.MODAL_HTML || cfg.SIDEBAR_HTML);
                 } catch (e) {
                     report.status = 'ERROR';
-                    report.issues.push("Modal HTML '" + (cfg.MODAL_HTML || cfg.SIDEBAR_HTML) + "' is missing or invalid.");
+                    report.issues.push("Modal HTML '" + (cfg.MODAL_HTML || cfg.SIDEBAR_HTML) + "' failed to render: " + e.message);
                 }
             }
+        }
+    },
+    {
+        name: 'Sidebar Shell Conformance',
+        run: function (cfg, sheet, report) {
+            var issues = _Audit_inspectSidebarContract(cfg);
+            issues.forEach(function (issue) {
+                if (issue.level === 'ERROR') {
+                    report.status = 'ERROR';
+                } else if (report.status !== 'ERROR') {
+                    report.status = 'WARN';
+                }
+                report.issues.push(issue.message);
+            });
         }
     },
     {

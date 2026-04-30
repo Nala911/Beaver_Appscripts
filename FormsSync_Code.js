@@ -218,12 +218,12 @@ function _FormsSync_syncToForm() {
                         _App_callWithBackoff(function () {
                             targetItem.setTitle(title);
                             targetItem.setHelpText(helpText);
-                            _applyItemProperties(targetItem, type, required, optionsArr, gridRows, gridCols);
+                            _FormsSync_applyItemProperties(targetItem, type, required, optionsArr, gridRows, gridCols);
                         });
 
                         updateObj.id = targetItem.getId().toString();
                         updateObj.action = "";
-                        updateObj.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Created";
+                        updateObj.status = _App_formatStatus('SUCCESS', "Created");
                     }
                     else if (action === "UPDATE") {
                         if (!id) throw new Error("Missing ID");
@@ -236,9 +236,9 @@ function _FormsSync_syncToForm() {
                             _App_callWithBackoff(function () {
                                 updItem.setTitle(title);
                                 updItem.setHelpText(helpText);
-                                _applyItemProperties(updItem, type, required, optionsArr, gridRows, gridCols);
+                                _FormsSync_applyItemProperties(updItem, type, required, optionsArr, gridRows, gridCols);
                             });
-                            updateObj.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Updated";
+                            updateObj.status = _App_formatStatus('SUCCESS', "Updated");
                         } else {
                             var targetIndex = updItem.getIndex();
                             _App_callWithBackoff(function () { form.deleteItem(updItem); });
@@ -263,12 +263,12 @@ function _FormsSync_syncToForm() {
                             _App_callWithBackoff(function () {
                                 newItem.setTitle(title);
                                 newItem.setHelpText(helpText);
-                                _applyItemProperties(newItem, type, required, optionsArr, gridRows, gridCols);
+                                _FormsSync_applyItemProperties(newItem, type, required, optionsArr, gridRows, gridCols);
                                 form.moveItem(newItem.getIndex(), targetIndex);
                             });
 
                             updateObj.id = newItem.getId().toString();
-                            updateObj.status = "✅ Updated (Type Recreated)";
+                            updateObj.status = _App_formatStatus('SUCCESS', "Updated (Type Recreated)");
                         }
                         updateObj.action = "";
                     }
@@ -277,9 +277,9 @@ function _FormsSync_syncToForm() {
                         var delItem = _App_callWithBackoff(function () { return form.getItemById(parseInt(id, 10)); });
                         if (delItem) {
                             _App_callWithBackoff(function () { form.deleteItem(delItem); });
-                            updateObj.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Deleted";
+                            updateObj.status = _App_formatStatus('SUCCESS', "Deleted");
                         } else {
-                            updateObj.status = SHEET_THEME.STATUS_PREFIXES.WARNING + "Already Deleted";
+                            updateObj.status = _App_formatStatus('WARNING', "Already Deleted");
                         }
                         updateObj.action = "";
                     }
@@ -289,14 +289,13 @@ function _FormsSync_syncToForm() {
                 onBatchComplete: function (batchResults) {
                     var rowNumbers = [];
                     var patchData = [];
-                    var prefixes = SHEET_THEME.STATUS_PREFIXES;
                     batchResults.forEach(function (res) {
                         if (res && res._rowNumber !== undefined) {
                             rowNumbers.push(res._rowNumber);
                             if (res.isError) {
-                                patchData.push({ 'Status': prefixes.ERROR + res.error });
+                                patchData.push(_App_makeStatusPatch(res._rowNumber, 'ERROR', res.error));
                             } else {
-                                patchData.push({ 'Action': res.action, 'Status': res.status, 'Item ID': res.id });
+                                patchData.push(_App_makeRowPatch(res._rowNumber, { 'Action': res.action, 'Status': res.status, 'Item ID': res.id }));
                             }
                         }
                     });
@@ -313,20 +312,20 @@ function _FormsSync_syncToForm() {
     });
 }
 
-function _applyItemProperties(targetItem, type, required, optionsArr, gridRows, gridCols) {
+function _FormsSync_applyItemProperties(targetItem, type, required, optionsArr, gridRows, gridCols) {
     try {
         if (type === "MULTIPLE_CHOICE") {
             var mcItem = targetItem.asMultipleChoiceItem();
             mcItem.setRequired(required);
-            if (optionsArr.length > 0) _setChoicesSafe(mcItem, optionsArr, "MULTIPLE_CHOICE");
+            if (optionsArr.length > 0) _FormsSync_setChoicesSafe(mcItem, optionsArr, "MULTIPLE_CHOICE");
         } else if (type === "CHECKBOX") {
             var cbItem = targetItem.asCheckboxItem();
             cbItem.setRequired(required);
-            if (optionsArr.length > 0) _setChoicesSafe(cbItem, optionsArr, "CHECKBOX");
+            if (optionsArr.length > 0) _FormsSync_setChoicesSafe(cbItem, optionsArr, "CHECKBOX");
         } else if (type === "LIST") {
             var liItem = targetItem.asListItem();
             liItem.setRequired(required);
-            if (optionsArr.length > 0) _setChoicesSafe(liItem, optionsArr, "LIST");
+            if (optionsArr.length > 0) _FormsSync_setChoicesSafe(liItem, optionsArr, "LIST");
         } else if (type === "TEXT") {
             targetItem.asTextItem().setRequired(required);
         } else if (type === "PARAGRAPH_TEXT") {
@@ -355,7 +354,7 @@ function _applyItemProperties(targetItem, type, required, optionsArr, gridRows, 
     }
 }
 
-function _setChoicesSafe(item, optionsArr, type) {
+function _FormsSync_setChoicesSafe(item, optionsArr, type) {
     if (!optionsArr || optionsArr.length === 0) return;
 
     try {

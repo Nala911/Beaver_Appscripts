@@ -172,7 +172,7 @@ function ChatSpaceSync_pushChanges() {
             });
 
             rowUpdates.membershipId = newMembership.name;
-            rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Added";
+            rowUpdates.status = _App_formatStatus('SUCCESS', "Added");
             rowUpdates.action = "";
             break;
 
@@ -183,7 +183,7 @@ function ChatSpaceSync_pushChanges() {
                Chat.Spaces.Members.remove(rowUpdates.membershipId);
             });
             
-            rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Removed";
+            rowUpdates.status = _App_formatStatus('SUCCESS', "Removed");
             rowUpdates.action = "";
             break;
 
@@ -197,18 +197,17 @@ function ChatSpaceSync_pushChanges() {
       onBatchComplete: function (batchResults) {
         var rowNumbers = [];
         var patchData = [];
-        var prefixes = SHEET_THEME.STATUS_PREFIXES;
         batchResults.forEach(function (res) {
           if (res && res._rowNumber !== undefined) {
             rowNumbers.push(res._rowNumber);
             if (res.isError) {
-              patchData.push({ 'Status': prefixes.ERROR + res.error });
+              patchData.push(_App_makeStatusPatch(res._rowNumber, 'ERROR', res.error));
             } else {
-              patchData.push({
+              patchData.push(_App_makeRowPatch(res._rowNumber, {
                 'Action': res.action,
                 'Status': res.status,
                 'Membership ID': res.membershipId
-              });
+              }));
             }
           }
         });

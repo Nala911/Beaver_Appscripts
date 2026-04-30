@@ -288,7 +288,7 @@ function DocsMerge_executeBatch(config, startIndex) {
           masterOpened.saveAndClose();
           DriveApp.getFileById(tempId).setTrashed(true);
 
-          rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Appended to Master";
+          rowUpdates.status = _App_formatStatus('SUCCESS', "Appended to Master");
           rowUpdates.action = "";
         } else {
           // INDIVIDUAL
@@ -309,7 +309,7 @@ function DocsMerge_executeBatch(config, startIndex) {
             finalUrl = tempFile.getUrl();
           }
 
-          rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + outputFormat + ' Created';
+          rowUpdates.status = _App_formatStatus('SUCCESS', outputFormat + ' Created');
           rowUpdates.linkUrl = finalUrl;
           rowUpdates.action = "";
         }
@@ -321,15 +321,14 @@ function DocsMerge_executeBatch(config, startIndex) {
         var rowNumbers = [];
         var patchData = [];
         var sheet = SpreadsheetApp.getActiveSheet();
-        var prefixes = SHEET_THEME.STATUS_PREFIXES;
         
         batchResults.forEach(function (res) {
           if (res && res._rowNumber !== undefined) {
             rowNumbers.push(res._rowNumber);
             if (res.isError) {
-              patchData.push({ 'Status': prefixes.ERROR + res.error });
+              patchData.push(_App_makeStatusPatch(res._rowNumber, 'ERROR', res.error));
             } else {
-              patchData.push({ 'Action': res.action, 'Status': res.status });
+              patchData.push(_App_makeRowPatch(res._rowNumber, { 'Action': res.action, 'Status': res.status }));
             }
             
             if (res.linkUrl && linkColIndex > 0) {

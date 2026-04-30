@@ -293,7 +293,7 @@ function MailMerge_executeActions(draftId, startIndex) {
             GmailApp.sendEmail(targetTo, emailSubject, "", options);
           }
 
-          rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Sent (" + new Date().toLocaleString() + ")";
+          rowUpdates.status = _App_formatStatus('SUCCESS', "Sent (" + new Date().toLocaleString() + ")");
           rowUpdates.action = "";
         } else if (action === "DRAFT") {
           var options = {
@@ -332,13 +332,13 @@ function MailMerge_executeActions(draftId, startIndex) {
             var draftReply = lastMessage.createDraftReplyAll("", replyOptions);
             draftReply.update(newTo || "", emailSubject, "", replyOptions);
 
-            rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Reply Draft Created";
+            rowUpdates.status = _App_formatStatus('SUCCESS', "Reply Draft Created");
             rowUpdates.action = "";
           } else {
             options.cc = targetCc;
             options.bcc = targetBcc;
             GmailApp.createDraft(targetTo, emailSubject, "", options);
-            rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Draft Created";
+            rowUpdates.status = _App_formatStatus('SUCCESS', "Draft Created");
             rowUpdates.action = "";
           }
         }
@@ -355,15 +355,13 @@ function MailMerge_executeActions(draftId, startIndex) {
       onBatchComplete: function (batchResults) {
         var rowNumbers = [];
         var updates = [];
-        var prefixes = SHEET_THEME.STATUS_PREFIXES;
-        
         batchResults.forEach(function (res) {
           if (res && res._rowNumber !== undefined) {
             rowNumbers.push(res._rowNumber);
             if (res.isError) {
-              updates.push({ 'Action': res.action, 'Status': prefixes.ERROR + res.error });
+              updates.push(_App_makeStatusPatch(res._rowNumber, 'ERROR', res.error, { 'Action': res.action }));
             } else {
-              updates.push({ 'Action': res.action, 'Status': res.status });
+              updates.push(_App_makeRowPatch(res._rowNumber, { 'Action': res.action, 'Status': res.status }));
             }
           }
         });

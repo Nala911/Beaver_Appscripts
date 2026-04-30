@@ -128,14 +128,13 @@ function PipelineControl_processPipelines() {
                 onBatchComplete: function(results) {
                     var rowNumbers = [];
                     var patchData = [];
-                    var prefixes = SHEET_THEME.STATUS_PREFIXES;
                     results.forEach(function (res) {
                         if (res && res._rowNumber) {
                             rowNumbers.push(res._rowNumber);
                             if (res.isError) {
-                                patchData.push({ 'Status': prefixes.ERROR + res.error, 'Last Run Time': new Date() });
+                                patchData.push(_App_makeStatusPatch(res._rowNumber, 'ERROR', res.error, { 'Last Run Time': new Date() }));
                             } else {
-                                patchData.push({ 'Status': prefixes.SUCCESS + res.status, 'Last Run Time': new Date() });
+                                patchData.push(_App_makeRowPatch(res._rowNumber, { 'Status': _App_formatStatus('SUCCESS', res.status), 'Last Run Time': new Date() }));
                             }
                         }
                     });
@@ -163,14 +162,13 @@ function PipelineControl_runAllPipelines() {
                 onBatchComplete: function(results) {
                     var rowNumbers = [];
                     var patchData = [];
-                    var prefixes = SHEET_THEME.STATUS_PREFIXES;
                     results.forEach(function (res) {
                         if (res && res._rowNumber) {
                             rowNumbers.push(res._rowNumber);
                             if (res.isError) {
-                                patchData.push({ 'Status': prefixes.ERROR + res.error, 'Last Run Time': new Date() });
+                                patchData.push(_App_makeStatusPatch(res._rowNumber, 'ERROR', res.error, { 'Last Run Time': new Date() }));
                             } else {
-                                patchData.push({ 'Status': prefixes.SUCCESS + res.status, 'Last Run Time': new Date() });
+                                patchData.push(_App_makeRowPatch(res._rowNumber, { 'Status': _App_formatStatus('SUCCESS', res.status), 'Last Run Time': new Date() }));
                             }
                         }
                     });
@@ -288,14 +286,13 @@ function PipelineControl_runSelectedPipelines(rowIndexes) {
                 onBatchComplete: function(results) {
                     var rowNumbers = [];
                     var patchData = [];
-                    var prefixes = SHEET_THEME.STATUS_PREFIXES;
                     results.forEach(function (res) {
                         if (res && res._rowNumber) {
                             rowNumbers.push(res._rowNumber);
                             if (res.isError) {
-                                patchData.push({ 'Status': prefixes.ERROR + res.error, 'Last Run Time': new Date() });
+                                patchData.push(_App_makeStatusPatch(res._rowNumber, 'ERROR', res.error, { 'Last Run Time': new Date() }));
                             } else {
-                                patchData.push({ 'Status': prefixes.SUCCESS + res.status, 'Last Run Time': new Date() });
+                                patchData.push(_App_makeRowPatch(res._rowNumber, { 'Status': _App_formatStatus('SUCCESS', res.status), 'Last Run Time': new Date() }));
                             }
                         }
                     });

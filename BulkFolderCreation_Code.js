@@ -189,20 +189,19 @@ function BulkFolderCreation_runBulkCreationSequence(targetFolderId) {
 
         _BulkFolderCreation_createFolderPath(targetFolderId, folderNames, folderCache);
 
-        return { _rowNumber: rowNum, status: SHEET_THEME.STATUS_PREFIXES.SUCCESS + 'Created: ' + folderNames.join('/') };
+        return { _rowNumber: rowNum, status: _App_formatStatus('SUCCESS', 'Created: ' + folderNames.join('/')) };
 
       }, {
         onBatchComplete: function (results) {
           var rowNumbers = [];
           var updates = [];
-          var prefixes = SHEET_THEME.STATUS_PREFIXES;
           results.forEach(function (res) {
             if (res && res._rowNumber) {
               rowNumbers.push(res._rowNumber);
               if (res.isError) {
-                updates.push({ 'Status': prefixes.ERROR + res.error });
+                updates.push(_App_makeStatusPatch(res._rowNumber, 'ERROR', res.error));
               } else {
-                updates.push({ 'Action': '', 'Status': res.status });
+                updates.push(_App_makeRowPatch(res._rowNumber, { 'Action': '', 'Status': res.status }));
               }
             }
           });

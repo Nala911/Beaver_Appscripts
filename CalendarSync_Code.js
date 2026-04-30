@@ -242,7 +242,7 @@ function CalendarSync_pushChanges() {
 
             rowUpdates.eventId = newEvent.getId();
             rowUpdates.calId = targetCalId;
-            rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Created" + (optionErr ? " (" + SHEET_THEME.STATUS_PREFIXES.WARNING + optionErr + ")" : "");
+            rowUpdates.status = _App_formatStatus('SUCCESS', "Created") + (optionErr ? " (" + _App_formatStatus('WARNING', optionErr) + ")" : "");
             rowUpdates.action = "";
             break;
 
@@ -285,7 +285,7 @@ function CalendarSync_pushChanges() {
             });
             targetGuests.forEach(function (email) { eventToUpdate.addGuest(email); });
 
-            rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Updated" + (updateOptionErr ? " (" + SHEET_THEME.STATUS_PREFIXES.WARNING + updateOptionErr + ")" : "");
+            rowUpdates.status = _App_formatStatus('SUCCESS', "Updated") + (updateOptionErr ? " (" + _App_formatStatus('WARNING', updateOptionErr) + ")" : "");
             rowUpdates.action = "";
             break;
 
@@ -299,16 +299,16 @@ function CalendarSync_pushChanges() {
             
             if (eventToDel) {
               _App_callWithBackoff(function () { eventToDel.deleteEvent(); });
-              rowUpdates.status = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Deleted";
+              rowUpdates.status = _App_formatStatus('SUCCESS', "Deleted");
               rowUpdates.action = "";
             } else {
-              rowUpdates.status = "⚠️ Already Deleted (Event not found)";
+              rowUpdates.status = _App_formatStatus('WARNING', "Already Deleted (Event not found)");
               rowUpdates.action = "";
             }
             break;
 
           default:
-            rowUpdates.status = "❓ Unknown Action '" + action + "'";
+            rowUpdates.status = _App_formatStatus('WARNING', "Unknown Action '" + action + "'");
         }
 
         return rowUpdates;
@@ -317,19 +317,18 @@ function CalendarSync_pushChanges() {
       onBatchComplete: function (batchResults) {
         var rowNumbers = [];
         var patchData = [];
-        var prefixes = SHEET_THEME.STATUS_PREFIXES;
         batchResults.forEach(function (res) {
           if (res && res._rowNumber !== undefined) {
             rowNumbers.push(res._rowNumber);
             if (res.isError) {
-              patchData.push({ 'Status': prefixes.ERROR + res.error });
+              patchData.push(_App_makeStatusPatch(res._rowNumber, 'ERROR', res.error));
             } else {
-              patchData.push({
+              patchData.push(_App_makeRowPatch(res._rowNumber, {
                 'Action': res.action,
                 'Status': res.status,
                 'Event ID': res.eventId,
                 'Calendar ID': res.calId
-              });
+              }));
             }
           }
         });
@@ -385,7 +384,7 @@ function _CalendarSync_processMove(rowUpdates, calObjMap, targetCalId, eventData
 
   rowUpdates.eventId = newEvent.getId();
   rowUpdates.calId = targetCalId;
-  rowUpdates.status = "✅ Moved" + deleteWarning + meetWarning;
+  rowUpdates.status = _App_formatStatus('SUCCESS', "Moved") + deleteWarning + meetWarning;
   rowUpdates.action = "";
   return rowUpdates;
 }

@@ -4,108 +4,8 @@
 <head>
     <base target="_top">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        /* ── Design Tokens (Standardized) ── */
-        :root {
-            --primary: #6366f1;
-            --primary-light: #818cf8;
-            --primary-bg: #eef2ff;
-            --surface: #ffffff;
-            --background: #f5f3ff;
-            --border: #e2e0f5;
-            --border-light: #f0eef9;
-            --text: #1e1b4b;
-            --text-secondary: #6b7280;
-            --success: #10b981;
-            --success-dark: #059669;
-            --danger: #ef4444;
-            --danger-bg: #fef2f2;
-            --gradient-pull: linear-gradient(135deg, #6366f1, #8b5cf6);
-            --gradient-push: linear-gradient(135deg, #10b981, #14b8a6);
-            --gradient-header: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);
-            --shadow-sm: 0 1px 3px rgba(99, 102, 241, 0.08);
-            --shadow-md: 0 4px 12px rgba(99, 102, 241, 0.10);
-            --shadow-lg: 0 8px 24px rgba(99, 102, 241, 0.14);
-            --radius: 12px;
-            --radius-sm: 8px;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--background);
-            color: var(--text);
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-            font-size: 13px;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        /* ── Header ── */
-        .header {
-            background: var(--surface);
-            padding: 14px 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-shrink: 0;
-            position: relative;
-        }
-
-        .header::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: var(--gradient-header);
-            border-radius: 0 0 2px 2px;
-        }
-
-        .header .material-icons-outlined {
-            font-size: 22px;
-            background: var(--gradient-pull);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .header-title {
-            font-size: 15px;
-            font-weight: 700;
-            color: var(--text);
-            letter-spacing: -0.01em;
-        }
-
-        /* ── Main Container ── */
-        .container {
-            flex: 1;
-            padding: 16px 14px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            overflow-y: auto;
-            min-height: 0;
-        }
-
-        .container::-webkit-scrollbar {
-            width: 5px;
-        }
-
-        .container::-webkit-scrollbar-thumb {
-            background: rgba(99, 102, 241, 0.2);
-            border-radius: 10px;
-        }
-
         /* ── Explorer UI ── */
         .explorer-card {
             background: var(--surface);
@@ -171,24 +71,6 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-        }
-
-        /* ── Section Labels ── */
-        .section-label {
-            font-weight: 700;
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-secondary);
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .section-label .material-icons-outlined {
-            font-size: 15px;
-            color: var(--primary-light);
         }
 
         /* ── Footer / Actions ── */
@@ -270,14 +152,16 @@
 <body>
 
     <div class="header">
-        <span class="material-icons-outlined">folder</span>
-        <div class="header-title">Bulk Folder Creation</div>
+    <div class="header-title">
+      <i data-lucide="folder" style="width:18px;"></i>
+      Bulk Folder Creation
     </div>
+  </div>
 
     <div class="container">
         <div>
             <div class="section-label">
-                <span class="material-icons-outlined">explore</span> Drive Explorer
+                <i data-lucide="compass" style="width:16px;"></i> Drive Explorer
             </div>
             <div class="explorer-card">
                 <div id="breadcrumbs" class="breadcrumbs">
@@ -293,7 +177,7 @@
 
         <div>
             <div class="section-label">
-                <span class="material-icons-outlined">info</span> Selection Info
+                <i data-lucide="info" style="width:16px;"></i> Selection Info
             </div>
             <div class="selection-info">
                 <span class="selection-label">Target:</span>
@@ -315,10 +199,10 @@
 
         <div class="btn-group">
             <button id="btn-back" class="btn btn-secondary" onclick="goUp()" disabled>
-                <span class="material-icons-outlined">arrow_back</span> Back
+                <i data-lucide="arrow-left" style="width:16px;"></i> Back
             </button>
             <button id="btn-run" class="btn btn-primary" onclick="startProcess()" disabled>
-                <span class="material-icons-outlined">rocket_launch</span> Create Folders
+                <i data-lucide="rocket" style="width:16px;"></i> Create Folders
             </button>
         </div>
     </div>
@@ -420,7 +304,7 @@
             isProcessing = true;
 
             const btn = document.getElementById('btn-run');
-            btn.innerHTML = '<span class="material-icons-outlined">sync</span> Processing...';
+            btn.innerHTML = '<i data-lucide="refresh-cw" style="width:16px;"></i> Processing...';
 
             document.getElementById('progress-area').style.display = 'block';
             document.getElementById('progress-bar').style.width = "0%";
@@ -467,7 +351,7 @@
             SyncSidebar.showToast(msg);
             
             const btn = document.getElementById('btn-run');
-            btn.innerHTML = '<span class="material-icons-outlined">check_circle</span> Finished';
+            btn.innerHTML = '<i data-lucide="check-circle" style="width:16px;"></i> Finished';
             btn.style.background = 'var(--gradient-push)';
 
             setTimeout(() => {
@@ -486,7 +370,7 @@
         function resetUI() {
             isProcessing = false;
             const btn = document.getElementById('btn-run');
-            btn.innerHTML = '<span class="material-icons-outlined">rocket_launch</span> Create Folders';
+            btn.innerHTML = '<i data-lucide="rocket" style="width:16px;"></i> Create Folders';
             btn.style.background = 'var(--gradient-pull)';
             document.getElementById('progress-area').style.display = 'none';
         }

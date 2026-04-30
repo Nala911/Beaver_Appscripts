@@ -139,7 +139,7 @@ function GmailFilters_processAction() {
         var stats = _App_BatchProcessor('GMAIL_FILTERS', pendingItems, function (item) {
             var actionType = item['Action'];
             var filterId = item['Filter ID'];
-            var resultStatus = SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Success";
+            var resultStatus = _App_formatStatus('SUCCESS', "Success");
             var resultAction = "";
             var newFilterId = filterId;
 
@@ -159,7 +159,7 @@ function GmailFilters_processAction() {
                         }
                     }
                     if (actionType === 'DELETE') {
-                        return { action: "", status: SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Deleted", _rowNumber: item._rowNumber };
+                        return { action: "", status: _App_formatStatus('SUCCESS', "Deleted"), _rowNumber: item._rowNumber };
                     }
                 }
 
@@ -169,7 +169,7 @@ function GmailFilters_processAction() {
                         return Gmail.Users.Settings.Filters.create(filterResource, 'me');
                     });
                     newFilterId = createdFilter.id;
-                    resultStatus = (actionType === 'UPDATE') ? SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Updated" : SHEET_THEME.STATUS_PREFIXES.SUCCESS + "Created";
+                    resultStatus = (actionType === 'UPDATE') ? _App_formatStatus('SUCCESS', "Updated") : _App_formatStatus('SUCCESS', "Created");
 
                 // Handle retroactive application
                 if (item['Action: Also apply filter to previous mails']) {
@@ -189,14 +189,13 @@ function GmailFilters_processAction() {
             onBatchComplete: function (batchResults) {
                 var rowNumbers = [];
                 var patchData = [];
-                var prefixes = SHEET_THEME.STATUS_PREFIXES;
                 batchResults.forEach(function (r) {
                     if (r && r._rowNumber !== undefined) {
                         rowNumbers.push(r._rowNumber);
                         if (r.isError) {
-                            patchData.push({ 'Status': prefixes.ERROR + r.error });
+                            patchData.push(_App_makeStatusPatch(r._rowNumber, 'ERROR', r.error));
                         } else {
-                            var patch = { 'Action': r.action, 'Status': r.status };
+                            var patch = _App_makeRowPatch(r._rowNumber, { 'Action': r.action, 'Status': r.status });
                             if (r['Filter ID']) patch['Filter ID'] = r['Filter ID'];
                             patchData.push(patch);
                         }
