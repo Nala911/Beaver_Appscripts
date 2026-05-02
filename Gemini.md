@@ -49,7 +49,7 @@ To maintain a professional and consistent user experience, the following strings
 - **Status Column**: Every tool sheet MUST include a `Status` column immediately following the `Action` column. It must be defined in `COL_SCHEMA` as `{ header: 'Status', type: 'STATUS' }`.
 - **Column Categories**: Formatting is strictly schema-driven. The engine assigns categories based on the `type` in `COL_SCHEMA`:
     - **Action**: `type: 'ACTION'`
-    - **Read-Only**: `type: 'STATUS'`, `type: 'READ_ONLY'`, `type: 'ID'`
+    - **Read-Only**: `type: 'STATUS'`, `type: 'READ_ONLY'`, `type: 'ID'`. **Crucial**: All System IDs (e.g., `type: 'ID'`) MUST be placed at the very end of the `COL_SCHEMA` array to hide non-actionable technical data from the user's immediate view.
     - **Editable**: All other types (`TEXT`, `URL`, `DROPDOWN`, `CHECKBOX`, `EMAIL`, etc.)
 - **Frozen Columns**: To ensure these system columns remain visible at all times, all tools MUST set `FROZEN_COLS: 2` in their registration metadata.
 - **Sidebar Documentation**: Only tool sidebars that benefit from guided onboarding need a "Help & Guide" section at the bottom, using the standardized `.sync-sidebar-help-guide-card` architecture.

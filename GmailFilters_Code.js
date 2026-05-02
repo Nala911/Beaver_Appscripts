@@ -23,7 +23,6 @@ SyncEngine.registerTool('GMAIL_FILTERS', {
         COL_SCHEMA: [
             { header: 'Action', type: 'ACTION', options: ['CREATE', 'UPDATE', 'DELETE'] },
             { header: 'Status', type: 'STATUS' },
-            { header: 'Filter ID', type: 'ID' },
             { header: 'Criteria: From', type: 'TEXT' },
             { header: 'Criteria: To', type: 'TEXT' },
             { header: 'Criteria: Subject', type: 'TEXT' },
@@ -54,7 +53,8 @@ SyncEngine.registerTool('GMAIL_FILTERS', {
             { header: 'Action: Never send it to Spam', type: 'CHECKBOX' },
             { header: 'Action: Always mark it as important', type: 'CHECKBOX' },
             { header: 'Action: Never mark it as important', type: 'CHECKBOX' },
-            { header: 'Action: Also apply filter to previous mails', type: 'CHECKBOX' }
+            { header: 'Action: Also apply filter to previous mails', type: 'CHECKBOX' },
+            { header: 'Filter ID', type: 'ID' }
         ]
     }
 });
@@ -97,7 +97,6 @@ function GmailFilters_pullFilters() {
             return {
                 'Action': '',
                 'Status': 'Synced',
-                'Filter ID': f.id,
                 'Criteria: From': criteria.from || '',
                 'Criteria: To': criteria.to || '',
                 'Criteria: Subject': criteria.subject || '',
@@ -113,7 +112,8 @@ function GmailFilters_pullFilters() {
                 'Action: Never send it to Spam': removeLabelIds.indexOf('SPAM') !== -1,
                 'Action: Always mark it as important': addLabelIds.indexOf('IMPORTANT') !== -1,
                 'Action: Never mark it as important': removeLabelIds.indexOf('IMPORTANT') !== -1,
-                'Action: Also apply filter to previous mails': false
+                'Action: Also apply filter to previous mails': false,
+                'Filter ID': f.id
             };
         });
 
