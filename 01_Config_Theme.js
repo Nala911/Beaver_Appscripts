@@ -4,7 +4,7 @@ var DEFAULT_SHEET_THEME = {
     HEADER: '#424242',
     FIRST_COLS_COLOR: '#2e5a70',
     MIDDLE_COLS_COLOR: '#528dab',
-    LAST_COLS_COLOR: '#655356',
+    LAST_COLS_COLOR: '#314974',
 
     // Status Colors (Used for conditional formatting rules)
     STATUS: {

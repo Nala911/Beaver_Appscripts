@@ -109,6 +109,12 @@ The project uses a decentralized registration pattern to manage tools.
 - **Self-Registration**: Each tool module registers its own configuration block at the top of its file.
 - **Registry Metadata**: Configuration includes `REQUIRED_SERVICES`, `SHEET_NAME`, `TITLE`, `MENU_LABEL`, `MENU_ENTRYPOINT`, `MENU_ORDER`, `SIDEBAR_HTML`, `SIDEBAR_WIDTH`, `FROZEN_ROWS`, `FROZEN_COLS`, `COL_WIDTHS`, and a `FORMAT_CONFIG` object (containing `conditionalRules` and `COL_SCHEMA` for declarative column validations, types, and positional schema-driven background categorization).
 
+### 1a. Unified Column Categorization & Schema Design
+To maintain a professional and consistent user experience, the formatting is strictly schema-driven and positional. The engine maps column types to three visual categories:
+- **First Columns (Action/Status)**: Includes `type: 'ACTION'` and `type: 'STATUS'`. Colors use `SHEET_THEME.FIRST_COLS_COLOR`. To ensure these system columns remain visible at all times, the system enforces a default of 2 frozen columns.
+- **Middle Columns (Editable Data)**: Includes all other data input types (`TEXT`, `URL`, `DROPDOWN`, `CHECKBOX`, `EMAIL`, etc.). Colors use `SHEET_THEME.MIDDLE_COLS_COLOR`.
+- **Last Columns (Read-Only/IDs)**: Includes `type: 'READ_ONLY'` and `type: 'ID'`. Colors use `SHEET_THEME.LAST_COLS_COLOR`. All System IDs (e.g., `type: 'ID'`) **MUST** be placed at the very end of the `COL_SCHEMA` array to hide non-actionable technical data from the user's immediate view.
+
 ### 2. Unified Utilities (`_App_`)
 Core logic is abstracted into `_App_` prefixed functions spread across `03_Core_Utils.js` to `09_Engine_UI.js`.
 
