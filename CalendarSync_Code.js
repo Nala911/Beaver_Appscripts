@@ -12,9 +12,6 @@ SyncEngine.registerTool('CALENDAR_SYNC', {
     MENU_ORDER: 10,
     SIDEBAR_HTML: 'CalendarSync_Sidebar',
     SIDEBAR_WIDTH: 400,
-    FROZEN_ROWS: 1,
-    FROZEN_COLS: 2,
-    COL_WIDTHS: [120, 180, 200, null, null, 250, null, null, null, null, null, null, null],
     FORMAT_CONFIG: {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [

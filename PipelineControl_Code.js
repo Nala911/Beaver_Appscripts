@@ -11,15 +11,12 @@ SyncEngine.registerTool('PIPELINE', {
     MENU_ORDER: 100,
     SIDEBAR_HTML: 'PipelineControl_Sidebar',
     SIDEBAR_WIDTH: 300,
-    FROZEN_ROWS: 1,
-    FROZEN_COLS: 2,
-    COL_WIDTHS: [60, 200, 200, 200, 200, 200, 200, 200],
     FORMAT_CONFIG: {
         conditionalRules: [
-            { type: 'custom', formula: '=$A2=TRUE', color: SHEET_THEME.STATUS.SUCCESS, scope: 'actionOnly', actionCol: 'A' }
+            { type: 'custom', formula: '=$A2="Enabled"', color: SHEET_THEME.STATUS.SUCCESS, scope: 'actionOnly', actionCol: 'A' }
         ],
         COL_SCHEMA: [
-            { header: 'ON/OFF', type: 'CHECKBOX' },
+            { header: 'Action', type: 'ACTION', options: ['Enabled', 'Disabled'], width: 100 },
             { header: 'Status', type: 'STATUS' },
             { header: 'Pipeline Name', type: 'TEXT' },
             { header: 'Source URL', type: 'URL' },

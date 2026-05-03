@@ -12,9 +12,6 @@ SyncEngine.registerTool('CONTACTS_SYNC', {
     MENU_ORDER: 20,
     SIDEBAR_HTML: 'ContactsSync_Sidebar',
     SIDEBAR_WIDTH: 400,
-    FROZEN_ROWS: 1,
-    FROZEN_COLS: 2,
-    COL_WIDTHS: [120, 130, 130, 180, 140, 140, 140, 100, 150, 120, 100, 80, 160, 250, 140],
     FORMAT_CONFIG: {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [

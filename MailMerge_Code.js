@@ -11,9 +11,6 @@ SyncEngine.registerTool('MAIL_MERGE', {
     MENU_ORDER: 30,
     SIDEBAR_HTML: 'MailMerge_Sidebar',
     SIDEBAR_WIDTH: 400,
-    FROZEN_ROWS: 1,
-    FROZEN_COLS: 2,
-    COL_WIDTHS: [120, 200, 200, 150, 150, 250, 200],
     FORMAT_CONFIG: {
         conditionalRules: [
             { type: 'pending', actionCol: 'A', scope: 'actionOnly' },

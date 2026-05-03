@@ -11,9 +11,6 @@ SyncEngine.registerTool('DOCS_MERGE', {
     MENU_ORDER: 50,
     SIDEBAR_HTML: 'DocsMerge_Sidebar',
     SIDEBAR_WIDTH: 400,
-    FROZEN_ROWS: 1,
-    FROZEN_COLS: 2,
-    COL_WIDTHS: [120, 200, 250],
     FORMAT_CONFIG: {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [

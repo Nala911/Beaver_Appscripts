@@ -12,9 +12,6 @@ SyncEngine.registerTool('DRIVE_SYNC', {
     MENU_ORDER: 90,
     SIDEBAR_HTML: 'DriveFileDetails_Sidebar',
     SIDEBAR_WIDTH: 400,
-    FROZEN_ROWS: 1,
-    FROZEN_COLS: 2,
-    COL_WIDTHS: [90, 300, 300, 250, 80, 150, 200, 200, 90, 250, 250, 80, 200, 300, 150, 150],
     FORMAT_CONFIG: {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [

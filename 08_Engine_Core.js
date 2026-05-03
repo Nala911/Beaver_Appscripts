@@ -25,6 +25,14 @@ var SyncEngine = (function() {
 
         if (config.FORMAT_CONFIG && config.FORMAT_CONFIG.COL_SCHEMA && !Array.isArray(config.FORMAT_CONFIG.COL_SCHEMA)) {
             issues.push("FORMAT_CONFIG.COL_SCHEMA must be an array.");
+        } else if (config.FORMAT_CONFIG && Array.isArray(config.FORMAT_CONFIG.COL_SCHEMA)) {
+            var schema = config.FORMAT_CONFIG.COL_SCHEMA;
+            if (schema.length > 0 && schema[0].type !== 'ACTION') {
+                issues.push("First column must be of type 'ACTION'.");
+            }
+            if (schema.length > 1 && schema[1].type !== 'STATUS') {
+                issues.push("Second column must be of type 'STATUS'.");
+            }
         }
 
         return issues;
@@ -40,10 +48,20 @@ var SyncEngine = (function() {
         config.MENU_ORDER = typeof config.MENU_ORDER === 'number' ? config.MENU_ORDER : 999;
         config.LAUNCH_MODE = config.LAUNCH_MODE || TOOL_LAUNCH_MODES.SIDEBAR;
 
-        // Post-process the config (generate HEADERS and totalCols from SCHEMA)
+        // Unifying defaults
+        config.FROZEN_ROWS = typeof config.FROZEN_ROWS === 'number' ? config.FROZEN_ROWS : 1;
+        config.FROZEN_COLS = typeof config.FROZEN_COLS === 'number' ? config.FROZEN_COLS : 2;
+
+        // Post-process the config (generate HEADERS, totalCols, COL_WIDTHS from SCHEMA)
         if (config.FORMAT_CONFIG && config.FORMAT_CONFIG.COL_SCHEMA) {
             config.HEADERS = config.FORMAT_CONFIG.COL_SCHEMA.map(function(c) { return c.header; });
             config.FORMAT_CONFIG.totalCols = config.FORMAT_CONFIG.COL_SCHEMA.length;
+            
+            if (!config.COL_WIDTHS) {
+                config.COL_WIDTHS = config.FORMAT_CONFIG.COL_SCHEMA.map(function(col) {
+                    return col.width || DEFAULT_COL_WIDTHS[col.type] || 150;
+                });
+            }
         }
 
         var issues = _validateToolConfig(key, config);

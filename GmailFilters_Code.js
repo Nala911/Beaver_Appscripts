@@ -15,9 +15,6 @@ SyncEngine.registerTool('GMAIL_FILTERS', {
     MENU_ORDER: 30,
     SIDEBAR_HTML: 'GmailFilters_Sidebar',
     SIDEBAR_WIDTH: 320,
-    FROZEN_ROWS: 1,
-    FROZEN_COLS: 2,
-    COL_WIDTHS: [150, 150, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200],
     FORMAT_CONFIG: {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [

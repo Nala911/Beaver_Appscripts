@@ -66,3 +66,18 @@ var TOOL_LAUNCH_MODES = {
     SIDEBAR: 'SIDEBAR',
     MODAL: 'MODAL'
 };
+
+var DEFAULT_COL_WIDTHS = {
+    ACTION: 120,
+    STATUS: 200,
+    ID: 150,
+    URL: 250,
+    DATETIME: 180,
+    TEXT: 200,
+    DROPDOWN: 150,
+    CHECKBOX: 100,
+    EMAIL: 200,
+    EMAIL_LIST: 250,
+    DATE: 120,
+    READ_ONLY: 200
+};

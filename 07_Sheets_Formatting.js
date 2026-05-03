@@ -141,9 +141,9 @@ function _App_syncDynamicColumns(toolKey, dynamicHeaders, options) {
 /**
  * Applies standardized body formatting to a sheet's data area.
  * This enforces strict column ordering:
- * 1: Action (SHEET_THEME.ACTION) - unless config.skipActionColoring is true
- * 2 onwards: Editable data (SHEET_THEME.EDITABLE)
- * Last N columns: Read-only data (SHEET_THEME.READ_ONLY)
+ * - First Columns (Action/Status): SHEET_THEME.FIRST_COLS_COLOR
+ * - Middle Columns (Editable Data): SHEET_THEME.MIDDLE_COLS_COLOR
+ * - Last Columns (Read-only/IDs): SHEET_THEME.LAST_COLS_COLOR
  */
 function _App_applyBodyFormatting(sheet, numDataRows, config) {
     var rowsToFormat = numDataRows + FORMATTING_BUFFER_ROWS;
@@ -187,17 +187,17 @@ function _App_applyBodyFormatting(sheet, numDataRows, config) {
             // Background Colors (Schema-driven Categorization)
             var category = colDef.category;
             if (!category) {
-                if (colDef.type === 'ACTION') category = 'ACTION';
-                else if (colDef.type === 'STATUS' || colDef.type === 'READ_ONLY' || colDef.type === 'ID') category = 'READ_ONLY';
-                else category = 'EDITABLE';
+                if (colDef.type === 'ACTION' || colDef.type === 'STATUS') category = 'FIRST_COLS';
+                else if (colDef.type === 'READ_ONLY' || colDef.type === 'ID') category = 'LAST_COLS';
+                else category = 'MIDDLE_COLS';
             }
 
-            if (category === 'ACTION') {
-                range.setBackground(SHEET_THEME.ACTION);
-            } else if (category === 'READ_ONLY') {
-                range.setBackground(SHEET_THEME.READ_ONLY);
+            if (category === 'FIRST_COLS') {
+                range.setBackground(SHEET_THEME.FIRST_COLS_COLOR);
+            } else if (category === 'LAST_COLS') {
+                range.setBackground(SHEET_THEME.LAST_COLS_COLOR);
             } else {
-                range.setBackground(SHEET_THEME.EDITABLE);
+                range.setBackground(SHEET_THEME.MIDDLE_COLS_COLOR);
             }
 
             // Number Formats

@@ -2,9 +2,9 @@
 var DEFAULT_SHEET_THEME = {
     // Cell Backgrounds
     HEADER: '#424242',
-    ACTION: '#2e5a70',
-    EDITABLE: '#528dab',
-    READ_ONLY: '#655356',
+    FIRST_COLS_COLOR: '#2e5a70',
+    MIDDLE_COLS_COLOR: '#528dab',
+    LAST_COLS_COLOR: '#655356',
 
     // Status Colors (Used for conditional formatting rules)
     STATUS: {

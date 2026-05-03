@@ -12,9 +12,6 @@ SyncEngine.registerTool('FORMS_SYNC', {
     MENU_ORDER: 70,
     SIDEBAR_HTML: 'FormsSync_Sidebar',
     SIDEBAR_WIDTH: 300,
-    FROZEN_ROWS: 1,
-    FROZEN_COLS: 2,
-    COL_WIDTHS: [100, 300, 150, 250, 250, 100, 120],
     FORMAT_CONFIG: {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [

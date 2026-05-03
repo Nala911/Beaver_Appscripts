@@ -11,9 +11,6 @@ SyncEngine.registerTool('BULK_FOLDER', {
     MENU_ORDER: 80,
     SIDEBAR_HTML: 'BulkFolderCreation_Sidebar',
     SIDEBAR_WIDTH: 400,
-    FROZEN_ROWS: 1,
-    FROZEN_COLS: 2,
-    COL_WIDTHS: [100, 200, 200, 200, 200],
     FORMAT_CONFIG: {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
         COL_SCHEMA: [
