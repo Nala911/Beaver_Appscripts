@@ -14,7 +14,8 @@ var SHEET_NAMES = {
     DRIVE_SYNC: '💾 Google Drive',
     PIPELINE: '⛓  Pipeline',
     CHAT_SPACE_SYNC: '💬 Google Chat Spaces',
-    GMAIL_FILTERS: '🗂️ Gmail Filters'
+    GMAIL_FILTERS: '🗂️ Gmail Filters',
+    TASKS_SYNC: '📋 Google Tasks'
 };
 
 // ==========================================
@@ -32,11 +33,11 @@ var APP_PROPS = {
     THEME: { key: 'WorkspaceSync_SHEET_THEME', store: STORE_TYPES.DOCUMENT, isJson: true },
 
     // Pipeline
-    SYSTEM_ENABLED: { key: 'SYSTEM_ENABLED', store: STORE_TYPES.SCRIPT, isJson: false },
+    SYSTEM_ENABLED: { key: 'SYSTEM_ENABLED', store: STORE_TYPES.SCRIPT, isJson: false, validate: 'BOOLEAN' },
 
     // Docs Merge
-    DOCS_MERGE_TEMPLATE_URL: { key: 'DOCS_MERGE_TEMPLATE_URL', store: STORE_TYPES.DOCUMENT, isJson: false },
-    DOCS_MERGE_FOLDER_URL: { key: 'DOCS_MERGE_FOLDER_URL', store: STORE_TYPES.DOCUMENT, isJson: false },
+    DOCS_MERGE_TEMPLATE_URL: { key: 'DOCS_MERGE_TEMPLATE_URL', store: STORE_TYPES.DOCUMENT, isJson: false, validate: 'DOCS_URL' },
+    DOCS_MERGE_FOLDER_URL: { key: 'DOCS_MERGE_FOLDER_URL', store: STORE_TYPES.DOCUMENT, isJson: false, validate: 'DRIVE_URL' },
     DOCS_MERGE_TEMPLATE_NAME: { key: 'DOCS_MERGE_TEMPLATE_NAME', store: STORE_TYPES.DOCUMENT, isJson: false },
     DOCS_MERGE_FOLDER_NAME: { key: 'DOCS_MERGE_FOLDER_NAME', store: STORE_TYPES.DOCUMENT, isJson: false },
     DOCS_MERGE_MASTER_DOC_ID: { key: 'DOCS_MERGE_MASTER_DOC_ID', store: STORE_TYPES.DOCUMENT, isJson: false },
@@ -55,6 +56,9 @@ var APP_PROPS = {
     // Forms Sync
     FORMS_CURRENT_FORM: { key: 'FORMSSYNC_CURRENT_FORM', store: STORE_TYPES.DOCUMENT, isJson: false },
     FORMS_SELECTED_FORM: { key: 'FORMSSYNC_SELECTED_FORM', store: STORE_TYPES.USER, isJson: false },
+
+    // Tasks Sync
+    TASKS_SELECTED_LIST: { key: 'selectedTasksList', store: STORE_TYPES.USER, isJson: false }
 
 };
 

@@ -599,17 +599,66 @@
                 Alignment & Layout
             </div>
             <div class="nav-item" onclick="switchTab('status', this)">
+        <p style="color: var(--text-secondary); font-size: 13px; font-weight: 500;">Loading Settings...</p>
+    </div>
+
+    <header>
+        <div class="header-title">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+                <path d="M2 12h20"></path>
+            </svg>
+            <h1>Settings</h1>
+        </div>
+        <div class="header-actions">
+            <button class="btn-secondary" onclick="resetTheme()" id="resetBtn">Reset to Defaults</button>
+            <button class="btn-primary" onclick="saveTheme()" id="saveBtn">Apply Theme Changes</button>
+        </div>
+    </header>
+
+    <main class="dashboard-container" id="settings-dashboard" style="display:none;">
+
+        <!-- Column 1: Navigation -->
+        <nav class="nav-col">
+            <div class="nav-item active" onclick="switchTab('colors', this)">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 2L2 22h20L12 2z"></path>
+                </svg>
+                Colors & Backgrounds
+            </div>
+            <div class="nav-item" onclick="switchTab('borders', this)">
+                <svg viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                </svg>
+                Borders & Styling
+            </div>
+            <div class="nav-item" onclick="switchTab('typography', this)">
+                <svg viewBox="0 0 24 24">
+                    <polyline points="4 7 4 4 20 4 20 7"></polyline>
+                    <line x1="9" y1="20" x2="15" y2="20"></line>
+                    <line x1="12" y1="4" x2="12" y2="20"></line>
+                </svg>
+                Typography
+            </div>
+            <div class="nav-item" onclick="switchTab('layout', this)">
+                <svg viewBox="0 0 24 24">
+                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+                Alignment & Layout
+            </div>
+            <div class="nav-item" onclick="switchTab('status', this)">
                 <svg viewBox="0 0 24 24">
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                     <polyline points="22 4 12 14.01 9 11.01"></polyline>
                 </svg>
                 Status Indicators
-            </div>
-            <div class="nav-item" onclick="switchTab('audit', this)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                </svg>
-                System Audit
             </div>
         </nav>
 
@@ -859,18 +908,6 @@
                 </div>
             </div>
 
-            <!-- Section: Audit -->
-            <div id="sec-audit" class="settings-section">
-                <h2 class="section-title">System Audit</h2>
-                <div style="margin-bottom: 20px; font-size: 13px; color: #6b7280; line-height: 1.5;">
-                    Run a comprehensive diagnostic check of all tools and the global environment to identify missing configurations or errors.
-                </div>
-                <button class="btn-primary" id="btn-run-audit" onclick="runSystemAudit()" style="width: 100%; margin-bottom: 20px;">Run System Audit</button>
-                <div id="audit-results-container" style="display: none; flex-direction: column; gap: 12px;">
-                    <!-- Results will be injected here -->
-                </div>
-            </div>
-
         </div>
 
         <!-- Column 3: Preview -->
@@ -1018,11 +1055,7 @@
 
             // Toggle preview column based on tab
             const dashboard = document.getElementById('settings-dashboard');
-            if (tabId === 'audit') {
-                dashboard.classList.add('hide-preview');
-            } else {
-                dashboard.classList.remove('hide-preview');
-            }
+            dashboard.classList.remove('hide-preview');
         }
 
         // Custom Segment Control Logic
@@ -1191,82 +1224,8 @@
             target[last] = value;
         }
 
-        function runSystemAudit() {
-            const btn = document.getElementById('btn-run-audit');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = 'Running...';
-
-            const container = document.getElementById('audit-results-container');
-            container.style.display = 'flex';
-            container.innerHTML = '<div style="text-align:center; padding:20px; color:#6b7280;">Analyzing system...</div>';
-
-            SyncSidebar.run('System_runAudit', [], {
-                context: 'System Audit',
-                onSuccess: function(res) {
-                    renderAuditResults(res.data || res);
-                },
-                onError: function() {
-                    container.innerHTML = '<div style="color:#dc2626; padding:10px;">Audit failed to run. Check connectivity or system health.</div>';
-                },
-                onFinally: function() {
-                    btn.innerHTML = originalText;
-                }
-            });
-        }
-
-        function renderAuditResults(data) {
-            const container = document.getElementById('audit-results-container');
-            container.innerHTML = '';
-
-            if (!data || !data.details) {
-                container.innerHTML = '<div style="color:#dc2626;">Invalid response from server.</div>';
-                return;
-            }
-
-            // Summary Header
-            const summaryDiv = document.createElement('div');
-            summaryDiv.style.padding = '12px';
-            summaryDiv.style.background = '#e5e7eb';
-            summaryDiv.style.borderRadius = '4px';
-            summaryDiv.style.fontWeight = '600';
-            summaryDiv.style.marginBottom = '10px';
-            summaryDiv.innerHTML = `Audit Summary: <span style="color:#059669">${data.summary.passed} Passed</span> | <span style="color:#d97706">${data.summary.warnings} Warnings</span> | <span style="color:#dc2626">${data.summary.errors} Errors</span>`;
-            container.appendChild(summaryDiv);
-
-            // Details
-            data.details.forEach(item => {
-                const itemDiv = document.createElement('div');
-                itemDiv.style.padding = '12px';
-                itemDiv.style.background = '#fff';
-                itemDiv.style.border = '1px solid #d1d5db';
-                itemDiv.style.borderRadius = '4px';
-
-                let statusColor = '#059669'; // Success
-                if (item.status === 'WARN') statusColor = '#d97706';
-                if (item.status === 'ERROR') statusColor = '#dc2626';
-
-                let html = `<div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                                <strong style="color:#374151;">${item.title}</strong>
-                                <span style="color:${statusColor}; font-weight:600; font-size:12px;">${item.status}</span>
-                            </div>`;
-
-                if (item.issues && item.issues.length > 0) {
-                    html += `<ul style="margin:8px 0 0 0; padding-left:20px; font-size:12px; color:#4b5563;">`;
-                    item.issues.forEach(issue => {
-                        html += `<li style="margin-bottom:4px;">${issue}</li>`;
-                    });
-                    html += `</ul>`;
-                } else if (item.status === 'SUCCESS') {
-                     html += `<div style="font-size:12px; color:#6b7280;">All checks passed.</div>`;
-                }
-                
-                itemDiv.innerHTML = html;
-                container.appendChild(itemDiv);
-            });
-        }
 </script>
 
 </body>
 
 </html>
-

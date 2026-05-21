@@ -9,6 +9,7 @@
 SyncEngine.registerTool('GMAIL_FILTERS', {
     REQUIRED_SERVICES: [{ name: 'Gmail API', test: function () { return typeof Gmail !== 'undefined'; } }],
     SHEET_NAME: SHEET_NAMES.GMAIL_FILTERS,
+    FROZEN_COLS: 2,
     TITLE: SHEET_NAMES.GMAIL_FILTERS,
     MENU_LABEL: SHEET_NAMES.GMAIL_FILTERS,
     MENU_ENTRYPOINT: 'GmailFilters_openSidebar',

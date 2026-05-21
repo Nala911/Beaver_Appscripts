@@ -205,7 +205,13 @@ var SheetManager = (function() {
 
     function hasPendingActions(toolKey) {
         return getActions(toolKey).some(function(action) {
-            return action !== '' && action !== false;
+            if (action === undefined || action === null || action === false) {
+                return false;
+            }
+            if (typeof action === 'string') {
+                return action.trim() !== '';
+            }
+            return true;
         });
     }
 

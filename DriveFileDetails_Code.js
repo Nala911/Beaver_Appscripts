@@ -6,6 +6,7 @@
 SyncEngine.registerTool('DRIVE_SYNC', {
     REQUIRED_SERVICES: [ { name: 'Drive API', test: function() { return typeof Drive !== 'undefined'; } } ],
     SHEET_NAME: SHEET_NAMES.DRIVE_SYNC,
+    FROZEN_COLS: 2,
     TITLE: SHEET_NAMES.DRIVE_SYNC,
     MENU_LABEL: SHEET_NAMES.DRIVE_SYNC,
     MENU_ENTRYPOINT: 'DriveFileDetails_openSidebar',

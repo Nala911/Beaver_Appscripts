@@ -5,6 +5,7 @@
 
 SyncEngine.registerTool('BULK_FOLDER', {
     SHEET_NAME: SHEET_NAMES.BULK_FOLDER,
+    FROZEN_COLS: 2,
     TITLE: SHEET_NAMES.BULK_FOLDER,
     MENU_LABEL: SHEET_NAMES.BULK_FOLDER,
     MENU_ENTRYPOINT: 'BulkFolderCreation_openSidebar',
@@ -98,11 +99,6 @@ function BulkFolderCreation_getDriveNavData(folderId) {
 
 // --- BATCH CREATION LOGIC ---
 
-function BulkFolderCreation_getProgress() {
-  return Logger.run('BULK_FOLDER', 'Get Progress', function () {
-    return _App_ok('Progress', _App_getProgress('BULK_FOLDER'));
-  });
-}
 
 function BulkFolderCreation_runBulkCreationSequence(targetFolderId) {
   return Logger.run('BULK_FOLDER', 'Batch Creation', function () {

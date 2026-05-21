@@ -535,7 +535,13 @@
             var overlay = document.createElement('div');
             overlay.id = 'sync-sidebar-loading-overlay';
             overlay.className = 'sync-sidebar-loading-overlay';
-            overlay.innerHTML = '<div class="sync-sidebar-spinner"></div><div id="sync-sidebar-loading-text" class="sync-sidebar-loading-text">Processing...</div>';
+            overlay.innerHTML = '<div class="sync-sidebar-spinner"></div><div id="sync-sidebar-loading-text" class="sync-sidebar-loading-text">Processing...</div>' +
+                '<div id="sync-sidebar-loading-progress-container" style="display: none; width: 80%; max-width: 240px; margin-top: 5px;">' +
+                '  <div style="height: 6px; background: var(--border-light); border-radius: 10px; overflow: hidden; width: 100%;">' +
+                '    <div id="sync-sidebar-loading-progress-bar" style="height: 100%; background: var(--gradient-push); width: 0%; transition: width 0.3s ease;"></div>' +
+                '  </div>' +
+                '  <div id="sync-sidebar-loading-progress-percent" style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-align: right; margin-top: 4px;">0%</div>' +
+                '</div>';
             document.body.appendChild(overlay);
         }
         if (!document.getElementById('sync-sidebar-toast')) {
@@ -550,6 +556,53 @@
             document.body.appendChild(tip);
         }
         _initHelpSystem();
+    }
+
+    var progressIntervals = {};
+
+    function startProgressPolling(toolKey) {
+      stopProgressPolling(toolKey);
+
+      var progContainer = document.getElementById('sync-sidebar-loading-progress-container');
+      var progBar = document.getElementById('sync-sidebar-loading-progress-bar');
+      var progPercent = document.getElementById('sync-sidebar-loading-progress-percent');
+      
+      if (progContainer) progContainer.style.display = 'block';
+      if (progBar) progBar.style.width = '0%';
+      if (progPercent) progPercent.innerText = '0%';
+
+      progressIntervals[toolKey] = setInterval(function() {
+        run('UI_getProgress', [toolKey], {
+          lockButtons: false,
+          unwrap: true,
+          toast: false,
+          onSuccess: function(res) {
+            if (res && res.success && res.data) {
+              var current = res.data.current;
+              var total = res.data.total;
+              if (total > 0) {
+                var pct = Math.round((current / total) * 100);
+                if (progBar) progBar.style.width = pct + '%';
+                if (progPercent) progPercent.innerText = pct + '% (' + current + '/' + total + ')';
+              }
+            }
+          },
+          onError: function(err) {
+            // Silently ignore progress fetch errors to avoid disrupting user experience
+          }
+        });
+      }, 1500);
+    }
+
+    function stopProgressPolling(toolKey) {
+      if (progressIntervals[toolKey]) {
+        clearInterval(progressIntervals[toolKey]);
+        delete progressIntervals[toolKey];
+      }
+      var progContainer = document.getElementById('sync-sidebar-loading-progress-container');
+      if (progContainer) {
+        progContainer.style.display = 'none';
+      }
     }
 
     function _initHelpSystem() {
@@ -601,6 +654,54 @@
           }
         }, 200);
       }, true);
+    }
+
+    function _renderHelpGuide(container, helpConfig) {
+      if (!helpConfig) return;
+      var html = '';
+      
+      // 1. Render Header/Label
+      html += '<div>';
+      html += '  <div class="section-label">';
+      html += '    <i data-lucide="book-open" style="width:13px;"></i> Help & Guide';
+      if (helpConfig.gettingStarted) {
+        html += '    <i data-lucide="help-circle" class="help-trigger" data-help-target="help-getting-started" style="width:13px; margin-left: auto;"></i>';
+      }
+      html += '  </div>';
+      
+      // 2. Render Card
+      html += '  <div class="card sync-sidebar-help-guide-card">';
+      html += '    <div class="sync-sidebar-help-guide-list">';
+      if (helpConfig.items && helpConfig.items.length > 0) {
+        helpConfig.items.forEach(function(item) {
+          var colorStyle = item.color ? ' style="color: ' + item.color + ';"' : '';
+          html += '      <div class="sync-sidebar-help-guide-item">';
+          html += '        <i data-lucide="' + (item.icon || 'help-circle') + '" class="help-trigger" data-help-target="' + (item.tooltipId || '') + '"' + colorStyle + '></i>';
+          html += '        <div>';
+          html += '          <strong>' + (item.label || '') + ':</strong> ' + (item.shortDesc || '');
+          html += '        </div>';
+          html += '      </div>';
+        });
+      }
+      html += '    </div>';
+      html += '  </div>';
+      html += '</div>';
+
+      // 3. Render Hidden Tooltips
+      html += '<div style="display: none;">';
+      if (helpConfig.gettingStarted && helpConfig.gettingStarted.content) {
+        html += '  <div id="help-getting-started">' + helpConfig.gettingStarted.content + '</div>';
+      }
+      if (helpConfig.items && helpConfig.items.length > 0) {
+        helpConfig.items.forEach(function(item) {
+          if (item.tooltipId && item.tooltipContent) {
+            html += '  <div id="' + item.tooltipId + '">' + item.tooltipContent + '</div>';
+          }
+        });
+      }
+      html += '</div>';
+      
+      container.innerHTML = html;
     }
 
     function installGlobalErrorHandlers() {
@@ -656,6 +757,11 @@
 
       if (overlay) overlay.style.display = (activeLocks > 0) ? 'flex' : 'none';
       if (show && text && textNode) textNode.innerText = text;
+      
+      if (activeLocks === 0) {
+        var progContainer = document.getElementById('sync-sidebar-loading-progress-container');
+        if (progContainer) progContainer.style.display = 'none';
+      }
     }
 
     function showToast(message, isError, options) {
@@ -1066,6 +1172,26 @@
 
     function initSidebar(options) {
       var opts = options || {};
+      
+      var helpContainer = document.getElementById('sync-sidebar-help-container');
+      if (helpContainer && opts.toolKey) {
+        run('UI_getHelpItems', [opts.toolKey], {
+          lockButtons: false,
+          unwrap: true,
+          toast: false,
+          onSuccess: function(res) {
+            if (res && res.success && res.data) {
+              _renderHelpGuide(helpContainer, res.data);
+              if (opts.createIcons !== false && typeof lucide !== 'undefined' && lucide && typeof lucide.createIcons === 'function') {
+                try {
+                  lucide.createIcons();
+                } catch (e) {}
+              }
+            }
+          }
+        });
+      }
+
       if (opts.createIcons !== false && typeof lucide !== 'undefined' && lucide && typeof lucide.createIcons === 'function') {
         try {
           lucide.createIcons();
@@ -1089,6 +1215,10 @@
         toggleLoading(true, opts.loadingText, opts.loadingOptions);
       }
 
+      if (opts.toolKey) {
+        startProgressPolling(opts.toolKey);
+      }
+
       run(opts.method, opts.args || [], {
         context: opts.context,
         unwrap: opts.unwrap,
@@ -1097,6 +1227,7 @@
         lockButtons: opts.lockButtons,
         timeoutMs: opts.timeoutMs,
         onSuccess: function (res, raw) {
+          if (opts.toolKey) stopProgressPolling(opts.toolKey);
           if (opts.loadingText) toggleLoading(false, null, opts.loadingOptions);
           if (opts.statusTarget && typeof opts.setStatus !== 'function') {
             setStatusBadge(opts.statusTarget, 'ready', opts.statusOptions);
@@ -1108,6 +1239,7 @@
           if (typeof opts.onSuccess === 'function') opts.onSuccess(res, raw);
         },
         onError: function (err) {
+          if (opts.toolKey) stopProgressPolling(opts.toolKey);
           if (opts.loadingText) toggleLoading(false, null, opts.loadingOptions);
           if (typeof opts.onError === 'function') {
             opts.onError(err);
@@ -1120,7 +1252,12 @@
             resetLoading: false
           });
         },
-        onFinally: opts.onFinally
+        onFinally: function() {
+          if (opts.toolKey) stopProgressPolling(opts.toolKey);
+          if (typeof opts.onFinally === 'function') {
+            opts.onFinally();
+          }
+        }
       });
     }
 

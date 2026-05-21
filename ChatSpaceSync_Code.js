@@ -6,6 +6,7 @@
 SyncEngine.registerTool('CHAT_SYNC', {
     REQUIRED_SERVICES: [ { name: 'Chat API', test: function() { return typeof Chat !== 'undefined'; } } ],
     SHEET_NAME: SHEET_NAMES.CHAT_SPACE_SYNC,
+    FROZEN_COLS: 2,
     TITLE: SHEET_NAMES.CHAT_SPACE_SYNC,
     MENU_LABEL: SHEET_NAMES.CHAT_SPACE_SYNC,
     MENU_ENTRYPOINT: 'ChatSpaceSync_openSidebar',
@@ -125,7 +126,15 @@ function ChatSpaceSync_pullMembers() {
 
 function ChatSpaceSync_checkForUnsavedChanges() {
   return Logger.run('CHAT_SYNC', 'Check Unsaved', function () {
-    return _App_ok('Check complete.', SheetManager.hasPendingActions('CHAT_SYNC'));
+    var hasChanges = false;
+    try {
+      hasChanges = SheetManager.hasPendingActions('CHAT_SYNC');
+    } catch (e) {
+      // If sheet doesn't exist yet, there are no changes
+    }
+    var response = _App_ok('Check complete.', hasChanges);
+    response.hasChanges = hasChanges;
+    return response;
   });
 }
 

@@ -113,39 +113,49 @@
             transition: all 0.25s ease;
             position: relative;
             overflow: hidden;
+            padding: 16px;
+            border-top: 1px solid var(--border);
+            box-shadow: 0 -4px 12px rgba(0,0,0,0.03);
+        }
+
+        .selection-info {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .selection-label { color: var(--text-secondary); }
+        .selection-value { font-weight: 700; color: var(--primary); }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            height: 40px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
         }
 
         .btn-primary { background: var(--gradient-pull); color: white; }
         .btn-secondary { background: var(--surface); border: 1.5px solid var(--border); color: var(--text-secondary); }
         .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-        /* ── Progress ── */
-        .progress-container {
-            margin-bottom: 14px;
-        }
-
-        .progress-header {
-            display: flex;
-            justify-content: space-between;
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            margin-bottom: 6px;
-        }
-
-        .progress-bar-bg {
-            height: 6px;
-            background: var(--border-light);
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .progress-bar-fill {
-            height: 100%;
-            background: var(--gradient-push);
-            width: 0%;
-            transition: width 0.3s ease;
-        }
     </style>
 </head>
 
@@ -187,16 +197,6 @@
     </div>
 
     <div class="footer">
-        <div id="progress-area" class="progress-container" style="display: none;">
-            <div class="progress-header">
-                <span id="progress-text">Processing...</span>
-                <span id="progress-percent">0%</span>
-            </div>
-            <div class="progress-bar-bg">
-                <div id="progress-bar" class="progress-bar-fill"></div>
-            </div>
-        </div>
-
         <div class="btn-group">
             <button id="btn-back" class="btn btn-secondary" onclick="goUp()" disabled>
                 <i data-lucide="arrow-left" style="width:16px;"></i> Back
@@ -210,13 +210,10 @@
     <?!= _App_include('SidebarShared'); ?>
     <script>
         let currentFolderId = "root";
-        let isProcessing = false;
-        let progressInterval = null;
 
         // --- INITIALIZATION ---
         window.onload = function () {
             SyncSidebar.initSidebar({
-                createIcons: false,
                 onLoad: function () {
                     loadExplorer('root');
                 }
@@ -300,79 +297,16 @@
         // --- AUTOMATION LOGIC ---
 
         function startProcess() {
-            if (isProcessing) return;
-            isProcessing = true;
-
-            const btn = document.getElementById('btn-run');
-            btn.innerHTML = '<i data-lucide="refresh-cw" style="width:16px;"></i> Processing...';
-
-            document.getElementById('progress-area').style.display = 'block';
-            document.getElementById('progress-bar').style.width = "0%";
-            document.getElementById('progress-percent').innerText = "0%";
-            document.getElementById('progress-text').innerText = "Starting batch...";
-
-            progressInterval = setInterval(pollProgress, 2000);
-
-            SyncSidebar.run('BulkFolderCreation_runBulkCreationSequence', [currentFolderId], {
+            SyncSidebar.runAction({
+                method: 'BulkFolderCreation_runBulkCreationSequence',
+                args: [currentFolderId],
+                toolKey: 'BULK_FOLDER',
+                loadingText: 'Creating folders...',
                 context: 'Batch Creation',
                 onSuccess: function(res) {
-                    finishProcess(res.message);
-                },
-                onError: function(err) {
-                    handleError(err);
+                    loadExplorer(currentFolderId);
                 }
             });
-        }
-
-        function pollProgress() {
-            if (!isProcessing) return;
-            SyncSidebar.run('BulkFolderCreation_getProgress', [], {
-                unwrap: false,
-                toast: false,
-                lockButtons: false,
-                resetLoading: false,
-                context: 'Poll Progress',
-                onSuccess: function (res) {
-                    const progress = res && res.data ? res.data : null;
-                    if (progress && progress.total > 0) {
-                        let percent = Math.round((progress.current / progress.total) * 100);
-                        document.getElementById('progress-bar').style.width = percent + "%";
-                        document.getElementById('progress-percent').innerText = percent + "%";
-                        document.getElementById('progress-text').innerText = "Processed " + progress.current + " of " + progress.total;
-                    }
-                }
-            });
-        }
-
-        function finishProcess(msg) {
-            if (progressInterval) clearInterval(progressInterval);
-            isProcessing = false;
-
-            SyncSidebar.showToast(msg);
-            
-            const btn = document.getElementById('btn-run');
-            btn.innerHTML = '<i data-lucide="check-circle" style="width:16px;"></i> Finished';
-            btn.style.background = 'var(--gradient-push)';
-
-            setTimeout(() => {
-                resetUI();
-                loadExplorer(currentFolderId);
-            }, 3000);
-        }
-
-        function handleError(err) {
-            if (progressInterval) clearInterval(progressInterval);
-            isProcessing = false;
-            SyncSidebar.showToast(err.message || err, true);
-            resetUI();
-        }
-
-        function resetUI() {
-            isProcessing = false;
-            const btn = document.getElementById('btn-run');
-            btn.innerHTML = '<i data-lucide="rocket" style="width:16px;"></i> Create Folders';
-            btn.style.background = 'var(--gradient-pull)';
-            document.getElementById('progress-area').style.display = 'none';
         }
     </script>
 </body>

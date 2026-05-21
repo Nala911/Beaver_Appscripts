@@ -94,3 +94,16 @@ function UI_resetThemeConfig() {
     return _App_ok('Reset to default theme!');
   });
 }
+
+function UI_getProgress(toolKey) {
+  return Logger.run('SYSTEM', 'Get Progress', function () {
+    return _App_ok('Progress', _App_getProgress(toolKey));
+  });
+}
+
+function UI_getHelpItems(toolKey) {
+  return Logger.run('SYSTEM', 'Get Help Items', function () {
+    var cfg = SyncEngine.getTool(toolKey);
+    return _App_ok('Help Items retrieved', cfg.HELP_ITEMS || null);
+  });
+}

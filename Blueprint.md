@@ -28,7 +28,7 @@ The system logic is split into sequential modules evaluated in order:
 - `Settings_Sidebar.html`: Standalone settings dashboard sidebar. The legacy `Settings_CSS.html` / `Settings_JS.html` partials have been retired and their logic now lives here.
 - `PipelineControl_Sidebar.html`: Standalone pipeline dashboard sidebar. The legacy `PipelineControl_CSS.html` / `PipelineControl_JS.html` partials have been retired and their logic now lives here.
 - `Logger.js`: Silent execution boundary. Provides `Logger.run` and no-op logging methods; expected failures should return `_App_fail(...)`, while unexpected exceptions are rethrown to the caller. All console-based logging is strictly forbidden.
-- `SystemAudit.js`: Runs comprehensive diagnostic audits across all registered tools, verifying sheet integrity, API access, and schema setup. Outputs results directly to the Settings UI.
+
 - `appsscript.json` / `.clasp.json`: Google Apps Script configuration and Clasp deployment environment details.
 
 ### Tool Modules & Connections
@@ -47,6 +47,7 @@ Each tool has a Backend file, a Frontend sidebar file, and a global Entry Functi
 | **Pipeline** | `PIPELINE` | `PipelineControl_Code.js` | `PipelineControl_Sidebar.html` | `PipelineControl_openSidebar` |
 | **Google Chat Spaces** | `CHAT_SYNC` | `ChatSpaceSync_Code.js` | `ChatSpaceSync_Sidebar.html` | `ChatSpaceSync_openSidebar` |
 | **Gmail Filters** | `GMAIL_FILTERS` | `GmailFilters_Code.js` | `GmailFilters_Sidebar.html` | `GmailFilters_openSidebar` |
+| **Google Tasks** | `TASKS_SYNC` | `TasksSync_Code.js` | `TasksSync_Sidebar.html` | `TasksSync_openSidebar` |
 | **Settings** | N/A | (Inside `UI.js`) | `Settings_Sidebar.html` | `UI_openSettingsDialog` |
 
 > [!NOTE]
@@ -73,6 +74,7 @@ Each tool relies on specific Google APIs. Do NOT use an API in a tool that doesn
 | **Google Drive** | `DriveApp`, `Drive` (Advanced) | Yes — `Drive API v3` |
 | **Google Chat Spaces** | `Chat` (Advanced) | Yes — `Chat API v1` |
 | **Gmail Filters** | `Gmail` (Advanced) | Yes — `Gmail API v1` |
+| **Google Tasks** | `Tasks` (Advanced) | Yes — `Tasks API v1` |
 | **Pipeline** | `PropertiesService`, `SpreadsheetApp`, `ScriptApp` | No |
 
 | **Settings** | `PropertiesService` only | No |

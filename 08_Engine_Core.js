@@ -35,6 +35,14 @@ var SyncEngine = (function() {
             }
         }
 
+        if (config.HELP_ITEMS) {
+            if (typeof config.HELP_ITEMS !== 'object') {
+                issues.push("HELP_ITEMS must be an object.");
+            } else if (config.HELP_ITEMS.items && !Array.isArray(config.HELP_ITEMS.items)) {
+                issues.push("HELP_ITEMS.items must be an array.");
+            }
+        }
+
         return issues;
     }
 
@@ -92,17 +100,11 @@ var SyncEngine = (function() {
         return Object.keys(registry);
     }
 
-    function auditTool(key) {
-        var cfg = getTool(key);
-        return _validateToolConfig(key, cfg);
-    }
-
     return {
         registerTool: registerTool,
         getTool: getTool,
         getAllTools: getAllTools,
-        getToolKeys: getToolKeys,
-        auditTool: auditTool
+        getToolKeys: getToolKeys
     };
 })();
 

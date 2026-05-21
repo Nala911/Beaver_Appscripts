@@ -6,6 +6,7 @@
 SyncEngine.registerTool('CONTACTS_SYNC', {
     REQUIRED_SERVICES: [{ name: 'People API', test: function () { return typeof People !== 'undefined'; } }],
     SHEET_NAME: SHEET_NAMES.CONTACTS_SYNC,
+    FROZEN_COLS: 2,
     TITLE: SHEET_NAMES.CONTACTS_SYNC,
     MENU_LABEL: SHEET_NAMES.CONTACTS_SYNC,
     MENU_ENTRYPOINT: 'ContactsSync_openSidebar',
@@ -212,7 +213,15 @@ function _ContactsSync_highlightDuplicates(sheet) {
 
 function ContactsSync_checkForUnsavedChanges() {
     return Logger.run('CONTACTS_SYNC', 'Check Unsaved', function () {
-        return _App_ok('Check complete.', SheetManager.hasPendingActions('CONTACTS_SYNC'));
+        var hasChanges = false;
+        try {
+            hasChanges = SheetManager.hasPendingActions('CONTACTS_SYNC');
+        } catch (e) {
+            // If sheet doesn't exist yet, there are no changes
+        }
+        var response = _App_ok('Check complete.', hasChanges);
+        response.hasChanges = hasChanges;
+        return response;
     });
 }
 

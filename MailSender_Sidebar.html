@@ -88,54 +88,13 @@
       </div>
     </div>
 
-    <!-- Help & Guide -->
-    <div>
-      <div class="section-label">
-        <i data-lucide="book-open" style="width:13px;"></i> Help & Guide
-        <i data-lucide="help-circle" class="help-trigger" data-help-target="help-getting-started" style="width:13px; margin-left: auto;"></i>
-      </div>
-      <div class="card sync-sidebar-help-guide-card">
-        <div class="sync-sidebar-help-guide-list">
-          <div class="sync-sidebar-help-guide-item">
-            <i data-lucide="help-circle" class="help-trigger" data-help-target="help-columns-guide" style="color: var(--primary);"></i>
-            <div>
-              <strong>Column Guide:</strong> Learn about PDF HTML, Attachments, and BCC.
-            </div>
-          </div>
-          <div class="sync-sidebar-help-guide-item">
-            <i data-lucide="lightbulb" class="help-trigger" data-help-target="help-tips" style="color: var(--warning);"></i>
-            <div>
-              <strong>Pro Tips:</strong> HTML-to-PDF conversion and bulk sending.
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- Help & Guide Container -->
+    <div id="sync-sidebar-help-container"></div>
 
   </div>
 
-  <!-- Help Content (Hidden) -->
+  <!-- Manual Tooltips (Hidden) -->
   <div style="display: none;">
-    <div id="help-getting-started">
-      <p><strong>Getting Started</strong></p>
-      <p>Follow these steps to send custom emails:</p>
-      <ol>
-        <li><strong>Fill Content:</strong> Enter subjects and bodies directly into the sheet.</li>
-        <li><strong>Action:</strong> Set the Action column to <code>SEND</code> or <code>DRAFT</code>.</li>
-        <li><strong>Run:</strong> Click <strong>Send Custom Mail</strong> in the sidebar.</li>
-      </ol>
-    </div>
-
-    <div id="help-columns-guide">
-      <p><strong>Core Columns Guide</strong></p>
-      <ul>
-        <li><strong>Email Subject / Body:</strong> The actual text sent to recipients.</li>
-        <li><strong>PDF HTML:</strong> Raw HTML that will be converted to a PDF attachment.</li>
-        <li><strong>PDF Name:</strong> The name of the generated PDF file.</li>
-        <li><strong>Attachments:</strong> Comma-separated Drive File IDs or URLs.</li>
-      </ul>
-    </div>
-
     <div id="help-usage-stats">
       <p><strong>Email Quota</strong></p>
       <p>This shows how many emails you can still send today via Google Services.</p>
@@ -148,23 +107,14 @@
         <li><strong>DRAFT:</strong> Creates a draft in your Gmail account for manual review.</li>
       </ul>
     </div>
-
-    <div id="help-tips">
-      <p><strong>Pro Tips</strong></p>
-      <ul>
-        <li><strong>HTML to PDF:</strong> Use <code>&lt;table&gt;</code>, <code>&lt;h1&gt;</code>, and inline CSS for professional PDF attachments.</li>
-        <li><strong>Bulk Sending:</strong> Ideal for unique, one-off messages that don't follow a fixed template.</li>
-      </ul>
-    </div>
   </div>
 
   <?!= _App_include('SidebarShared'); ?>
   <script>
-    let pollInterval = null;
-
     // ── Init ──
     window.onload = function () {
       SyncSidebar.initSidebar({
+        toolKey: 'MAIL_SENDER',
         onLoad: refreshData
       });
     };
@@ -194,39 +144,19 @@
           action: {
             method: 'MailSender_executeActions',
             context: 'Execute Actions',
+            toolKey: 'MAIL_SENDER',
             loadingText: 'Executing mail actions...',
             showSuccessToast: false,
             onSuccess: function (res) {
-              if (pollInterval) clearInterval(pollInterval);
               setStatus('ready');
               SyncSidebar.showToast(res.message || "Actions completed!");
               refreshData();
             },
             onError: function(err) {
-              if (pollInterval) clearInterval(pollInterval);
               handleError(err);
             }
           }
         });
-
-        // Start polling for progress
-        pollInterval = setInterval(fetchProgress, 1500);
-      });
-    }
-
-    function fetchProgress() {
-      SyncSidebar.run('MailSender_getProgress', [], {
-        unwrap: false,
-        toast: false,
-        lockButtons: false,
-        resetLoading: false,
-        context: 'Poll Progress',
-        onSuccess: function (res) {
-          const data = res && res.data ? res.data : null;
-          if (data && typeof data.total !== 'undefined' && typeof data.current !== 'undefined' && data.total > 0) {
-            setStatus('working', 'Processing ' + data.current + ' of ' + data.total + '...');
-          }
-        }
       });
     }
 

@@ -104,6 +104,9 @@
       </div>
     </div>
 
+    <!-- Help & Guide Container -->
+    <div id="sync-sidebar-help-container"></div>
+
   </div>
 
   <?!= _App_include('SidebarShared'); ?>
@@ -118,7 +121,7 @@
 
     window.onload = function () {
       SyncSidebar.initSidebar({
-        createIcons: false,
+        toolKey: 'CALENDAR_SYNC',
         onLoad: function () {
           const today = new Date();
           const past = new Date(); past.setMonth(today.getMonth() - 1);
@@ -168,7 +171,8 @@
           args: [getPullArgs()],
           context: 'Pull Events',
           loadingText: 'Importing…',
-          beforeRun: validateDates
+          beforeRun: validateDates,
+          toolKey: 'CALENDAR_SYNC'
         }
       });
     }
@@ -178,7 +182,8 @@
         action: {
           method: 'CalendarSync_pushChanges',
           context: 'Push Changes',
-          loadingText: 'Syncing…'
+          loadingText: 'Syncing…',
+          toolKey: 'CALENDAR_SYNC'
         }
       });
     }

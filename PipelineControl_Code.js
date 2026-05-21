@@ -5,6 +5,7 @@
 
 SyncEngine.registerTool('PIPELINE', {
     SHEET_NAME: SHEET_NAMES.PIPELINE,
+    FROZEN_COLS: 2,
     TITLE: SHEET_NAMES.PIPELINE,
     MENU_LABEL: SHEET_NAMES.PIPELINE,
     MENU_ENTRYPOINT: 'PipelineControl_openSidebar',

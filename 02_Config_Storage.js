@@ -76,6 +76,14 @@ function _App_getRawProperty(propConfig) {
  * @param {*} value The value to set (can be an object or primitive)
  */
 function _App_setProperty(propConfig, value) {
+    if (propConfig.validate && typeof SYSTEM_VALIDATORS !== 'undefined' && SYSTEM_VALIDATORS) {
+        var validator = SYSTEM_VALIDATORS[propConfig.validate];
+        if (validator && typeof validator === 'function') {
+            if (!validator(value)) {
+                throw new Error("Validation failed: Value '" + value + "' is invalid for " + propConfig.key + " (expected: " + propConfig.validate + ")");
+            }
+        }
+    }
     var valToStore = propConfig.isJson ? JSON.stringify(value) : String(value);
     
     // Save to DB
