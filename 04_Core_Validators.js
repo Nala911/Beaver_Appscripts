@@ -23,3 +23,36 @@ var SYSTEM_VALIDATORS = {
     }
 };
 
+/**
+ * Validates a single email address using a robust regex.
+ * @param {string} email
+ * @returns {boolean}
+ */
+function _App_validateEmail(email) {
+    if (!email || typeof email !== 'string') return false;
+    var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email.trim());
+}
+
+/**
+ * Validates a comma-separated list of email addresses.
+ * @param {string} emailsString
+ * @param {boolean} [allowEmpty] - If true, an empty string is considered valid.
+ * @returns {boolean}
+ */
+function _App_validateEmailList(emailsString, allowEmpty) {
+    var shouldAllowEmpty = allowEmpty !== false; // default to true, since CC/BCC etc are optional
+    var val = (emailsString || '').toString().trim();
+    if (val === '') return shouldAllowEmpty;
+
+    var emails = val.split(',');
+    for (var i = 0; i < emails.length; i++) {
+        var email = emails[i].trim();
+        if (email && !_App_validateEmail(email)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+

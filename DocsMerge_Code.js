@@ -316,19 +316,10 @@ function DocsMerge_executeBatch(config, startIndex) {
 
     }, {
       onBatchComplete: function (batchResults) {
-        var rowNumbers = [];
-        var patchData = [];
         var sheet = SpreadsheetApp.getActiveSheet();
         
         batchResults.forEach(function (res) {
-          if (res && res._rowNumber !== undefined) {
-            rowNumbers.push(res._rowNumber);
-            if (res.isError) {
-              patchData.push(_App_makeStatusPatch(res._rowNumber, 'ERROR', res.error));
-            } else {
-              patchData.push(_App_makeRowPatch(res._rowNumber, { 'Action': res.action, 'Status': res.status }));
-            }
-            
+          if (res && res._rowNumber !== undefined && !res.isError) {
             if (res.linkUrl && linkColIndex > 0) {
               var richText = SpreadsheetApp.newRichTextValue()
                 .setText("View File")
@@ -339,9 +330,7 @@ function DocsMerge_executeBatch(config, startIndex) {
           }
         });
         
-        if (rowNumbers.length > 0) {
-          SheetManager.batchPatchRows('DOCS_MERGE', rowNumbers, patchData);
-        }
+        _App_batchPatchResults('DOCS_MERGE', batchResults);
       }
     });
 

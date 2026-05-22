@@ -60,10 +60,7 @@
 
         .folder-item:hover { background: var(--primary-bg); }
 
-        .folder-item .material-icons-outlined {
-            font-size: 20px;
-            color: var(--text-secondary);
-        }
+
 
         .folder-name {
             font-weight: 500;
@@ -270,9 +267,11 @@
                 div.className = "folder-item";
                 div.onclick = () => loadExplorer(folder.id);
 
-                const icon = document.createElement('span');
-                icon.className = "material-icons-outlined";
-                icon.textContent = "folder";
+                const icon = document.createElement('i');
+                icon.setAttribute('data-lucide', 'folder');
+                icon.style.width = '20px';
+                icon.style.height = '20px';
+                icon.style.color = 'var(--text-secondary)';
                 div.appendChild(icon);
 
                 const text = document.createElement('span');
@@ -285,6 +284,7 @@
 
             document.getElementById('btn-back').disabled = data.breadcrumbs.length <= 1;
             document.getElementById('btn-run').disabled = false;
+            SyncSidebar.refreshIcons();
         }
 
         function goUp() {

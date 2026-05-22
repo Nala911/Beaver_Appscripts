@@ -267,7 +267,7 @@ function ContactsSync_pushChanges() {
                     notes: item['Notes'] !== "" ? String(item['Notes']) : ""
                 };
 
-                if (contactData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactData.email)) {
+                if (contactData.email && !_App_validateEmail(contactData.email)) {
                     throw new Error("⚠️ Invalid email format");
                 }
 
@@ -361,21 +361,11 @@ function ContactsSync_pushChanges() {
 
         }, {
             onBatchComplete: function (batchResults) {
-                var rowNumbers = [];
-                var updatesArr = [];
-                batchResults.forEach(function (res) {
-                    if (res && res._rowNumber !== undefined) {
-                        rowNumbers.push(res._rowNumber);
-                        if (res.isError) {
-                            updatesArr.push(_App_makeStatusPatch(res._rowNumber, 'ERROR', res.error));
-                        } else {
-                            updatesArr.push(_App_makeRowPatch(res._rowNumber, { 'Action': res.action, 'Status': res.status, 'Contact ID': res.contactId }));
-                        }
-                    }
+                _App_batchPatchResults('CONTACTS_SYNC', batchResults, function (res) {
+                    return {
+                        'Contact ID': res.contactId
+                    };
                 });
-                if (rowNumbers.length > 0) {
-                    SheetManager.batchPatchRows('CONTACTS_SYNC', rowNumbers, updatesArr);
-                }
             }
         });
 

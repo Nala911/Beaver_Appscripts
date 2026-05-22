@@ -225,3 +225,46 @@ function _App_BatchProcessor(toolKey, items, processFn, options) {
     _App_clearProgress(toolKey);
     return stats;
 }
+
+/**
+ * Centralized utility to batch patch rows in SheetManager from BatchProcessor results.
+ *
+ * @param {string} toolKey - Tool identifier (e.g., 'MAIL_MERGE')
+ * @param {Array} batchResults - The results array from the batch segment
+ * @param {Function} [successFieldsMapper] - Optional callback function(res) returning an object
+ *                                            containing the middle/read-only columns to update on success.
+ *                                            (Action and Status are automatically handled if not returned).
+ */
+function _App_batchPatchResults(toolKey, batchResults, successFieldsMapper) {
+    var rowNumbers = [];
+    var patchData = [];
+
+    batchResults.forEach(function (res) {
+        if (res && res._rowNumber !== undefined) {
+            rowNumbers.push(res._rowNumber);
+            if (res.isError) {
+                // On error, write the error status. We keep the action so user can retry.
+                patchData.push(_App_makeStatusPatch(res._rowNumber, 'ERROR', res.error));
+            } else {
+                // On success, construct updates
+                var updates = {
+                    'Action': res.action !== undefined ? res.action : '',
+                    'Status': res.status !== undefined ? res.status : _App_formatStatus('SUCCESS', 'Processed')
+                };
+                if (successFieldsMapper) {
+                    var customFields = successFieldsMapper(res);
+                    if (customFields && typeof customFields === 'object') {
+                        Object.keys(customFields).forEach(function (k) {
+                            updates[k] = customFields[k];
+                        });
+                    }
+                }
+                patchData.push(_App_makeRowPatch(res._rowNumber, updates));
+            }
+        }
+    });
+
+    if (rowNumbers.length > 0) {
+        SheetManager.batchPatchRows(toolKey, rowNumbers, patchData);
+    }
+}

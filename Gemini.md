@@ -1,6 +1,10 @@
-# WorkspaceSync Appscripts - Gemini Guide
+# 🦫 WorkspaceSync Appscripts - Blueprint & Architecture Guide
 
 Read this before changing any `.js` or `.html` file in this repository. **This project is maintained 100% by AI agents.** Human coders do not actively edit this codebase. Therefore, all architectural rules, patterns, and conventions must be strictly preserved to maintain systematic scalability.
+
+Consolidating both the architectural blueprint and developer rules here ensures that future agents automatically receive this full context within their system prompt rule block, avoiding unnecessary file reads and maintaining design consistency.
+
+---
 
 ## 🚀 Key Commands & Workflow
 This project uses **Clasp** (Command Line Apps Script Projects) for local development.
@@ -10,15 +14,17 @@ This project uses **Clasp** (Command Line Apps Script Projects) for local develo
 - **Open Script Editor:** `clasp open`
 - **Testing:** Since this is a Google Workspace add-on/script, testing is performed by running functions directly from the Apps Script editor or interacting with the "Workspace Sync Tools" menu in the associated Google Sheet.
 
-## 🏛️ Ground Rules & Source Of Truth
+---
 
-- Treat `Blueprint.md` as the ultimate architectural map. It contains connection flows and the scope of external APIs.
+## 🏛️ Ground Rules & Source Of Truth
+- Treat `Gemini.md` as the ultimate architectural map and source of guidelines.
 - Treat `00_Config_Constants.js` as the source of truth for global state keys and sheet names.
 - **Do not invent new patterns.** If a tool needs local storage, declare it in `APP_PROPS` and access it through `_App_getProperty` / `_App_setProperty`. If a tool needs to modify the spreadsheet UI, it must use the `_App_` ecosystem.
 - Before adding a new tool, use `CalendarSync_Code.js` and `CalendarSync_Sidebar.html` as your primary architectural benchmark models.
 
-## ⛔ "Do Not Touch" Core Modules
+---
 
+## ⛔ "Do Not Touch" Core Modules
 The system is split into two halves: the Core Engine and the Tool Modules. Agents maintaining specific features should treat the **Core Engine** files as immutable unless explicitly tasked to refactor the framework itself.
 
 **Core Engine Files (Do Not Modify for Feature Work):**
@@ -27,8 +33,61 @@ The system is split into two halves: the Core Engine and the Tool Modules. Agent
 - `SidebarShared.html`
 - `Logger.js`
 
-
 If you are just editing or adding a feature (like Mail Merge, etc.), stick entirely to your tool's `_Code.js` and `_Sidebar.html` files.
+
+---
+
+## 📂 File System Structure & Tool Mapping
+The project consists of `.js` (Google Apps Script server-side code) and `.html` (Sidebar interfaces) pairs for each tool.
+
+### Core System Files
+The system logic is split into sequential modules evaluated in order:
+- `00_Config_Constants.js`: Global registries, `SHEET_NAMES`, `APP_PROPS`, and enum structures.
+- `01_Config_Theme.js`: Default theme definitions, colors, and `SHEET_THEME` proxy.
+- `01_SheetManager.js`: Centralized data access object (DAO). Uses `SyncEngine` configurations to map sheet data to JavaScript objects and vice-versa.
+- `02_Config_Storage.js`: Unified properties service wrappers (`_App_getProperty`, `_App_setProperty`, `_App_deleteProperty`, `_App_getRawProperty`).
+- `03_Core_Utils.js`: Core utilities (`_App_throttle`, `_App_callWithBackoff`, `_App_setProgress`, etc.).
+- `04_Core_Validators.js`: Validation helpers for types and constraints.
+- `05_Core_State.js`: Global application state management.
+- `06_Sheets_Helpers.js`: Low-level spreadsheet helpers (`_App_canScaffoldSheet`, `_App_assertActiveSheet`, `_App_validateActiveSheet`).
+- `07_Sheets_Formatting.js`: UI/styling application to sheets (`_App_applyBodyFormatting`).
+- `08_Engine_Core.js`: The `SyncEngine` plugin registration and retrieval system.
+- `09_Engine_UI.js`: UI abstractions for opening sidebars/dialogs and scaffolding sheets (`_App_openSidebar`, `_App_launchTool`, `_App_ensureSheetExists`).
+- `UI.js`: The central UI orchestrator. Responsible for creating the custom "Workspace Sync Tools" menu (`onOpen`), providing the global wrapper for the Settings sidebar, and connecting user actions to the tools.
+- `SidebarShared.html`: Shared HTML, CSS, and JS runtime for sidebars. Owns the common loading/toast/tooltip shell, `SyncSidebar` action helpers, global button locking, and reusable layout/action primitives consumed by tool sidebars.
+- `Settings_Sidebar.html`: Standalone settings dashboard sidebar. The legacy `Settings_CSS.html` / `Settings_JS.html` partials have been retired and their logic now lives here.
+- `PipelineControl_Sidebar.html`: Standalone pipeline dashboard sidebar. The legacy `PipelineControl_CSS.html` / `PipelineControl_JS.html` partials have been retired and their logic now lives here.
+- `Logger.js`: Silent execution boundary. Provides `Logger.run` and no-op logging methods; expected failures should return `_App_fail(...)`, while unexpected exceptions are rethrown to the caller. All console-based logging is strictly forbidden.
+- `appsscript.json` / `.clasp.json`: Google Apps Script configuration and Clasp deployment environment details.
+
+### Tool Modules & Connections
+Each tool has a Backend file, a Frontend sidebar file, and a global Entry Function triggered by the custom menu in `UI.js`.
+
+| Tool Name | Tool Key | Backend (`.js`) | Frontend (`.html`) | UI Menu Entry Function |
+|---|---|---|---|---|
+| **Google Calendar** | `CALENDAR_SYNC` | `CalendarSync_Code.js` | `CalendarSync_Sidebar.html` | `CalendarSync_openSidebar` |
+| **Google Contacts** | `CONTACTS_SYNC` | `ContactsSync_Code.js` | `ContactsSync_Sidebar.html` | `ContactsSync_openSidebar` |
+| **Mail Merge** | `MAIL_MERGE` | `MailMerge_Code.js` | `MailMerge_Sidebar.html` | `MailMerge_openSidebar` |
+| **Mail Sender** | `MAIL_SENDER` | `MailSender_Code.js` | `MailSender_Sidebar.html` | `MailSender_openSidebar` |
+| **Docs Merge** | `DOCS_MERGE` | `DocsMerge_Code.js` | `DocsMerge_Sidebar.html` | `DocsMerge_openSidebar` |
+| **Google Forms** | `FORMS_SYNC` | `FormsSync_Code.js` | `FormsSync_Sidebar.html` | `FormsSync_openSidebar` |
+| **Bulk Folder Creation** | `BULK_FOLDER` | `BulkFolderCreation_Code.js` | `BulkFolderCreation_Sidebar.html` | `BulkFolderCreation_openSidebar` |
+| **Google Drive** | `DRIVE_SYNC` | `DriveFileDetails_Code.js` | `DriveFileDetails_Sidebar.html` | `DriveFileDetails_openSidebar` |
+| **Pipeline** | `PIPELINE` | `PipelineControl_Code.js` | `PipelineControl_Sidebar.html` | `PipelineControl_openSidebar` |
+| **Google Chat Spaces** | `CHAT_SYNC` | `ChatSpaceSync_Code.js` | `ChatSpaceSync_Sidebar.html` | `ChatSpaceSync_openSidebar` |
+| **Gmail Filters** | `GMAIL_FILTERS` | `GmailFilters_Code.js` | `GmailFilters_Sidebar.html` | `GmailFilters_openSidebar` |
+| **Google Tasks** | `TASKS_SYNC` | `TasksSync_Code.js` | `TasksSync_Sidebar.html` | `TasksSync_openSidebar` |
+| **Settings** | N/A | (Inside `UI.js`) | `Settings_Sidebar.html` | `UI_openSettingsDialog` |
+
+> [!NOTE]
+> Every tool backend self-registers with `SyncEngine.registerTool('<KEY>', ...)` at the top of its file. `Settings` is owned directly by `UI.js` and is not a registered tool.
+
+> [!CAUTION]
+> **Large File Warning:** The following files are large (25KB+). Use surgical/partial reads.
+> - `DriveFileDetails_Code.js` (~32KB): Complex Drive synchronization logic.
+> - `ContactsSync_Code.js` (~27KB): People API integration logic.
+
+---
 
 ## ⚙️ Mandatory Code Contracts
 
@@ -44,104 +103,170 @@ If you are just editing or adding a feature (like Mail Merge, etc.), stick entir
 To maintain a professional and consistent user experience, the following strings MUST match exactly:
 - **`TITLE`** (in `SyncEngine.registerTool`): Must match the tool's `SHEET_NAME` value exactly (including emoji).
 - **`MENU_LABEL`** (in `SyncEngine.registerTool`): Must match the tool's `SHEET_NAME` value exactly (including emoji).
-- **`Blueprint.md` (Bold Tool Name)**: Must match the tool's `SHEET_NAME` value but without the emoji.
+- **`Gemini.md` (Bold Tool Name)**: Must match the tool's `SHEET_NAME` value but without the emoji (in the Tool Modules & Connections table).
 - **Sidebar Header**: Must use the `<div class="header">` structure with the `<i data-lucide="...">` explicitly placed *inside* the `<div class="header-title">` container to ensure uniform alignment. The text must match the base tool name (without emoji or suffixes).
 - **Status Column**: Every tool sheet MUST include a `Status` column immediately following the `Action` column. It must be defined in `COL_SCHEMA` as `{ header: 'Status', type: 'STATUS' }`.
 - **Column Categories**: Formatting is strictly schema-driven and positional. The engine maps types to three visual categories:
     - **First Columns (Action/Status)**: Includes `type: 'ACTION'` and `type: 'STATUS'`. Colors use `SHEET_THEME.FIRST_COLS_COLOR`.
     - **Last Columns (Read-Only/IDs)**: Includes `type: 'READ_ONLY'` and `type: 'ID'`. **Crucial**: All System IDs (e.g., `type: 'ID'`) MUST be placed at the very end of the `COL_SCHEMA` array to hide non-actionable technical data from the user's immediate view. Colors use `SHEET_THEME.LAST_COLS_COLOR`.
     - **Middle Columns (Editable)**: Includes all other data input types (`TEXT`, `URL`, `DROPDOWN`, `CHECKBOX`, `EMAIL`, etc.). Colors use `SHEET_THEME.MIDDLE_COLS_COLOR`.
-- **Frozen Columns**: To ensure these system columns remain visible at all times, all tools MUST set `FROZEN_COLS: 2` in their registration metadata.
+- **Frozen Columns**: To ensure these system columns remain visible at all times, the engine enforces a default of 2 frozen columns. Tools can omit `FROZEN_COLS` in registration metadata to let the engine apply this default, but if specified, it must be set to `2`.
 - **Sidebar Documentation**: Only tool sidebars that benefit from guided onboarding need a "Help & Guide" section at the bottom, using the standardized `.sync-sidebar-help-guide-card` architecture.
 
 ### 1b. Sidebar Help & Documentation (Uniformity)
-To ensure user clarity among confusing tools, the following help architecture is mandatory:
-- It is not for all tools, only confusing tools need a "Help & Guide" section. Also, dont need to cover all informations unnecessarily, only potential confusing ones can be included.
-- **Location**: A dedicated section at the bottom of the sidebar labeled "Help & Guide".
-- **Structure**: Uses the `.sync-sidebar-help-guide-card` container from `SidebarShared.html`.
-- **Tooltips**: 
-    - `help-getting-started`: A 3-step quick start guide (Icon: `help-circle`, Color: `secondary`). Only if needed, if not skip this.
-    - `help-columns-guide`: Detailed explanation of tool-specific columns (Icon: `help-circle`, Color: `secondary`). Only if needed, if not skip this.
-    - `help-tips`: Performance or behavioral "gotchas" (Icon: `lightbulb`, Color: `secondary`). Only if needed, if not skip this.
+To ensure user clarity, sidebars should include a "Help & Guide" section using one of these two standardized patterns:
+1. **Dynamic Config-Driven Help (Preferred)**: Define a `HELP_ITEMS` object inside the tool's backend `registerTool` config containing `gettingStarted` HTML content and list of items/tooltips. In the sidebar HTML file, place `<div id="sync-sidebar-help-container"></div>` at the bottom, and initialize via `SyncSidebar.initSidebar({ toolKey: 'YOUR_TOOL_KEY' })` to automatically fetch and render the help section.
+2. **Manual HTML Guide (Fallback)**: Directly write the guide layout at the bottom of the HTML sidebar file using the `.sync-sidebar-help-guide-card` container and `.sync-sidebar-help-guide-item` rows from `SidebarShared.html`, then initialize via `SyncSidebar.initSidebar({ createIcons: true })`.
+- **Content Guidelines**: Keep it focused; document only the core columns, a 3-step quick start, and critical performance or behavioral "gotchas".
+- **Standard Tooltip System**:
+  - `help-trigger`: A CSS class applied to icons (usually `help-circle`).
+  - `data-help-target`: An attribute on the trigger pointing to the `ID` of a hidden content element.
+  - Hidden Content Container: A `div` at the bottom of the HTML file (set to `display: none`) containing multiple divs with specific IDs (e.g., `help-getting-started`).
+  - Global event handlers in `SidebarShared.html` handle tooltip positioning and boundary overflows.
 
-### 2. The SyncEngine Contract
-Every tool backend file must register itself with the engine at the very top of the script using `SyncEngine.registerTool(key, config)`. Do not hardcode columns inside backend logic; rely on the registry's `FORMAT_CONFIG.COL_SCHEMA`.
+### 2. The `SyncEngine` Contract & Plugin Architecture
+- **Registration**: Every tool backend file must register itself with the engine at the very top of the script using `SyncEngine.registerTool(key, config)`. Do not hardcode columns inside backend logic; rely on the registry's `FORMAT_CONFIG.COL_SCHEMA`.
+- **Default Config Inference**: To simplify registrations, `FROZEN_ROWS` (defaults to 1), `FROZEN_COLS` (defaults to 2), and `COL_WIDTHS` are optional. If `COL_WIDTHS` is omitted, the engine automatically calculates standard widths by mapping the schema's column `type` to standard widths defined in `DEFAULT_COL_WIDTHS` (within `00_Config_Constants.js`).
 
-### 3. The Logger.run Contract
-Every public function called from a sidebar or the Sheets menu must use the `Logger.run` execution wrapper to preserve a consistent execution boundary. **Direct use of `console.log`, `console.warn`, or `console.error` is strictly prohibited.** Expected validation failures should return `_App_fail(...)`; unexpected system-level errors should be thrown so `SyncSidebar` / Apps Script failure handlers can surface them. Row-level errors must be reported via the `Status` column.
-```javascript
-function MyTool_publicFunction() {
-    return Logger.run('MY_TOOL', 'Action Context', function() {
-        // ... logic
-        return _App_ok('Done');
-    });
-}
-```
-
-### 3a. The Unified Reporting Contract
-All tools must implement the dual-layer reporting architecture:
-1. **Row-Level Errors**: Processing errors must be caught and returned as `{ isError: true, error: msg }` to `_App_BatchProcessor`. The `onBatchComplete` hook MUST then write these to the `Status` column prefixed with `SHEET_THEME.STATUS_PREFIXES.ERROR` (❌).
-2. **Success Messages**: All row-level success messages MUST be prefixed with `SHEET_THEME.STATUS_PREFIXES.SUCCESS` (✅).
-3. **General Errors**: Any system-wide errors in sidebars must use `SyncSidebar.handleError(err, { severity: 'mild|medium|critical' })` to surface a standardized modal box.
-
-### 4. Return Contract
-Public functions called by `google.script.run` MUST return `_App_ok(...)` or `_App_fail(...)` payloads, which serialize as `{ success, message, data, meta }`.
-
-### 5. Trigger Management
-Background sync tools should manage their own `ScriptApp` triggers. Use an internal `_ToolName_manageTrigger` function called from the setting update handler to ensure triggers are created/removed in sync with user preferences.
-
-### 6. The PropertiesService Contract
-Never use `PropertiesService.getDocumentProperties()` directly in a tool. 
-- Define your new key strictly in `APP_PROPS` inside `00_Config_Constants.js`.
-- Use `_App_getProperty` and `_App_setProperty` from `02_Config_Storage.js`.
-
-### 7. Batch Processing & Time Limits
-Row-by-row data processing must use `_App_BatchProcessor` from `03_Core_Utils.js`. This utility handles progress tracking, backoff retries, and protects against the 6-minute script timeout. 
-- **Error Propagation**: The `processFn` should throw errors directly. 
-- **Status Reporting**: Use `SheetManager.batchPatchRows` within the `onBatchComplete` hook to write results (including `res.isError` details) into the `Status` column.
-
-### 8. The Frontend Wrapper Contract (`SyncSidebar`)
+### 3. Frontend Unified Wrapper (`SyncSidebar` / Frontend-Backend Connection)
 All client-to-server communication MUST use the `SyncSidebar` layer from `SidebarShared.html`. `SyncSidebar.run()` unwraps the standard `{ success, message, data, meta }` payloads and provides consistent toast notifications.
-- **Automatic Locking**: This wrapper automatically locks all sidebar buttons and applies a "grayed-out" style during the call. 
+- **Connection Flow**:
+  1. **Trigger**: User clicks menu or sidebar button.
+  2. **Launch**: `_App_openSidebar('TOOL_KEY')` handles sheet preparation and sidebar rendering.
+  3. **Execution**: Sidebar calls `SyncSidebar.run('ToolName_publicFunc')` -> Backend function -> `Logger.run()` for a consistent execution boundary.
+  4. **Response**: Backend returns standardized `_App_ok(...)` / `_App_fail(...)` payloads.
+- **Automatic Locking**: This wrapper automatically locks all sidebar buttons and applies a "grayed-out" style during the call.
 - **Overlapping Calls**: The engine uses a counter; buttons stay locked until *all* concurrent `SyncSidebar.run` calls complete.
 - **Opting Out**: For silent background tasks (like progress polling), use `SyncSidebar.run(method, args, { lockButtons: false })`.
 - **Redundancy**: DO NOT manually disable buttons in sidebar code (e.g., `btn.disabled = true`); rely entirely on the core wrapper to maintain UI state.
 - **Preferred Helpers**: Default to `SyncSidebar.initSidebar()`, `SyncSidebar.runPullAction()`, `SyncSidebar.runPushAction()`, and `SyncSidebar.runAction()` instead of rebuilding the same orchestration in each sidebar.
-- **Styling Boundary**: Standard sync sidebars should reuse shared shell tokens from `SidebarShared.html`. Only specialized dashboards with materially different layouts, such as `Settings_Sidebar.html` or `PipelineControl_Sidebar.html`, should keep larger local style blocks.
+- **Styling Boundary**: Standard sync sidebars should reuse shared shell tokens and layout primitives (e.g., `btn-pull`, `btn-push`, `sync-sidebar-action-grid`, `sync-sidebar-action-stack`, `sync-sidebar-inline-options`, etc.) from `SidebarShared.html`. Only specialized dashboards with materially different layouts, such as `Settings_Sidebar.html` or `PipelineControl_Sidebar.html`, should keep larger local style blocks.
+- **Icons**: All sidebars must use the Lucide icon framework exclusively (`<i data-lucide="..."></i>`).
+- **Dynamic Icons & Hydration**: If the sidebar dynamically updates the DOM or injects dynamic HTML content containing `<i data-lucide="...">` tags, you MUST call `SyncSidebar.refreshIcons()` immediately after the DOM update to ensure the Lucide engine parses and renders the new icons.
+
+### 4. Logger.run & Unified Reporting Contract
+- **Silent Backend**: Every public function called from a sidebar or the Sheets menu must use the `Logger.run` execution wrapper to preserve a consistent execution boundary. **Direct use of `console.log`, `console.warn`, or `console.error` is strictly prohibited.** Expected validation failures should return `_App_fail(...)`; unexpected system-level errors should be thrown so `SyncSidebar` / Apps Script failure handlers can surface them.
+  ```javascript
+  function MyTool_publicFunction() {
+      return Logger.run('MY_TOOL', 'Action Context', function() {
+          // ... logic
+          return _App_ok('Done');
+      });
+  }
+  ```
+- **Unified Reporting Architecture**:
+  1. **Row-Level Errors**: Processing errors must be caught and returned as `{ isError: true, error: msg }` to `_App_BatchProcessor`. The `onBatchComplete` hook MUST then write these to the `Status` column prefixed with `SHEET_THEME.STATUS_PREFIXES.ERROR` (❌).
+  2. **Row-Level Success**: All row-level success messages MUST be prefixed with `SHEET_THEME.STATUS_PREFIXES.SUCCESS` (✅).
+  3. **Row-Level Warnings**: Non-blocking issues should use `SHEET_THEME.STATUS_PREFIXES.WARNING` (⚠️).
+  4. **General/System Errors**: Any system-wide errors in sidebars must use `SyncSidebar.handleError(err, { severity: 'mild|medium|critical' })` to surface a standardized modal box:
+     - `mild`: Blue "Notice" modal for informational non-errors.
+     - `medium`: Amber "Warning" modal for recoverable issues.
+     - `critical`: Red "System Error" modal for blocking/critical failures (Default).
+
+### 5. The PropertiesService Contract
+Never use `PropertiesService.getDocumentProperties()` directly in a tool. 
+- Define your new key strictly in `APP_PROPS` inside `00_Config_Constants.js`.
+- Use `_App_getProperty` and `_App_setProperty` from `02_Config_Storage.js`.
+
+### 6. Batch Processing, Execution Time, & Trigger Management
+- **Centralized Batch Processor**: Row-by-row data processing must use `_App_BatchProcessor` from `03_Core_Utils.js`. This utility handles progress tracking, backoff retries, and protects against the 6-minute script timeout.
+  - **Error Propagation**: The `processFn` should throw errors directly.
+  - **Status Reporting**: Use `SheetManager.batchPatchRows` within the `onBatchComplete` hook to write results into the `Status` column.
+  - **Automatic Retries**: Wraps each item in `_App_callWithBackoff` to handle transient API errors.
+  - **Progress Tracking**: Automatically updates CacheService with progress data for sidebar polling.
+- **Execution Time Limits**: Global timing is managed via `_App_resetExecutionTimer()` and `_App_isExecutionLimitApproaching()`. The processor pauses execution at 5.5 minutes, allowing for safe partial completions and saving the progress.
+- **Trigger Management**: Background sync tools should manage their own `ScriptApp` triggers. Use an internal `_ToolName_manageTrigger` function called from the setting update handler to ensure triggers are created/removed in sync with user preferences.
+
+### 7. Centralized Validation Contract
+- **Deprecating Local Helpers**: Do not write custom local validators inside tool modules for common validation needs (like email syntax verification).
+- **Core Validators**: Always call `_App_validateEmail` or `_App_validateEmailList` from `04_Core_Validators.js`. Any future general validators should be added to that central module rather than being duplicated in tool backends.
+
+### 8. Batch Result Patching & Action Preservation
+- **Reporting Success/Failure**: When batch execution completes, do not write raw status strings to the sheet manually. Call `_App_batchPatchResults` (defined in `03_Core_Utils.js`) within the `onBatchComplete` hook of your `_App_BatchProcessor`.
+- **Action Column Rule**: If a row-level execution fails (e.g., invalid email address), the patch MUST preserve the user's `Action` column value. This ensures users can fix typos in the input columns and re-run without having to re-type the sync actions/verbs. `_App_batchPatchResults` handles this automatically by only resetting the `Action` column on success.
+
+---
+
+## 🔑 Google API Scopes & Services Used
+Each tool relies on specific Google APIs. Do NOT use an API in a tool that doesn't need it.
+
+| Tool | Google APIs / Services | Advanced Service? |
+|---|---|---|
+| **Google Calendar** | `CalendarApp`, `Calendar` (Advanced) | Yes — `Calendar API v3` |
+| **Google Contacts** | `People` (Advanced) | Yes — `People API v1` |
+| **Mail Merge** | `GmailApp`, `DocumentApp` | No |
+| **Mail Sender** | `GmailApp`, `MailApp` | No |
+| **Docs Merge** | `DocumentApp`, `DriveApp` | No |
+| **Google Forms** | `FormApp`, `DriveApp` | No |
+| **Bulk Folder Creation** | `DriveApp` | No |
+| **Google Drive** | `DriveApp`, `Drive` (Advanced) | Yes — `Drive API v3` |
+| **Google Chat Spaces** | `Chat` (Advanced) | Yes — `Chat API v1` |
+| **Gmail Filters** | `Gmail` (Advanced) | Yes — `Gmail API v1` |
+| **Google Tasks** | `Tasks` (Advanced) | Yes — `Tasks API v1` |
+| **Pipeline** | `PropertiesService`, `SpreadsheetApp`, `ScriptApp` | No |
+| **Settings** | `PropertiesService` only | No |
+
+---
+
+## 🗝️ PropertiesService Key Registry
+All keys used across the codebase. **Do NOT invent new key names** — check here first and follow the naming convention in `APP_PROPS`.
+
+| Key | File | Store Type | Purpose |
+|---|---|---|---|
+| `WorkspaceSync_SHEET_THEME` | `01_Config_Theme.js` | `DocumentProperties` | Custom theme JSON overrides |
+| `SYSTEM_ENABLED` | `PipelineControl_Code.js` | `ScriptProperties` | Master on/off toggle for pipeline |
+| `DOCS_MERGE_TEMPLATE_URL` | `DocsMerge_Code.js` | `DocumentProperties` | Saved template Doc URL |
+| `DOCS_MERGE_FOLDER_URL` | `DocsMerge_Code.js` | `DocumentProperties` | Saved output folder URL |
+| `DOCS_MERGE_TEMPLATE_NAME` | `DocsMerge_Code.js` | `DocumentProperties` | Cached template file name |
+| `DOCS_MERGE_FOLDER_NAME` | `DocsMerge_Code.js` | `DocumentProperties` | Cached folder name |
+| `DOCS_MERGE_MASTER_DOC_ID` | `DocsMerge_Code.js` | `DocumentProperties` | Cached master document ID used to resume a multi-batch merge |
+| `selectedCalIds` | `CalendarSync_Code.js` | `UserProperties` | JSON array of selected calendar IDs |
+| `startDate` | `CalendarSync_Code.js` | `UserProperties` | Saved start date filter |
+| `endDate` | `CalendarSync_Code.js` | `UserProperties` | Saved end date filter |
+| `selectedContactGroups` | `ContactsSync_Code.js` | `UserProperties` | JSON array of selected contact group IDs |
+| `selectedChatSpaces` | `ChatSpaceSync_Code.js` | `UserProperties` | JSON array of selected chat space IDs |
+| `FORMSSYNC_CURRENT_FORM` | `FormsSync_Code.js` | `DocumentProperties` | Stores currently synced form ID |
+| `FORMSSYNC_SELECTED_FORM` | `FormsSync_Code.js` | `UserProperties` | Stores user's selected form ID for sidebar auto-selection |
+| `selectedTasksList` | `TasksSync_Code.js` | `UserProperties` | Stores user's selected tasks list ID/name for sidebar auto-selection |
+
+---
 
 ## 🤖 Gemini Workflow Rules
-
 1. **Minimize file reads**: ONLY read the specific tool files needed.
 2. **Consult Core Modules first**: Global configuration and logic are defined in `00_Config_Constants.js` through `09_Engine_UI.js`.
 3. **Use `Logger.run()`**: Wrap primary tool operations in `Logger.run('TOOL_KEY', 'Context', () => { ... })` for consistent error boundary management. **NEVER use `console.log` for debugging or reporting.**
 4. **Follow `SyncEngine`**: When modifying sheet structure, update the registration metadata in the tool's backend file, which registers with `SyncEngine`.
 
+---
+
 ## 📋 Gemini Pre-Flight Checklist
-
 Before completing any task, mentally run this checklist. Do not proceed until you have verified all points:
-
 - [ ] Does my backend file register with `SyncEngine` at the very top?
 - [ ] Are all public functions prefixed with `ToolName_` (e.g., `MailMerge_doWork`)?
 - [ ] Are all internal helper functions prefixed with `_ToolName_` (e.g., `_MailMerge_validate`)?
 - [ ] Did I wrap my core action inside `Logger.run('KEY', 'Context', function() {...})`?
 - [ ] Does my backend file include the mandatory `Status` column in `COL_SCHEMA`?
 - [ ] Does my `onBatchComplete` logic handle `res.isError` to report failures in the `Status` column?
-- [ ] Does my public function return a standard object via `_App_ok` or `_App_fail`?
+- [ ] Does my public function return a standard object via `_App_ok` or `_App_fail?`
 - [ ] Did I use `_App_callWithBackoff` around any external Google API calls?
 - [ ] If I added a new setting, is it declared in `APP_PROPS` in `00_Config_Constants.js`?
-- [ ] If my tool processes rows, did I use `_App_BatchProcessor` and `SheetManager.batchPatchRows`?
+- [ ] If my tool processes rows, did I use `_App_BatchProcessor` and `_App_batchPatchResults` to apply patches and preserve Action columns on failure?
+- [ ] Did I use centralized validation functions (e.g., `_App_validateEmailList` in `04_Core_Validators.js`) instead of writing local duplicate validation helpers?
+- [ ] If my sidebar dynamically modifies the DOM to add elements with icons, did I call `SyncSidebar.refreshIcons()` afterward?
 - [ ] Is my sidebar strictly including `<?!= _App_include('SidebarShared'); ?>` to inherit standard WorkspaceSync UI libraries?
 - [ ] Are all backend calls in the sidebar routed through `SyncSidebar.run()` instead of raw `google.script.run`?
 - [ ] Did I use `lockButtons: false` for background polling tasks to avoid UI jitter?
 - [ ] Did I remove all manual `btn.disabled = true` logic, relying on the `SyncSidebar` core instead?
 
-## 🚀 Adding a New Tool
+---
 
+## 🚀 Adding a New Tool
 Since humans do not code here, follow the **CalendarSync Benchmark**:
 1. Duplicate `CalendarSync_Code.js` and rename it to `<NewName>_Code.js`.
 2. Duplicate `CalendarSync_Sidebar.html` and rename it to `<NewName>_Sidebar.html`.
 3. Add the `SHEET_NAMES` entry to `00_Config_Constants.js`.
 4. Update the plugin registration inside `<NewName>_Code.js` (Key, Sheet Name, Title, etc.).
 5. Ensure `COL_SCHEMA` includes the mandatory `Status` column (type: `STATUS`) as the second entry. Do NOT use legacy positional properties like `numReadOnlyColsAtEnd`.
-6. Implement backend logic with `Logger.run` and `_App_ok`.
-7. Implement frontend logic using `SidebarShared.html` plus the `SyncSidebar` helpers (`runPullAction`, `runPushAction`, `runAction`) and native CSS variables (NO TailwindCSS).
+6. Leverage Config Inference: You can omit `FROZEN_ROWS`, `FROZEN_COLS`, and `COL_WIDTHS` from your config; the engine will automatically infer standard defaults based on the `COL_SCHEMA` column types.
+7. Implement backend logic with `Logger.run` and `_App_ok`.
+8. Implement frontend logic using `SidebarShared.html` plus the `SyncSidebar` helpers (`runPullAction`, `runPushAction`, `runAction`) and native CSS variables (NO TailwindCSS).

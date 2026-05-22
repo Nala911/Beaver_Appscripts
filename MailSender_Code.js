@@ -90,19 +90,7 @@ function _MailSender_getDriveAttachment(fileIdOrUrl) {
     throw new Error("Cannot find attachment in Drive (" + fileIdOrUrl + ")");
   }
 }
-
-function _MailSender_validateEmails(emailsString) {
-  if (!emailsString) return true; // Empty is fine for CC/BCC
-  var emails = emailsString.split(',');
-  var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  for (var i = 0; i < emails.length; i++) {
-    var email = emails[i].trim();
-    if (email && !emailRegex.test(email)) {
-      return false;
-    }
-  }
-  return true;
-}
+// Centralized validators from 04_Core_Validators are used instead.
 
 function _MailSender_mergeEmails(existingStr, newStr) {
   if (!newStr) return existingStr || "";
@@ -140,9 +128,9 @@ function MailSender_executeActions() {
         var targetPdfName = item['PDF Name'];
 
         if (!targetTo && !targetThreadId) throw new Error("⚠️ Missing Email To");
-        if (targetTo && !_MailSender_validateEmails(targetTo)) throw new Error("⚠️ Invalid Email To address");
-        if (!_MailSender_validateEmails(targetCc)) throw new Error("⚠️ Invalid CC address");
-        if (!_MailSender_validateEmails(targetBcc)) throw new Error("⚠️ Invalid BCC address");
+        if (targetTo && !_App_validateEmailList(targetTo)) throw new Error("⚠️ Invalid Email To address");
+        if (!_App_validateEmailList(targetCc)) throw new Error("⚠️ Invalid CC address");
+        if (!_App_validateEmailList(targetBcc)) throw new Error("⚠️ Invalid BCC address");
 
         var emailSubject = item['Email Subject'];
         var emailBody = item['Email Body'] ? String(item['Email Body']).replace(/\r?\n/g, '<br>') : "";
@@ -268,21 +256,7 @@ function MailSender_executeActions() {
 
     }, {
       onBatchComplete: function (batchResults) {
-        var rowNumbers = [];
-        var patchData = [];
-        batchResults.forEach(function (res) {
-          if (res && res._rowNumber !== undefined) {
-            rowNumbers.push(res._rowNumber);
-            if (res.isError) {
-              patchData.push(_App_makeStatusPatch(res._rowNumber, 'ERROR', res.error));
-            } else {
-              patchData.push(_App_makeRowPatch(res._rowNumber, { 'Action': res.action, 'Status': res.status }));
-            }
-          }
-        });
-        if (rowNumbers.length > 0) {
-          SheetManager.batchPatchRows('MAIL_SENDER', rowNumbers, patchData);
-        }
+        _App_batchPatchResults('MAIL_SENDER', batchResults);
       }
     });
 

@@ -30,13 +30,12 @@ SyncEngine.registerTool('PIPELINE', {
     }
 });
 /**
- *
  * Column Mappings (0-indexed):
- * 0: ON/OFF
- * 1: Pipeline Name                2: Source URL
- * 3: Source Range                 4: Destination URL
- * 5: Destination Cell             6: Sync Interval
- * 7: Last Run Time
+ * 0: Action (Enabled/Disabled)     1: Status
+ * 2: Pipeline Name                3: Source URL
+ * 4: Source Range                 5: Destination URL
+ * 6: Destination Cell             7: Sync Interval
+ * 8: Last Run Time
  */
 
 var PIPELINE_NON_DATA_ROWS = 1;
@@ -106,10 +105,11 @@ function PipelineControl_processPipelines() {
                 return _App_ok('System is globally disabled. Skipping execution.');
             }
 
-            var pendingPipelines = SheetManager.readPendingObjects('PIPELINE', { actionColName: 'ON/OFF' });
+            var pendingPipelines = SheetManager.readPendingObjects('PIPELINE', { actionColName: 'Action' });
 
             var activeScheduled = pendingPipelines.filter(function(p) {
-                return _PipelineControl_shouldRun(p);
+                var isEnabled = (String(p['Action']).toLowerCase() === 'enabled') || (p['Action'] === true);
+                return isEnabled && _PipelineControl_shouldRun(p);
             });
 
             if (activeScheduled.length === 0) {
@@ -147,13 +147,16 @@ function PipelineControl_processPipelines() {
 function PipelineControl_runAllPipelines() {
     return Logger.run('PIPELINE', 'Run All', function () {
         return _App_withDocumentLock('PIPELINE_RUN_ALL', function () {
-            var pendingPipelines = SheetManager.readPendingObjects('PIPELINE', { actionColName: 'ON/OFF' });
+            var pendingPipelines = SheetManager.readPendingObjects('PIPELINE', { actionColName: 'Action' });
+            var enabledPipelines = pendingPipelines.filter(function(p) {
+                return (String(p['Action']).toLowerCase() === 'enabled') || (p['Action'] === true);
+            });
 
-            if (pendingPipelines.length === 0) return _App_ok('No enabled pipelines to run.');
+            if (enabledPipelines.length === 0) return _App_ok('No enabled pipelines to run.');
 
             var sheet = SheetManager.getSheet('PIPELINE');
 
-            var stats = _App_BatchProcessor('PIPELINE', pendingPipelines, function (item) {
+            var stats = _App_BatchProcessor('PIPELINE', enabledPipelines, function (item) {
                 var statusMsg = _PipelineControl_runPipeline(item);
                 return { _rowNumber: item._rowNumber, status: statusMsg };
             }, {
@@ -223,14 +226,24 @@ function PipelineControl_getPipelineDashboardData() {
         var pipelines = [];
 
         dataObjects.forEach(function (obj, idx) {
-            var statusVal = obj['ON/OFF'];
+            var statusVal = obj['Action'];
             var isEnabled = (String(statusVal).toLowerCase() === 'enabled') || (statusVal === true);
             var name = obj['Pipeline Name'];
             var lastRun = obj['Last Run Time'];
+            var rawStatus = obj['Status'] ? String(obj['Status']).trim() : "";
 
             if (name) { 
                 summary.total++;
                 if (isEnabled) summary.active++;
+
+                var lastStatus = "Pending";
+                if (rawStatus.indexOf('✅') !== -1 || rawStatus.toLowerCase().indexOf('success') !== -1) {
+                    lastStatus = "Success";
+                    summary.success++;
+                } else if (rawStatus.indexOf('❌') !== -1 || rawStatus.toLowerCase().indexOf('error') !== -1 || rawStatus.toLowerCase().indexOf('failed') !== -1) {
+                    lastStatus = "Failed";
+                    summary.failed++;
+                }
 
                 var formattedDate = "";
                 if (lastRun && lastRun instanceof Date) {
@@ -245,7 +258,7 @@ function PipelineControl_getPipelineDashboardData() {
                     name: name,
                     isEnabled: isEnabled,
                     lastRun: formattedDate,
-                    lastStatus: "Check Logs" 
+                    lastStatus: lastStatus 
                 });
             }
         });

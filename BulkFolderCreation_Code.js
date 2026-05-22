@@ -186,21 +186,7 @@ function BulkFolderCreation_runBulkCreationSequence(targetFolderId) {
 
       }, {
         onBatchComplete: function (results) {
-          var rowNumbers = [];
-          var updates = [];
-          results.forEach(function (res) {
-            if (res && res._rowNumber) {
-              rowNumbers.push(res._rowNumber);
-              if (res.isError) {
-                updates.push(_App_makeStatusPatch(res._rowNumber, 'ERROR', res.error));
-              } else {
-                updates.push(_App_makeRowPatch(res._rowNumber, { 'Action': '', 'Status': res.status }));
-              }
-            }
-          });
-          if (rowNumbers.length > 0) {
-            SheetManager.batchPatchRows('BULK_FOLDER', rowNumbers, updates);
-          }
+          _App_batchPatchResults('BULK_FOLDER', results);
         }
       });
 

@@ -13,7 +13,7 @@ var SHEET_NAMES = {
     BULK_FOLDER: '📂 Bulk Folder Creation',
     DRIVE_SYNC: '💾 Google Drive',
     PIPELINE: '⛓  Pipeline',
-    CHAT_SPACE_SYNC: '💬 Google Chat Spaces',
+    CHAT_SYNC: '💬 Google Chat Spaces',
     GMAIL_FILTERS: '🗂️ Gmail Filters',
     TASKS_SYNC: '📋 Google Tasks'
 };

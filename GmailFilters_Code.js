@@ -185,23 +185,13 @@ function GmailFilters_processAction() {
             };
         }, {
             onBatchComplete: function (batchResults) {
-                var rowNumbers = [];
-                var patchData = [];
-                batchResults.forEach(function (r) {
-                    if (r && r._rowNumber !== undefined) {
-                        rowNumbers.push(r._rowNumber);
-                        if (r.isError) {
-                            patchData.push(_App_makeStatusPatch(r._rowNumber, 'ERROR', r.error));
-                        } else {
-                            var patch = _App_makeRowPatch(r._rowNumber, { 'Action': r.action, 'Status': r.status });
-                            if (r['Filter ID']) patch['Filter ID'] = r['Filter ID'];
-                            patchData.push(patch);
-                        }
+                _App_batchPatchResults('GMAIL_FILTERS', batchResults, function (res) {
+                    var fields = {};
+                    if (res['Filter ID'] !== undefined) {
+                        fields['Filter ID'] = res['Filter ID'];
                     }
+                    return fields;
                 });
-                if (rowNumbers.length > 0) {
-                    SheetManager.batchPatchRows('GMAIL_FILTERS', rowNumbers, patchData);
-                }
             }
         });
 
@@ -357,3 +347,4 @@ function _GmailFilters_applyToExistingMessages(query, addLabelIds, removeLabelId
         });
     }
 }
+

@@ -5,10 +5,10 @@
 
 SyncEngine.registerTool('CHAT_SYNC', {
     REQUIRED_SERVICES: [ { name: 'Chat API', test: function() { return typeof Chat !== 'undefined'; } } ],
-    SHEET_NAME: SHEET_NAMES.CHAT_SPACE_SYNC,
+    SHEET_NAME: SHEET_NAMES.CHAT_SYNC,
     FROZEN_COLS: 2,
-    TITLE: SHEET_NAMES.CHAT_SPACE_SYNC,
-    MENU_LABEL: SHEET_NAMES.CHAT_SPACE_SYNC,
+    TITLE: SHEET_NAMES.CHAT_SYNC,
+    MENU_LABEL: SHEET_NAMES.CHAT_SYNC,
     MENU_ENTRYPOINT: 'ChatSpaceSync_openSidebar',
     MENU_ORDER: 15,
     SIDEBAR_HTML: 'ChatSpaceSync_Sidebar',
@@ -41,7 +41,7 @@ function ChatSpaceSync_openSidebar() {
 
 function ChatSpaceSync_pullMembers() {
   return Logger.run('CHAT_SYNC', 'Pull Members', function () {
-    var TARGET_SHEET_NAME = SHEET_NAMES.CHAT_SPACE_SYNC;
+    var TARGET_SHEET_NAME = SHEET_NAMES.CHAT_SYNC;
     var sheet = _App_ensureSheetExists('CHAT_SYNC');
 
     var outputObjects = [];
@@ -201,25 +201,11 @@ function ChatSpaceSync_pushChanges() {
 
     }, {
       onBatchComplete: function (batchResults) {
-        var rowNumbers = [];
-        var patchData = [];
-        batchResults.forEach(function (res) {
-          if (res && res._rowNumber !== undefined) {
-            rowNumbers.push(res._rowNumber);
-            if (res.isError) {
-              patchData.push(_App_makeStatusPatch(res._rowNumber, 'ERROR', res.error));
-            } else {
-              patchData.push(_App_makeRowPatch(res._rowNumber, {
-                'Action': res.action,
-                'Status': res.status,
-                'Membership ID': res.membershipId
-              }));
-            }
-          }
+        _App_batchPatchResults('CHAT_SYNC', batchResults, function (res) {
+          return {
+            'Membership ID': res.membershipId
+          };
         });
-        if (rowNumbers.length > 0) {
-          SheetManager.batchPatchRows('CHAT_SYNC', rowNumbers, patchData);
-        }
       }
     });
 

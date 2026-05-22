@@ -470,32 +470,26 @@ function DriveFileDetails_runPushSequence() {
           else if (action === 'UPDATE') statusMsg = _DriveFileDetails_handleUpdate(item);
           else if (action === 'DELETE') statusMsg = _DriveFileDetails_handleDelete(item);
 
-          var updates = { 'Action': "", 'Status': statusMsg };
-          if (resultValues.id) updates['Item ID'] = resultValues.id;
-          if (resultValues.url) updates['URL'] = resultValues.url;
-          if (resultValues.size) updates['Size'] = resultValues.size;
-
           log("Row " + item._rowNumber + ": " + statusMsg);
 
-          return { _rowNumber: item._rowNumber, updates: updates };
+          return {
+            _rowNumber: item._rowNumber,
+            action: "",
+            status: statusMsg,
+            itemId: resultValues.id,
+            url: resultValues.url,
+            size: resultValues.size
+          };
 
       }, {
         onBatchComplete: function (results) {
-          var rowNumbers = [];
-          var updatesArr = [];
-          results.forEach(function (res) {
-            if (res && res._rowNumber) {
-              rowNumbers.push(res._rowNumber);
-              if (res.isError) {
-                updatesArr.push(_App_makeStatusPatch(res._rowNumber, 'ERROR', res.error));
-              } else {
-                updatesArr.push(_App_makeRowPatch(res._rowNumber, res.updates));
-              }
-            }
+          _App_batchPatchResults('DRIVE_SYNC', results, function (res) {
+            var fields = {};
+            if (res.itemId) fields['Item ID'] = res.itemId;
+            if (res.url) fields['URL'] = res.url;
+            if (res.size) fields['Size'] = res.size;
+            return fields;
           });
-          if (rowNumbers.length > 0) {
-            SheetManager.batchPatchRows('DRIVE_SYNC', rowNumbers, updatesArr);
-          }
         }
       });
 
@@ -822,10 +816,10 @@ function DriveFileDetails_fillActivePath(folderId, pathString) {
 
     if (row < 2) throw new Error("Please select a row in the data area (Row 2 or below).");
 
-    // Col.PATH is 10 (index), so column is 11
-    // Col.PARENT_ID is 14 (index), so column is 15
+    // Col.PARENT_PATH is 9 (index), so column is 10
+    // Col.PARENT_ID is 15 (index), so column is 16
 
-    sheet.getRange(row, DRIVE_SYNC_COL.PATH + 1).setValue(pathString);
+    sheet.getRange(row, DRIVE_SYNC_COL.PARENT_PATH + 1).setValue(pathString);
     sheet.getRange(row, DRIVE_SYNC_COL.PARENT_ID + 1).setValue(folderId);
 
     return "Updated Row " + row + " with path: " + pathString;

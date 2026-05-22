@@ -285,21 +285,11 @@ function _FormsSync_syncToForm() {
                 return updateObj;
             }, {
                 onBatchComplete: function (batchResults) {
-                    var rowNumbers = [];
-                    var patchData = [];
-                    batchResults.forEach(function (res) {
-                        if (res && res._rowNumber !== undefined) {
-                            rowNumbers.push(res._rowNumber);
-                            if (res.isError) {
-                                patchData.push(_App_makeStatusPatch(res._rowNumber, 'ERROR', res.error));
-                            } else {
-                                patchData.push(_App_makeRowPatch(res._rowNumber, { 'Action': res.action, 'Status': res.status, 'Item ID': res.id }));
-                            }
-                        }
+                    _App_batchPatchResults('FORMS_SYNC', batchResults, function (res) {
+                        return {
+                            'Item ID': res.id
+                        };
                     });
-                    if (rowNumbers.length > 0) {
-                        SheetManager.batchPatchRows('FORMS_SYNC', rowNumbers, patchData);
-                    }
                 }
             });
 
@@ -481,3 +471,4 @@ function FormsSync_getFormLinks() {
         }
     });
 }
+

@@ -268,26 +268,12 @@ function TasksSync_pushChanges() {
       return rowUpdates;
     }, {
       onBatchComplete: function (batchResults) {
-        var rowNumbers = [];
-        var patchData = [];
-        batchResults.forEach(function (res) {
-          if (res && res._rowNumber !== undefined) {
-            rowNumbers.push(res._rowNumber);
-            if (res.isError) {
-              patchData.push(_App_makeStatusPatch(res._rowNumber, 'ERROR', res.error));
-            } else {
-              patchData.push(_App_makeRowPatch(res._rowNumber, {
-                'Action': res.action,
-                'Status': res.status,
-                'Task ID': res.taskId,
-                'Task List ID': res.listId
-              }));
-            }
-          }
+        _App_batchPatchResults('TASKS_SYNC', batchResults, function (res) {
+          return {
+            'Task ID': res.taskId,
+            'Task List ID': res.listId
+          };
         });
-        if (rowNumbers.length > 0) {
-          SheetManager.batchPatchRows('TASKS_SYNC', rowNumbers, patchData);
-        }
       }
     });
 
@@ -339,3 +325,4 @@ function _TasksSync_processMove(rowUpdates, targetListId, taskData) {
 
   return rowUpdates;
 }
+

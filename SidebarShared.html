@@ -1204,6 +1204,17 @@
       }
     }
 
+    function refreshIcons() {
+      if (typeof lucide !== 'undefined' && lucide && typeof lucide.createIcons === 'function') {
+        try {
+          lucide.createIcons();
+        } catch (e) {
+          // Ignore icon hydration failures
+        }
+      }
+    }
+
+
     function runAction(options) {
       var opts = options || {};
       if (typeof opts.beforeRun === 'function') {
@@ -1296,7 +1307,9 @@
 
     return {
       initSidebar: initSidebar,
+      refreshIcons: refreshIcons,
       runAction: runAction,
+
       runPullAction: runPullAction,
       runPushAction: runPushAction,
       run: run,

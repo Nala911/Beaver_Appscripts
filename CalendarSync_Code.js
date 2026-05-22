@@ -244,7 +244,7 @@ function CalendarSync_pushChanges() {
         if (!eventData.title) throw new Error("⚠️ Data Error: Missing Event Title");
 
         if (eventData.guests) {
-          var invalidEmails = eventData.guests.split(',').map(function (g) { return g.trim() }).filter(function (e) { return e && !_CalendarSync_validateEmail(e) });
+          var invalidEmails = eventData.guests.split(',').map(function (g) { return g.trim() }).filter(function (e) { return e && !_App_validateEmail(e) });
           if (invalidEmails.length > 0) throw new Error("⚠️ Data Error: Invalid guest email(s): " + invalidEmails.join(', '));
         }
 
@@ -345,26 +345,12 @@ function CalendarSync_pushChanges() {
 
     }, {
       onBatchComplete: function (batchResults) {
-        var rowNumbers = [];
-        var patchData = [];
-        batchResults.forEach(function (res) {
-          if (res && res._rowNumber !== undefined) {
-            rowNumbers.push(res._rowNumber);
-            if (res.isError) {
-              patchData.push(_App_makeStatusPatch(res._rowNumber, 'ERROR', res.error));
-            } else {
-              patchData.push(_App_makeRowPatch(res._rowNumber, {
-                'Action': res.action,
-                'Status': res.status,
-                'Event ID': res.eventId,
-                'Calendar ID': res.calId
-              }));
-            }
-          }
+        _App_batchPatchResults('CALENDAR_SYNC', batchResults, function (res) {
+          return {
+            'Event ID': res.eventId,
+            'Calendar ID': res.calId
+          };
         });
-        if (rowNumbers.length > 0) {
-          SheetManager.batchPatchRows('CALENDAR_SYNC', rowNumbers, patchData);
-        }
       }
     });
 
@@ -373,11 +359,6 @@ function CalendarSync_pushChanges() {
 }
 
 // --- HELPER VALIDATORS ---
-
-function _CalendarSync_validateEmail(email) {
-  var re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return re.test(email);
-}
 
 function _CalendarSync_processMove(rowUpdates, calObjMap, targetCalId, eventData) {
   var oldCal = calObjMap.get(rowUpdates.calId);
