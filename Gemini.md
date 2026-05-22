@@ -55,7 +55,6 @@ The system logic is split into sequential modules evaluated in order:
 - `09_Engine_UI.js`: UI abstractions for opening sidebars/dialogs and scaffolding sheets (`_App_openSidebar`, `_App_launchTool`, `_App_ensureSheetExists`).
 - `UI.js`: The central UI orchestrator. Responsible for creating the custom "Workspace Sync Tools" menu (`onOpen`), providing the global wrapper for the Settings sidebar, and connecting user actions to the tools.
 - `SidebarShared.html`: Shared HTML, CSS, and JS runtime for sidebars. Owns the common loading/toast/tooltip shell, `SyncSidebar` action helpers, global button locking, and reusable layout/action primitives consumed by tool sidebars.
-- `Settings_Sidebar.html`: Standalone settings dashboard sidebar. The legacy `Settings_CSS.html` / `Settings_JS.html` partials have been retired and their logic now lives here.
 - `PipelineControl_Sidebar.html`: Standalone pipeline dashboard sidebar. The legacy `PipelineControl_CSS.html` / `PipelineControl_JS.html` partials have been retired and their logic now lives here.
 - `Logger.js`: Silent execution boundary. Provides `Logger.run` and no-op logging methods; expected failures should return `_App_fail(...)`, while unexpected exceptions are rethrown to the caller. All console-based logging is strictly forbidden.
 - `appsscript.json` / `.clasp.json`: Google Apps Script configuration and Clasp deployment environment details.
@@ -77,10 +76,9 @@ Each tool has a Backend file, a Frontend sidebar file, and a global Entry Functi
 | **Google Chat Spaces** | `CHAT_SYNC` | `ChatSpaceSync_Code.js` | `ChatSpaceSync_Sidebar.html` | `ChatSpaceSync_openSidebar` |
 | **Gmail Filters** | `GMAIL_FILTERS` | `GmailFilters_Code.js` | `GmailFilters_Sidebar.html` | `GmailFilters_openSidebar` |
 | **Google Tasks** | `TASKS_SYNC` | `TasksSync_Code.js` | `TasksSync_Sidebar.html` | `TasksSync_openSidebar` |
-| **Settings** | N/A | (Inside `UI.js`) | `Settings_Sidebar.html` | `UI_openSettingsDialog` |
 
 > [!NOTE]
-> Every tool backend self-registers with `SyncEngine.registerTool('<KEY>', ...)` at the top of its file. `Settings` is owned directly by `UI.js` and is not a registered tool.
+> Every tool backend self-registers with `SyncEngine.registerTool('<KEY>', ...)` at the top of its file.
 
 > [!CAUTION]
 > **Large File Warning:** The following files are large (25KB+). Use surgical/partial reads.
@@ -140,7 +138,7 @@ All client-to-server communication MUST use the `SyncSidebar` layer from `Sideba
 - **Opting Out**: For silent background tasks (like progress polling), use `SyncSidebar.run(method, args, { lockButtons: false })`.
 - **Redundancy**: DO NOT manually disable buttons in sidebar code (e.g., `btn.disabled = true`); rely entirely on the core wrapper to maintain UI state.
 - **Preferred Helpers**: Default to `SyncSidebar.initSidebar()`, `SyncSidebar.runPullAction()`, `SyncSidebar.runPushAction()`, and `SyncSidebar.runAction()` instead of rebuilding the same orchestration in each sidebar.
-- **Styling Boundary**: Standard sync sidebars should reuse shared shell tokens and layout primitives (e.g., `btn-pull`, `btn-push`, `sync-sidebar-action-grid`, `sync-sidebar-action-stack`, `sync-sidebar-inline-options`, etc.) from `SidebarShared.html`. Only specialized dashboards with materially different layouts, such as `Settings_Sidebar.html` or `PipelineControl_Sidebar.html`, should keep larger local style blocks.
+- **Styling Boundary**: Standard sync sidebars should reuse shared shell tokens and layout primitives (e.g., `btn-pull`, `btn-push`, `sync-sidebar-action-grid`, `sync-sidebar-action-stack`, `sync-sidebar-inline-options`, etc.) from `SidebarShared.html`. Only specialized dashboards with materially different layouts, such as `PipelineControl_Sidebar.html`, should keep larger local style blocks.
 - **Icons**: All sidebars must use the Lucide icon framework exclusively (`<i data-lucide="..."></i>`).
 - **Dynamic Icons & Hydration**: If the sidebar dynamically updates the DOM or injects dynamic HTML content containing `<i data-lucide="...">` tags, you MUST call `SyncSidebar.refreshIcons()` immediately after the DOM update to ensure the Lucide engine parses and renders the new icons.
 
@@ -204,7 +202,6 @@ Each tool relies on specific Google APIs. Do NOT use an API in a tool that doesn
 | **Gmail Filters** | `Gmail` (Advanced) | Yes — `Gmail API v1` |
 | **Google Tasks** | `Tasks` (Advanced) | Yes — `Tasks API v1` |
 | **Pipeline** | `PropertiesService`, `SpreadsheetApp`, `ScriptApp` | No |
-| **Settings** | `PropertiesService` only | No |
 
 ---
 
@@ -213,7 +210,6 @@ All keys used across the codebase. **Do NOT invent new key names** — check her
 
 | Key | File | Store Type | Purpose |
 |---|---|---|---|
-| `WorkspaceSync_SHEET_THEME` | `01_Config_Theme.js` | `DocumentProperties` | Custom theme JSON overrides |
 | `SYSTEM_ENABLED` | `PipelineControl_Code.js` | `ScriptProperties` | Master on/off toggle for pipeline |
 | `DOCS_MERGE_TEMPLATE_URL` | `DocsMerge_Code.js` | `DocumentProperties` | Saved template Doc URL |
 | `DOCS_MERGE_FOLDER_URL` | `DocsMerge_Code.js` | `DocumentProperties` | Saved output folder URL |

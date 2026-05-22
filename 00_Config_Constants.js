@@ -29,9 +29,6 @@ var STORE_TYPES = {
 };
 
 var APP_PROPS = {
-    // UI Theme
-    THEME: { key: 'WorkspaceSync_SHEET_THEME', store: STORE_TYPES.DOCUMENT, isJson: true },
-
     // Pipeline
     SYSTEM_ENABLED: { key: 'SYSTEM_ENABLED', store: STORE_TYPES.SCRIPT, isJson: false, validate: 'BOOLEAN' },
 
