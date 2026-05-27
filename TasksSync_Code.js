@@ -37,6 +37,38 @@ SyncEngine.registerTool('TASKS_SYNC', {
             { header: 'Task ID', type: 'ID' },
             { header: 'Task List ID', type: 'ID' }
         ]
+    },
+    HELP_ITEMS: {
+        gettingStarted: {
+            title: "Getting Started",
+            content: "<p><strong>Getting Started</strong></p><p>Follow these steps to sync tasks:</p><ol><li><strong>Define Actions:</strong> Set the Action column to <code>CREATE</code>, <code>UPDATE</code>, or <code>DELETE</code>.</li><li><strong>Fill Details:</strong> Provide Task Title, Task List Name, and optional Due Date/Description.</li><li><strong>Push:</strong> Click <strong>Push Changes</strong> in the sidebar to execute actions on Google Tasks.</li></ol>"
+        },
+        items: [
+            {
+                icon: "help-circle",
+                color: "var(--primary)",
+                label: "Bulk Operations",
+                shortDesc: "Set Action column to CREATE, UPDATE, or DELETE.",
+                tooltipId: "help-bulk-ops",
+                tooltipContent: "<p><strong>Bulk Operations</strong></p><ul><li><strong>CREATE:</strong> Add a new task to a task list.</li><li><strong>UPDATE:</strong> Modify title, description, due date, or list.</li><li><strong>DELETE:</strong> Permanent deletion of the task.</li></ul>"
+            },
+            {
+                icon: "check-circle",
+                color: "var(--primary-light)",
+                label: "Completed Status",
+                shortDesc: "Choose UPDATE and change Completed? column.",
+                tooltipId: "help-completed",
+                tooltipContent: "<p><strong>Marking Completed</strong></p><p>To change completion status, select <code>UPDATE</code> in the Action column and set <code>Completed?</code> to <code>Completed</code> or <code>Not Completed</code>.</p>"
+            },
+            {
+                icon: "move",
+                color: "var(--warning)",
+                label: "Move Tasks",
+                shortDesc: "Change Task List Name and set Action to UPDATE.",
+                tooltipId: "help-move-tasks",
+                tooltipContent: "<p><strong>Move Tasks</strong></p><p>You can migrate tasks between lists by editing the <code>Task List Name</code> and choosing <code>UPDATE</code> in the Action column.</p>"
+            }
+        ]
     }
 });
 

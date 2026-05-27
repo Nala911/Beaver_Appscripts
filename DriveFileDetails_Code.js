@@ -224,6 +224,23 @@ function DriveFileDetails_getPendingStats() {
   });
 }
 
+/**
+ * Checks if the Google Drive sheet has pending actions.
+ */
+function DriveFileDetails_checkForUnsavedChanges() {
+  return Logger.run('DRIVE_SYNC', 'Check Unsaved', function () {
+    var hasChanges = false;
+    try {
+      hasChanges = SheetManager.hasPendingActions('DRIVE_SYNC');
+    } catch (e) {
+      // If sheet doesn't exist yet, there are no changes
+    }
+    var response = _App_ok('Check complete.', hasChanges);
+    response.hasChanges = hasChanges;
+    return response;
+  });
+}
+
 
 function DriveFileDetails_pullFromDrive(targetFolderId, isShallow) {
   return Logger.run('DRIVE_SYNC', 'Pull from Drive', function () {

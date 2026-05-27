@@ -5,15 +5,7 @@
 // Extra rows formatted beyond actual data to cover manual row additions.
 var FORMATTING_BUFFER_ROWS = 30;
 
-function _App_getColumnLetter(col) {
-    var temp, letter = '';
-    while (col > 0) {
-        temp = (col - 1) % 26;
-        letter = String.fromCharCode(temp + 65) + letter;
-        col = (col - temp - 1) / 26;
-    }
-    return letter;
-}
+
 
 function _App_applyHeaderFormatting(sheet, headers) {
     if (!headers || headers.length === 0) return;

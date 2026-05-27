@@ -27,6 +27,30 @@ SyncEngine.registerTool('MAIL_MERGE', {
             { header: 'Thread ID or Subject', type: 'TEXT' },
             { header: 'Attachments', type: 'TEXT' }
         ]
+    },
+    HELP_ITEMS: {
+        gettingStarted: {
+            title: "Getting Started",
+            content: "<p><strong>Getting Started</strong></p><p>Follow these 3 steps to run your first merge:</p><ol><li><strong>Gmail Draft:</strong> Create a draft with tags like <code>{{First Name}}</code>.</li><li><strong>Select & Sync:</strong> Choose the draft above and click <strong>Pull Placeholders</strong>.</li><li><strong>Execute:</strong> Fill the data, set Action to <strong>SEND</strong>, and click <strong>Run</strong>.</li></ol>"
+        },
+        items: [
+            {
+                icon: "help-circle",
+                color: "var(--primary)",
+                label: "Column Guide",
+                shortDesc: "Learn about Action, To, Thread ID, and Attachments.",
+                tooltipId: "help-columns-guide",
+                tooltipContent: "<p><strong>Core Columns Guide</strong></p><ul><li><strong>Action:</strong> Set to <code>SEND</code> for immediate mailing or <code>DRAFT</code> to create Gmail drafts for review.</li><li><strong>To:</strong> Primary recipient email address.</li><li><strong>Thread ID or Subject:</strong> Paste a Gmail Thread ID to reply to a specific conversation.</li><li><strong>Attachments:</strong> Comma-separated list of Google Drive File IDs or URLs.</li></ul>"
+            },
+            {
+                icon: "lightbulb",
+                color: "var(--warning)",
+                label: "Pro Tips",
+                shortDesc: "Case-sensitivity, formatting, and quota limits.",
+                tooltipId: "help-tips",
+                tooltipContent: "<p><strong>Pro Tips</strong></p><ul><li><strong>Case Sensitive:</strong> Tags like <code>{{Name}}</code> must match the column header exactly.</li><li><strong>HTML Support:</strong> Any formatting (bold, links, images) in your Gmail draft is preserved.</li><li><strong>Status:</strong> The tool updates the Status column automatically after each row.</li></ul>"
+            }
+        ]
     }
 });
 
@@ -347,23 +371,6 @@ function MailMerge_executeActions(draftId, startIndex) {
 
 function MailMerge_getRemainingPendingCount() {
   return Logger.run('MAIL_MERGE', 'Get Pending Count', function () {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAMES.MAIL_MERGE);
-    if (!sheet) return 0;
-    var maxRows = sheet.getMaxRows();
-    if (maxRows < 2) return 0;
-    var headers = SheetManager.getHeaders('MAIL_MERGE');
-    var actionColIndex = headers.indexOf('Action') + 1;
-    if (actionColIndex < 1) return 0;
-    
-    var actionRange = sheet.getRange(2, actionColIndex, maxRows - 1);
-    var values = actionRange.getValues();
-    var count = 0;
-    for (var i = 0; i < values.length; i++) {
-      var act = String(values[i][0]).toUpperCase();
-      if (act === "SEND" || act === "DRAFT") {
-        count++;
-      }
-    }
-    return count;
+    return SheetManager.readPendingObjects('MAIL_MERGE').length;
   });
 }

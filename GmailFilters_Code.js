@@ -123,6 +123,23 @@ function GmailFilters_pullFilters() {
 }
 
 /**
+ * Checks if the Gmail Filters sheet has pending actions.
+ */
+function GmailFilters_checkForUnsavedChanges() {
+  return Logger.run('GMAIL_FILTERS', 'Check Unsaved', function () {
+    var hasChanges = false;
+    try {
+      hasChanges = SheetManager.hasPendingActions('GMAIL_FILTERS');
+    } catch (e) {
+      // If sheet doesn't exist yet, there are no changes
+    }
+    var response = _App_ok('Check complete.', hasChanges);
+    response.hasChanges = hasChanges;
+    return response;
+  });
+}
+
+/**
  * Processes pending actions (CREATE, UPDATE, DELETE).
  */
 function GmailFilters_processAction() {

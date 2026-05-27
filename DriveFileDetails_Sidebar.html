@@ -324,6 +324,7 @@
             const isShallow = document.getElementById('chkShallow').checked;
             setStatus('working', 'Pulling...');
             SyncSidebar.runPullAction({
+                unsavedCheckMethod: 'DriveFileDetails_checkForUnsavedChanges',
                 action: {
                     method: 'DriveFileDetails_pullFromDrive',
                     args: [currentFolderId, isShallow],

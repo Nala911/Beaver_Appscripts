@@ -70,6 +70,57 @@ var SyncEngine = (function() {
                     return col.width || DEFAULT_COL_WIDTHS[col.type] || 150;
                 });
             }
+
+            // Auto-inject default conditional formatting rules
+            if (!config.FORMAT_CONFIG.conditionalRules) {
+                config.FORMAT_CONFIG.conditionalRules = [];
+            }
+
+            var actionColIndex = -1;
+            var statusColIndex = -1;
+            config.FORMAT_CONFIG.COL_SCHEMA.forEach(function(col, idx) {
+                if (col.type === 'ACTION') actionColIndex = idx + 1;
+                if (col.type === 'STATUS') statusColIndex = idx + 1;
+            });
+
+            var hasPendingRule = config.FORMAT_CONFIG.conditionalRules.some(function(r) { return r.type === 'pending'; });
+            var hasSuccessRule = config.FORMAT_CONFIG.conditionalRules.some(function(r) { return r.type === 'success'; });
+            var hasWarningRule = config.FORMAT_CONFIG.conditionalRules.some(function(r) { return r.type === 'error'; });
+            var hasErrorRule = config.FORMAT_CONFIG.conditionalRules.some(function(r) { return r.type === 'errorCross'; });
+
+            if (actionColIndex !== -1 && !hasPendingRule) {
+                var actionColLetter = _App_getColumnLetter(actionColIndex);
+                config.FORMAT_CONFIG.conditionalRules.push({
+                    type: 'pending',
+                    actionCol: actionColLetter,
+                    scope: 'actionOnly'
+                });
+            }
+
+            if (statusColIndex !== -1) {
+                var statusColLetter = _App_getColumnLetter(statusColIndex);
+                if (!hasSuccessRule) {
+                    config.FORMAT_CONFIG.conditionalRules.push({
+                        type: 'success',
+                        statusCol: statusColLetter,
+                        scope: 'statusOnly'
+                    });
+                }
+                if (!hasWarningRule) {
+                    config.FORMAT_CONFIG.conditionalRules.push({
+                        type: 'error',
+                        statusCol: statusColLetter,
+                        scope: 'statusOnly'
+                    });
+                }
+                if (!hasErrorRule) {
+                    config.FORMAT_CONFIG.conditionalRules.push({
+                        type: 'errorCross',
+                        statusCol: statusColLetter,
+                        scope: 'statusOnly'
+                    });
+                }
+            }
         }
 
         var issues = _validateToolConfig(key, config);

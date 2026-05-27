@@ -51,6 +51,7 @@
         function runPull() {
             setStatus('working');
             SyncSidebar.runPullAction({
+                unsavedCheckMethod: 'GmailFilters_checkForUnsavedChanges',
                 action: {
                     method: 'GmailFilters_pullFilters',
                     context: 'Pull Filters',

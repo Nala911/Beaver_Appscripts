@@ -268,3 +268,19 @@ function _App_batchPatchResults(toolKey, batchResults, successFieldsMapper) {
         SheetManager.batchPatchRows(toolKey, rowNumbers, patchData);
     }
 }
+
+/**
+ * Converts a 1-based column number into its corresponding A-Z/AA-ZZ Excel-style column letter.
+ * @param {number} col - 1-based column index
+ * @returns {string} The column letter (e.g. 'A', 'Z', 'AA')
+ */
+function _App_getColumnLetter(col) {
+    var temp, letter = '';
+    while (col > 0) {
+        temp = (col - 1) % 26;
+        letter = String.fromCharCode(temp + 65) + letter;
+        col = (col - temp - 1) / 26;
+    }
+    return letter;
+}
+

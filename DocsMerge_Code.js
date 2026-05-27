@@ -20,6 +20,30 @@ SyncEngine.registerTool('DOCS_MERGE', {
             { header: 'Document Name', type: 'TEXT' },
             { header: 'Merged File Link', type: 'URL' }
         ]
+    },
+    HELP_ITEMS: {
+        gettingStarted: {
+            title: "Getting Started",
+            content: "<p><strong>Getting Started</strong></p><p>Follow these steps to merge your first document:</p><ol><li><strong>Prepare Doc:</strong> Create a Google Doc with <code>{{placeholder}}</code> tags.</li><li><strong>Setup URLs:</strong> Search and select your Template Doc and Destination Folder.</li><li><strong>Sync & Run:</strong> Click <strong>Pull Placeholders</strong> to add columns, then click <strong>Run</strong>.</li></ol>"
+        },
+        items: [
+            {
+                icon: "help-circle",
+                color: "var(--primary)",
+                label: "Column Guide",
+                shortDesc: "Learn about Action, Document Name, and Merged File Link.",
+                tooltipId: "help-columns-guide",
+                tooltipContent: "<p><strong>Core Columns Guide</strong></p><ul><li><strong>Action:</strong> <code>Generate PDF</code> or <code>Generate Doc</code>.</li><li><strong>Document Name:</strong> The filename for the generated document.</li><li><strong>Merged File Link:</strong> This cell will be updated with a link to the final file.</li><li><strong>Dynamic Columns:</strong> These are created automatically based on your <code>{{tags}}</code>.</li></ul>"
+            },
+            {
+                icon: "lightbulb",
+                color: "var(--warning)",
+                label: "Pro Tips",
+                shortDesc: "Single vs Individual mode and placeholder sync.",
+                tooltipId: "help-tips",
+                tooltipContent: "<p><strong>Pro Tips</strong></p><ul><li><strong>Individual Mode:</strong> Creates a separate file for every row in the folder.</li><li><strong>Single Mode:</strong> Merges all rows into one giant document (with page breaks).</li><li><strong>Permissions:</strong> Ensure you have 'Editor' access to the template and destination folder.</li></ul>"
+            }
+        ]
     }
 });
 

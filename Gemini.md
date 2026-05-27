@@ -46,7 +46,7 @@ The system logic is split into sequential modules evaluated in order:
 - `01_Config_Theme.js`: Default theme definitions, colors, and `SHEET_THEME` proxy.
 - `01_SheetManager.js`: Centralized data access object (DAO). Uses `SyncEngine` configurations to map sheet data to JavaScript objects and vice-versa.
 - `02_Config_Storage.js`: Unified properties service wrappers (`_App_getProperty`, `_App_setProperty`, `_App_deleteProperty`, `_App_getRawProperty`).
-- `03_Core_Utils.js`: Core utilities (`_App_throttle`, `_App_callWithBackoff`, `_App_setProgress`, etc.).
+- `03_Core_Utils.js`: Core utilities (`_App_throttle`, `_App_callWithBackoff`, `_App_setProgress`, `_App_getColumnLetter`, etc.).
 - `04_Core_Validators.js`: Validation helpers for types and constraints.
 - `05_Core_State.js`: Global application state management.
 - `06_Sheets_Helpers.js`: Low-level spreadsheet helpers (`_App_canScaffoldSheet`, `_App_assertActiveSheet`, `_App_validateActiveSheet`).
@@ -124,7 +124,7 @@ To ensure user clarity, sidebars should include a "Help & Guide" section using o
 
 ### 2. The `SyncEngine` Contract & Plugin Architecture
 - **Registration**: Every tool backend file must register itself with the engine at the very top of the script using `SyncEngine.registerTool(key, config)`. Do not hardcode columns inside backend logic; rely on the registry's `FORMAT_CONFIG.COL_SCHEMA`.
-- **Default Config Inference**: To simplify registrations, `FROZEN_ROWS` (defaults to 1), `FROZEN_COLS` (defaults to 2), and `COL_WIDTHS` are optional. If `COL_WIDTHS` is omitted, the engine automatically calculates standard widths by mapping the schema's column `type` to standard widths defined in `DEFAULT_COL_WIDTHS` (within `00_Config_Constants.js`).
+- **Default Config Inference**: To simplify registrations, `FROZEN_ROWS` (defaults to 1), `FROZEN_COLS` (defaults to 2), `COL_WIDTHS`, and `conditionalRules` are optional. If `COL_WIDTHS` is omitted, the engine automatically infers standard widths. If `conditionalRules` is omitted, the engine automatically injects standard highlighting rules for pending actions (amber), successes (green), warnings (orange), and errors (red) by scanning the `COL_SCHEMA` for ACTION and STATUS column types.
 
 ### 3. Frontend Unified Wrapper (`SyncSidebar` / Frontend-Backend Connection)
 All client-to-server communication MUST use the `SyncSidebar` layer from `SidebarShared.html`. `SyncSidebar.run()` unwraps the standard `{ success, message, data, meta }` payloads and provides consistent toast notifications.
@@ -138,6 +138,7 @@ All client-to-server communication MUST use the `SyncSidebar` layer from `Sideba
 - **Opting Out**: For silent background tasks (like progress polling), use `SyncSidebar.run(method, args, { lockButtons: false })`.
 - **Redundancy**: DO NOT manually disable buttons in sidebar code (e.g., `btn.disabled = true`); rely entirely on the core wrapper to maintain UI state.
 - **Preferred Helpers**: Default to `SyncSidebar.initSidebar()`, `SyncSidebar.runPullAction()`, `SyncSidebar.runPushAction()`, and `SyncSidebar.runAction()` instead of rebuilding the same orchestration in each sidebar.
+- **Safety Prompts for Pull Actions**: For tools that import external data and overwrite spreadsheet rows, always provide an `unsavedCheckMethod` inside `SyncSidebar.runPullAction` (pointing to a backend helper like `'ToolName_checkForUnsavedChanges'`). The backend check should return a boolean `{hasChanges: true|false}` indicating if there are unsaved edits in the `Action` column, presenting a standard warning dialog before data is overwritten.
 - **Styling Boundary**: Standard sync sidebars should reuse shared shell tokens and layout primitives (e.g., `btn-pull`, `btn-push`, `sync-sidebar-action-grid`, `sync-sidebar-action-stack`, `sync-sidebar-inline-options`, etc.) from `SidebarShared.html`. Only specialized dashboards with materially different layouts, such as `PipelineControl_Sidebar.html`, should keep larger local style blocks.
 - **Icons**: All sidebars must use the Lucide icon framework exclusively (`<i data-lucide="..."></i>`).
 - **Dynamic Icons & Hydration**: If the sidebar dynamically updates the DOM or injects dynamic HTML content containing `<i data-lucide="...">` tags, you MUST call `SyncSidebar.refreshIcons()` immediately after the DOM update to ensure the Lucide engine parses and renders the new icons.
@@ -253,6 +254,7 @@ Before completing any task, mentally run this checklist. Do not proceed until yo
 - [ ] Are all backend calls in the sidebar routed through `SyncSidebar.run()` instead of raw `google.script.run`?
 - [ ] Did I use `lockButtons: false` for background polling tasks to avoid UI jitter?
 - [ ] Did I remove all manual `btn.disabled = true` logic, relying on the `SyncSidebar` core instead?
+- [ ] If my tool overwrites spreadsheet rows during a Pull action, did I implement `ToolName_checkForUnsavedChanges` on the backend and bind it as `unsavedCheckMethod` in the sidebar `runPullAction` call?
 
 ---
 
@@ -263,6 +265,6 @@ Since humans do not code here, follow the **CalendarSync Benchmark**:
 3. Add the `SHEET_NAMES` entry to `00_Config_Constants.js`.
 4. Update the plugin registration inside `<NewName>_Code.js` (Key, Sheet Name, Title, etc.).
 5. Ensure `COL_SCHEMA` includes the mandatory `Status` column (type: `STATUS`) as the second entry. Do NOT use legacy positional properties like `numReadOnlyColsAtEnd`.
-6. Leverage Config Inference: You can omit `FROZEN_ROWS`, `FROZEN_COLS`, and `COL_WIDTHS` from your config; the engine will automatically infer standard defaults based on the `COL_SCHEMA` column types.
+6. Leverage Config Inference: You can omit `FROZEN_ROWS`, `FROZEN_COLS`, `COL_WIDTHS`, and `conditionalRules` from your config; the engine will automatically infer standard defaults and auto-inject standard conditional formatting highlights based on the `COL_SCHEMA` column types.
 7. Implement backend logic with `Logger.run` and `_App_ok`.
 8. Implement frontend logic using `SidebarShared.html` plus the `SyncSidebar` helpers (`runPullAction`, `runPushAction`, `runAction`) and native CSS variables (NO TailwindCSS).

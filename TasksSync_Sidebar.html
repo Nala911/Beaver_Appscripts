@@ -47,29 +47,8 @@
       </div>
     </div>
 
-    <!-- Help & Guide Card -->
-    <div class="sync-sidebar-help-guide-card">
-      <div class="sync-sidebar-help-guide-list">
-        <div class="sync-sidebar-help-guide-item">
-          <i data-lucide="help-circle" style="color: var(--primary-light);"></i>
-          <div>
-            <strong>Bulk Operations:</strong> Set the <code>Action</code> column to <code>CREATE</code>, <code>UPDATE</code>, or <code>DELETE</code>.
-          </div>
-        </div>
-        <div class="sync-sidebar-help-guide-item">
-          <i data-lucide="check-circle" style="color: var(--primary-light);"></i>
-          <div>
-            <strong>Marking Completed:</strong> Choose <code>UPDATE</code> in the Action column, and change <code>Completed?</code> to <code>Completed</code> or <code>Not Completed</code>.
-          </div>
-        </div>
-        <div class="sync-sidebar-help-guide-item">
-          <i data-lucide="move" style="color: var(--primary-light);"></i>
-          <div>
-            <strong>Move Tasks:</strong> Update the <code>Task List Name</code> of an existing task and set its action to <code>UPDATE</code> to migrate it between task lists.
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- Help & Guide Container -->
+    <div id="sync-sidebar-help-container"></div>
 
   </div>
 
@@ -77,6 +56,7 @@
   <script>
     window.onload = function () {
       SyncSidebar.initSidebar({
+        toolKey: 'TASKS_SYNC',
         createIcons: true
       });
     };
