@@ -37,3 +37,25 @@ function UI_getHelpItems(toolKey) {
     return _App_ok('Help Items retrieved', cfg.HELP_ITEMS || null);
   });
 }
+
+// ==========================================
+// Centralized Validation / Status Checks
+// ==========================================
+
+/**
+ * Checks for unsaved changes dynamically across any sheet.
+ * Called from client sidebars via SyncSidebar wrappers.
+ */
+function UI_checkForUnsavedChanges(toolKey) {
+  return Logger.run(toolKey, 'Check Unsaved', function () {
+    var hasChanges = false;
+    try {
+      hasChanges = SheetManager.hasPendingActions(toolKey);
+    } catch (e) {
+      // Sheet does not exist or isn't scaffolded yet
+    }
+    var response = _App_ok('Check complete.', hasChanges);
+    response.hasChanges = hasChanges;
+    return response;
+  });
+}

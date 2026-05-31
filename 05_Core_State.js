@@ -3,6 +3,23 @@
 // ==========================================
 
 /**
+ * Helper to build a unique cache key incorporating the Spreadsheet ID
+ * to prevent progress cross-contamination between different open documents.
+ * @param {string} toolName
+ * @returns {string}
+ * @private
+ */
+function _App_getProgressKey_(toolName) {
+    var ssId = "";
+    try {
+        ssId = SpreadsheetApp.getActiveSpreadsheet().getId();
+    } catch (e) {
+        // Fallback if executed outside of an active spreadsheet context
+    }
+    return ssId + "_" + toolName + CACHE_KEYS.PROGRESS;
+}
+
+/**
  * Stores batch operation progress for sidebar polling.
  * @param {string} toolName     - Tool key e.g. 'MAIL_SENDER'
  * @param {number} current      - Items processed so far
@@ -11,7 +28,7 @@
  */
 function _App_setProgress(toolName, current, total, ttlSec) {
     CacheService.getUserCache().put(
-        toolName + CACHE_KEYS.PROGRESS,
+        _App_getProgressKey_(toolName),
         JSON.stringify({ current: current, total: total }),
         ttlSec || 600
     );
@@ -23,7 +40,7 @@ function _App_setProgress(toolName, current, total, ttlSec) {
  * @returns {{ current: number, total: number }|null}
  */
 function _App_getProgress(toolName) {
-    var data = CacheService.getUserCache().get(toolName + CACHE_KEYS.PROGRESS);
+    var data = CacheService.getUserCache().get(_App_getProgressKey_(toolName));
     return data ? JSON.parse(data) : null;
 }
 
@@ -32,5 +49,5 @@ function _App_getProgress(toolName) {
  * @param {string} toolName
  */
 function _App_clearProgress(toolName) {
-    CacheService.getUserCache().remove(toolName + CACHE_KEYS.PROGRESS);
+    CacheService.getUserCache().remove(_App_getProgressKey_(toolName));
 }

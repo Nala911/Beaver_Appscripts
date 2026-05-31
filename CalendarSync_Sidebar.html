@@ -165,7 +165,8 @@
 
     function runPull() {
       SyncSidebar.runPullAction({
-        unsavedCheckMethod: 'CalendarSync_checkForUnsavedChanges',
+        unsavedCheckMethod: 'UI_checkForUnsavedChanges',
+        unsavedCheckArgs: ['CALENDAR_SYNC'],
         action: {
           method: 'CalendarSync_pullEvents',
           args: [getPullArgs()],

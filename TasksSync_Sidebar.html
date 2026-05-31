@@ -63,7 +63,8 @@
 
     function runPull() {
       SyncSidebar.runPullAction({
-        unsavedCheckMethod: 'TasksSync_checkForUnsavedChanges',
+        unsavedCheckMethod: 'UI_checkForUnsavedChanges',
+        unsavedCheckArgs: ['TASKS_SYNC'],
         action: {
           method: 'TasksSync_pullTasks',
           args: [],

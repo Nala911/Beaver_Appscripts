@@ -35,9 +35,10 @@
                 <button id="btn-push" class="btn btn-push" onclick="runPush()">
                     <i data-lucide="upload-cloud" style="width:15px;"></i> Push
                 </button>
-            </div>
         </div>
 
+        <!-- Help & Guide Container -->
+        <div id="sync-sidebar-help-container"></div>
     </div>
 
     <?!= _App_include('SidebarShared'); ?>
@@ -45,13 +46,14 @@
     <script>
         // ── Init ──
         window.onload = function () {
-            SyncSidebar.initSidebar({});
+            SyncSidebar.initSidebar({ toolKey: 'GMAIL_FILTERS' });
         };
 
         function runPull() {
             setStatus('working');
             SyncSidebar.runPullAction({
-                unsavedCheckMethod: 'GmailFilters_checkForUnsavedChanges',
+                unsavedCheckMethod: 'UI_checkForUnsavedChanges',
+                unsavedCheckArgs: ['GMAIL_FILTERS'],
                 action: {
                     method: 'GmailFilters_pullFilters',
                     context: 'Pull Filters',

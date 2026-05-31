@@ -189,8 +189,10 @@
             <div class="selection-info">
                 <span class="selection-label">Target:</span>
                 <span id="selected-folder-name" class="selection-value">Loading...</span>
-            </div>
         </div>
+        
+        <!-- Help & Guide Container -->
+        <div id="sync-sidebar-help-container"></div>
     </div>
 
     <div class="footer">
@@ -211,6 +213,7 @@
         // --- INITIALIZATION ---
         window.onload = function () {
             SyncSidebar.initSidebar({
+                toolKey: 'BULK_FOLDER',
                 onLoad: function () {
                     loadExplorer('root');
                 }

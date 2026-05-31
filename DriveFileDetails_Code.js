@@ -227,27 +227,12 @@ function DriveFileDetails_getPendingStats() {
 /**
  * Checks if the Google Drive sheet has pending actions.
  */
-function DriveFileDetails_checkForUnsavedChanges() {
-  return Logger.run('DRIVE_SYNC', 'Check Unsaved', function () {
-    var hasChanges = false;
-    try {
-      hasChanges = SheetManager.hasPendingActions('DRIVE_SYNC');
-    } catch (e) {
-      // If sheet doesn't exist yet, there are no changes
-    }
-    var response = _App_ok('Check complete.', hasChanges);
-    response.hasChanges = hasChanges;
-    return response;
-  });
-}
+
 
 
 function DriveFileDetails_pullFromDrive(targetFolderId, isShallow) {
   return Logger.run('DRIVE_SYNC', 'Pull from Drive', function () {
-    var lock = LockService.getScriptLock();
-    if (!lock.tryLock(5000)) return "⚠️ System is busy. Please try again.";
-
-    try {
+    return _App_withDocumentLock('DRIVE_SYNC_PULL', function () {
       _App_resetExecutionTimer();
       targetFolderId = targetFolderId || "root";
 
@@ -440,21 +425,15 @@ function DriveFileDetails_pullFromDrive(targetFolderId, isShallow) {
         return _App_ok("Target folder is empty.");
       }
 
-    } finally {
-      lock.releaseLock();
-    }
+    });
   });
 }
 
 function DriveFileDetails_runPushSequence() {
   return Logger.run('DRIVE_SYNC', 'Push Sequence', function () {
-    var lock = LockService.getScriptLock();
-    if (!lock.tryLock(5000)) return ["⚠️ System is busy. Please try again."];
-
-    var logs = [];
-    function log(msg) { logs.push("[" + new Date().toLocaleTimeString() + "] " + msg); }
-
-    try {
+    return _App_withDocumentLock('DRIVE_SYNC_PUSH', function () {
+      var logs = [];
+      function log(msg) { logs.push("[" + new Date().toLocaleTimeString() + "] " + msg); }
       log("Starting Push Sequence...");
 
       var pendingRows = SheetManager.readPendingObjects('DRIVE_SYNC');
@@ -517,9 +496,7 @@ function DriveFileDetails_runPushSequence() {
       }
       return logs;
 
-    } finally {
-      lock.releaseLock();
-    }
+    });
   });
 }
 

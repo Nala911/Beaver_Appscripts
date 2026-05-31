@@ -443,13 +443,17 @@ function FormsSync_getForms() {
 
 function FormsSync_pullForm(formInput) {
     return Logger.run('FORMS_SYNC', 'Pull Form', function () {
-        return _FormsSync_pullForm(formInput);
+        return _App_withDocumentLock('FORMS_SYNC_PULL', function () {
+            return _FormsSync_pullForm(formInput);
+        });
     });
 }
 
 function FormsSync_syncToForm() {
     return Logger.run('FORMS_SYNC', 'Sync to Form', function () {
-        return _FormsSync_syncToForm();
+        return _App_withDocumentLock('FORMS_SYNC_PUSH', function () {
+            return _FormsSync_syncToForm();
+        });
     });
 }
 

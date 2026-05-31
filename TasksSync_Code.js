@@ -83,49 +83,36 @@ function TasksSync_openSidebar() {
 
 // --- API FOR SIDEBAR ---
 
-/** Check for unsaved changes before pull */
-function TasksSync_checkForUnsavedChanges() {
-  return Logger.run('TASKS_SYNC', 'Check Unsaved', function () {
-    var hasChanges = false;
-    try {
-      hasChanges = SheetManager.hasPendingActions('TASKS_SYNC');
-    } catch (e) {
-      // If sheet doesn't exist yet, there are no changes
-    }
-    var response = _App_ok('Check complete.', hasChanges);
-    response.hasChanges = hasChanges;
-    return response;
-  });
-}
 
 // --- PULL WORKFLOW ---
 
 /** Imports tasks from all task lists into the sheet */
 function TasksSync_pullTasks() {
   return Logger.run('TASKS_SYNC', 'Pull Tasks', function () {
-    var TARGET_SHEET_NAME = SHEET_NAMES.TASKS_SYNC;
-    _App_ensureSheetExists('TASKS_SYNC');
+    return _App_withDocumentLock('TASKS_SYNC_PULL', function () {
+      var TARGET_SHEET_NAME = SHEET_NAMES.TASKS_SYNC;
+      _App_ensureSheetExists('TASKS_SYNC');
 
-    var allLists = _App_callWithBackoff(function () {
-      return Tasks.Tasklists.list().items;
-    }) || [];
+      var allLists = _App_callWithBackoff(function () {
+        return Tasks.Tasklists.list().items;
+      }) || [];
 
-    var outputObjects = [];
+      var outputObjects = [];
 
-    allLists.forEach(function (list) {
-      try {
-        var tasksResult = _App_callWithBackoff(function () {
-          return Tasks.Tasks.list(list.id, { showCompleted: true, showHidden: true });
-        });
-        var tasks = tasksResult.items || [];
-        tasks.forEach(function (t) {
-          var formattedDue = "";
-          if (t.due) {
-            var d = new Date(t.due);
-            if (!isNaN(d.getTime())) {
-              formattedDue = Utilities.formatDate(d, Session.getScriptTimeZone(), "MM/dd/yyyy");
+      allLists.forEach(function (list) {
+        try {
+          var tasksResult = _App_callWithBackoff(function () {
+            return Tasks.Tasks.list(list.id, { showCompleted: true, showHidden: true });
+          });
+          var tasks = tasksResult.items || [];
+          tasks.forEach(function (t) {
+            var formattedDue = "";
+            if (t.due) {
+              var d = new Date(t.due);
+              if (!isNaN(d.getTime())) {
+                formattedDue = _App_formatDateTime(d, "MM/dd/yyyy");
+              }
             }
-          }
 
           outputObjects.push({
             'Action': "",
@@ -159,10 +146,11 @@ function TasksSync_pullTasks() {
     });
 
     // Populate sheet
-    SheetManager.overwriteObjects('TASKS_SYNC', outputObjects);
+      SheetManager.overwriteObjects('TASKS_SYNC', outputObjects);
 
-    var summary = 'Successfully imported ' + outputObjects.length + " tasks into '" + TARGET_SHEET_NAME + "'.";
-    return _App_ok(summary);
+      var summary = 'Successfully imported ' + outputObjects.length + " tasks into '" + TARGET_SHEET_NAME + "'.";
+      return _App_ok(summary);
+    });
   });
 }
 
@@ -171,9 +159,10 @@ function TasksSync_pullTasks() {
 /** Commits row-level CREATE, UPDATE, DELETE changes to Google Tasks in bulk */
 function TasksSync_pushChanges() {
   return Logger.run('TASKS_SYNC', 'Push Changes', function () {
-    var pendingItems = SheetManager.readPendingObjects('TASKS_SYNC');
+    return _App_withDocumentLock('TASKS_SYNC_PUSH', function () {
+      var pendingItems = SheetManager.readPendingObjects('TASKS_SYNC');
 
-    if (pendingItems.length === 0) return _App_ok("No pending actions found.");
+      if (pendingItems.length === 0) return _App_ok("No pending actions found.");
 
     var allLists = _App_callWithBackoff(function () {
       return Tasks.Tasklists.list().items;
@@ -309,7 +298,8 @@ function TasksSync_pushChanges() {
       }
     });
 
-    return _App_ok("Sync Complete. Processed: " + stats.processedCount);
+      return _App_ok("Sync Complete. Processed: " + stats.processedCount);
+    });
   });
 }
 

@@ -119,7 +119,7 @@ function _App_syncDynamicColumns(toolKey, dynamicHeaders, options) {
 
     if (runtimeShape.formatConfig) {
         var numRows = Math.max(sheet.getLastRow() - 1, 0);
-        _App_applyBodyFormatting(sheet, numRows, runtimeShape.formatConfig);
+        _App_applyBodyFormatting(sheet, numRows, runtimeShape.formatConfig, true);
     }
 
     return {
@@ -137,7 +137,7 @@ function _App_syncDynamicColumns(toolKey, dynamicHeaders, options) {
  * - Middle Columns (Editable Data): SHEET_THEME.MIDDLE_COLS_COLOR
  * - Last Columns (Read-only/IDs): SHEET_THEME.LAST_COLS_COLOR
  */
-function _App_applyBodyFormatting(sheet, numDataRows, config) {
+function _App_applyBodyFormatting(sheet, numDataRows, config, forceConditional) {
     var rowsToFormat = numDataRows + FORMATTING_BUFFER_ROWS;
     var maxRows = sheet.getMaxRows();
     var actualRows = Math.min(rowsToFormat, maxRows - 1);
@@ -224,7 +224,7 @@ function _App_applyBodyFormatting(sheet, numDataRows, config) {
     }
 
     // 6. Conditional formatting rules
-    _App_applyConditionalRules(sheet, actualRows, totalCols, config.conditionalRules || []);
+    _App_applyConditionalRules(sheet, actualRows, totalCols, config.conditionalRules || [], forceConditional);
 }
 
 /**
@@ -234,7 +234,15 @@ function _App_applyBodyFormatting(sheet, numDataRows, config) {
  * Supported rule types: 'success', 'error', 'errorCross', 'pending', 'synced', 'custom'
  * Supported scopes: 'fullRow' (default), 'actionOnly', 'statusOnly'
  */
-function _App_applyConditionalRules(sheet, numRows, totalCols, ruleDescriptors) {
+function _App_applyConditionalRules(sheet, numRows, totalCols, ruleDescriptors, force) {
+    if (!force) {
+        var existingRules = sheet.getConditionalFormatRules();
+        if (existingRules && existingRules.length > 0) {
+            // Bypass clearing and setting rules if already present to optimize execution speed
+            return;
+        }
+    }
+
     var rules = [];
     var fullRange = sheet.getRange(2, 1, numRows, totalCols);
 

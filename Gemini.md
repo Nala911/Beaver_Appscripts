@@ -46,7 +46,7 @@ The system logic is split into sequential modules evaluated in order:
 - `01_Config_Theme.js`: Default theme definitions, colors, and `SHEET_THEME` proxy.
 - `01_SheetManager.js`: Centralized data access object (DAO). Uses `SyncEngine` configurations to map sheet data to JavaScript objects and vice-versa.
 - `02_Config_Storage.js`: Unified properties service wrappers (`_App_getProperty`, `_App_setProperty`, `_App_deleteProperty`, `_App_getRawProperty`).
-- `03_Core_Utils.js`: Core utilities (`_App_throttle`, `_App_callWithBackoff`, `_App_setProgress`, `_App_getColumnLetter`, etc.).
+- `03_Core_Utils.js`: Core utilities (`_App_throttle`, `_App_callWithBackoff`, `_App_setProgress`, `_App_getColumnLetter`, `_App_escapeRegExp`, `_App_getDriveAttachment`, `_App_mergeEmails`, etc.).
 - `04_Core_Validators.js`: Validation helpers for types and constraints.
 - `05_Core_State.js`: Global application state management.
 - `06_Sheets_Helpers.js`: Low-level spreadsheet helpers (`_App_canScaffoldSheet`, `_App_assertActiveSheet`, `_App_validateActiveSheet`).
@@ -138,7 +138,7 @@ All client-to-server communication MUST use the `SyncSidebar` layer from `Sideba
 - **Opting Out**: For silent background tasks (like progress polling), use `SyncSidebar.run(method, args, { lockButtons: false })`.
 - **Redundancy**: DO NOT manually disable buttons in sidebar code (e.g., `btn.disabled = true`); rely entirely on the core wrapper to maintain UI state.
 - **Preferred Helpers**: Default to `SyncSidebar.initSidebar()`, `SyncSidebar.runPullAction()`, `SyncSidebar.runPushAction()`, and `SyncSidebar.runAction()` instead of rebuilding the same orchestration in each sidebar.
-- **Safety Prompts for Pull Actions**: For tools that import external data and overwrite spreadsheet rows, always provide an `unsavedCheckMethod` inside `SyncSidebar.runPullAction` (pointing to a backend helper like `'ToolName_checkForUnsavedChanges'`). The backend check should return a boolean `{hasChanges: true|false}` indicating if there are unsaved edits in the `Action` column, presenting a standard warning dialog before data is overwritten.
+- **Safety Prompts for Pull Actions**: For tools that import external data and overwrite spreadsheet rows, always provide the centralized `'UI_checkForUnsavedChanges'` helper as `unsavedCheckMethod` inside `SyncSidebar.runPullAction` and pass the tool key (e.g. `['YOUR_TOOL_KEY']`) inside `unsavedCheckArgs`. The centralized check returns a boolean `{hasChanges: true|false}` indicating if there are unsaved edits in the `Action` column, presenting a standard warning dialog before data is overwritten.
 - **Styling Boundary**: Standard sync sidebars should reuse shared shell tokens and layout primitives (e.g., `btn-pull`, `btn-push`, `sync-sidebar-action-grid`, `sync-sidebar-action-stack`, `sync-sidebar-inline-options`, etc.) from `SidebarShared.html`. Only specialized dashboards with materially different layouts, such as `PipelineControl_Sidebar.html`, should keep larger local style blocks.
 - **Icons**: All sidebars must use the Lucide icon framework exclusively (`<i data-lucide="..."></i>`).
 - **Dynamic Icons & Hydration**: If the sidebar dynamically updates the DOM or injects dynamic HTML content containing `<i data-lucide="...">` tags, you MUST call `SyncSidebar.refreshIcons()` immediately after the DOM update to ensure the Lucide engine parses and renders the new icons.
@@ -183,6 +183,22 @@ Never use `PropertiesService.getDocumentProperties()` directly in a tool.
 ### 8. Batch Result Patching & Action Preservation
 - **Reporting Success/Failure**: When batch execution completes, do not write raw status strings to the sheet manually. Call `_App_batchPatchResults` (defined in `03_Core_Utils.js`) within the `onBatchComplete` hook of your `_App_BatchProcessor`.
 - **Action Column Rule**: If a row-level execution fails (e.g., invalid email address), the patch MUST preserve the user's `Action` column value. This ensures users can fix typos in the input columns and re-run without having to re-type the sync actions/verbs. `_App_batchPatchResults` handles this automatically by only resetting the `Action` column on success.
+
+### 9. Concurrency Protection & Document Locks
+- **Wrapper Enforce**: All high-impact backend entry points (such as push/pull workflows) MUST be wrapped in the unified concurrency shield `_App_withDocumentLock('<TOOL_KEY>_<ACTION>', function() { ... })`.
+- **Block & Notify**: The lock service retrieves a document-level lock. If it fails, it will raise a structured error that will notify the user with a standardized notice modal rather than silent failure or race condition state contamination.
+
+### 10. Timezone Standardization
+- **Use Unified Formatter**: Never hardcode formatting offsets or use `Session.getScriptTimeZone()` directly for writing date strings to sheet displays.
+- **Utility**: Always use `_App_formatDateTime(date, format)` from `03_Core_Utils.js`. It automatically resolves the active spreadsheet timezone and handles offset conversions correctly.
+
+### 11. State Isolation
+- **Spreadsheet-Scoped Cache**: Storing global progress state under raw keys leads to collisions when multiple spreadsheets run syncs concurrently.
+- **Helper**: Use `_App_setProgress`, `_App_getProgress`, and `_App_clearProgress` in `05_Core_State.js`, which automatically utilize the internal `_App_getProgressKey_` helper to namespace cache keys with the active Spreadsheet ID.
+
+### 12. Formatting Optimization
+- **Rule Bypassing**: Re-evaluating and applying conditional formatting rules on every batch write is highly expensive.
+- **Bypass Flag**: Ensure conditional formatting rule application is decoupled from regular body formatting writes. The engine should only overwrite conditional formatting rules when explicitly scaffolding or structurally sync-modifying the sheets.
 
 ---
 
@@ -254,7 +270,9 @@ Before completing any task, mentally run this checklist. Do not proceed until yo
 - [ ] Are all backend calls in the sidebar routed through `SyncSidebar.run()` instead of raw `google.script.run`?
 - [ ] Did I use `lockButtons: false` for background polling tasks to avoid UI jitter?
 - [ ] Did I remove all manual `btn.disabled = true` logic, relying on the `SyncSidebar` core instead?
-- [ ] If my tool overwrites spreadsheet rows during a Pull action, did I implement `ToolName_checkForUnsavedChanges` on the backend and bind it as `unsavedCheckMethod` in the sidebar `runPullAction` call?
+- [ ] If my tool overwrites spreadsheet rows during a Pull action, did I bind the centralized `'UI_checkForUnsavedChanges'` helper as `unsavedCheckMethod` in the sidebar `runPullAction` call and pass the tool key in `unsavedCheckArgs`?
+- [ ] Did I wrap heavy backend push and pull entry points with `_App_withDocumentLock` to ensure concurrency protection?
+- [ ] Did I use the central `_App_formatDateTime` utility for timezone-safe date-time formatting to the spreadsheet?
 
 ---
 

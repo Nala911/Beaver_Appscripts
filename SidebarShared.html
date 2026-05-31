@@ -571,12 +571,18 @@
       if (progBar) progBar.style.width = '0%';
       if (progPercent) progPercent.innerText = '0%';
 
-      progressIntervals[toolKey] = setInterval(function() {
+      var pollInterval = 1500;
+      var elapsed = 0;
+
+      function poll() {
+        if (!progressIntervals[toolKey]) return; // Stop if cleared
+
         run('UI_getProgress', [toolKey], {
           lockButtons: false,
           unwrap: true,
           toast: false,
           onSuccess: function(res) {
+            if (!progressIntervals[toolKey]) return; // Check again in case it was stopped during call
             if (res && res.success && res.data) {
               var current = res.data.current;
               var total = res.data.total;
@@ -586,17 +592,30 @@
                 if (progPercent) progPercent.innerText = pct + '% (' + current + '/' + total + ')';
               }
             }
+
+            // Adjust polling interval dynamically
+            elapsed += pollInterval;
+            if (elapsed > 45000) {
+              pollInterval = 4500; // Throttles down to 4.5s after 45s
+            } else if (elapsed > 15000) {
+              pollInterval = 3000; // Throttles down to 3s after 15s
+            }
+
+            progressIntervals[toolKey] = setTimeout(poll, pollInterval);
           },
           onError: function(err) {
-            // Silently ignore progress fetch errors to avoid disrupting user experience
+            if (!progressIntervals[toolKey]) return;
+            progressIntervals[toolKey] = setTimeout(poll, pollInterval);
           }
         });
-      }, 1500);
+      }
+
+      progressIntervals[toolKey] = setTimeout(poll, pollInterval);
     }
 
     function stopProgressPolling(toolKey) {
       if (progressIntervals[toolKey]) {
-        clearInterval(progressIntervals[toolKey]);
+        clearTimeout(progressIntervals[toolKey]);
         delete progressIntervals[toolKey];
       }
       var progContainer = document.getElementById('sync-sidebar-loading-progress-container');

@@ -25,6 +25,22 @@ SyncEngine.registerTool('CHAT_SYNC', {
             { header: 'Space ID', type: 'ID' },
             { header: 'Membership ID', type: 'ID' }
         ]
+    },
+    HELP_ITEMS: {
+        gettingStarted: {
+            title: "Getting Started",
+            content: "<p><strong>Getting Started</strong></p><p>Follow these steps to sync Chat Space members:</p><ol><li><strong>Select Spaces:</strong> Check target spaces in the sidebar.</li><li><strong>Pull:</strong> Click <strong>Pull Members</strong> to import current members.</li><li><strong>Modify:</strong> Set action to <code>ADD_MEMBER</code> or <code>REMOVE_MEMBER</code>.</li><li><strong>Push:</strong> Click <strong>Push Changes</strong>.</li></ol>"
+        },
+        items: [
+            {
+                icon: "help-circle",
+                color: "var(--primary)",
+                label: "Column Guide",
+                shortDesc: "Action, Role, and Member Email.",
+                tooltipId: "help-columns-guide",
+                tooltipContent: "<p><strong>Core Columns Guide</strong></p><ul><li><strong>Action:</strong> Set to <code>ADD_MEMBER</code> to invite a user or <code>REMOVE_MEMBER</code> to evict.</li><li><strong>Role:</strong> Choose <code>ROLE_MEMBER</code> or <code>ROLE_MANAGER</code>.</li><li><strong>Type:</strong> Read-only user category (User, Group, Bot).</li><li><strong>IDs:</strong> System-generated IDs. Do not manually edit.</li></ul>"
+            }
+        ]
     }
 });
 
@@ -37,30 +53,92 @@ function ChatSpaceSync_openSidebar() {
   });
 }
 
+// --- PREFERENCES & STATE ---
+
+function ChatSpaceSync_getLoadData() {
+  return Logger.run('CHAT_SYNC', 'Load Data', function () {
+    try {
+      var spacesList = [];
+      var pageToken = null;
+      do {
+        var response = _App_callWithBackoff(function() {
+          return Chat.Spaces.list({ pageToken: pageToken });
+        });
+        if (response.spaces) {
+          spacesList = spacesList.concat(response.spaces);
+        }
+        pageToken = response.nextPageToken;
+      } while (pageToken);
+
+      var uniqueSpaces = spacesList.map(function (s) {
+        return {
+          id: s.name,
+          name: s.displayName || s.name
+        };
+      });
+
+      var savedSpaceIds = _App_getProperty(APP_PROPS.CHAT_SELECTED_SPACES);
+      if (!Array.isArray(savedSpaceIds)) savedSpaceIds = [];
+
+      return _App_ok('Chat spaces load data ready.', {
+        spaces: uniqueSpaces,
+        savedSpaceIds: savedSpaceIds
+      });
+    } catch (err) {
+      throw new Error('Unable to load chat spaces: ' + err.message);
+    }
+  });
+}
+
+function ChatSpaceSync_savePreferences(spaceIds) {
+  return Logger.run('CHAT_SYNC', 'Save Preferences', function () {
+    if (spaceIds) _App_setProperty(APP_PROPS.CHAT_SELECTED_SPACES, spaceIds);
+    return _App_ok('Preferences saved.');
+  });
+}
+
 // --- THE "PULL" WORKFLOW ---
 
 function ChatSpaceSync_pullMembers() {
   return Logger.run('CHAT_SYNC', 'Pull Members', function () {
-    var TARGET_SHEET_NAME = SHEET_NAMES.CHAT_SYNC;
-    var sheet = _App_ensureSheetExists('CHAT_SYNC');
+    return _App_withDocumentLock('CHAT_SYNC_PULL', function () {
+      var TARGET_SHEET_NAME = SHEET_NAMES.CHAT_SYNC;
+      var sheet = _App_ensureSheetExists('CHAT_SYNC');
 
     var outputObjects = [];
     var spacesList = [];
     var pageToken = null;
-    
-    // Fetch all spaces the user is a member of
-    do {
-      var response = _App_callWithBackoff(function() {
-          return Chat.Spaces.list({
-            pageToken: pageToken
+
+    var savedSpaceIds = _App_getProperty(APP_PROPS.CHAT_SELECTED_SPACES);
+    if (!Array.isArray(savedSpaceIds)) savedSpaceIds = [];
+
+    if (savedSpaceIds.length > 0) {
+      // Pull only selected spaces
+      savedSpaceIds.forEach(function (spaceId) {
+        try {
+          var space = _App_callWithBackoff(function () {
+            return Chat.Spaces.get(spaceId);
           });
+          if (space) spacesList.push(space);
+        } catch (err) {
+          Logger.warn('CHAT_SYNC', 'Fetch Space Error', 'Space ' + spaceId + ': ' + err.message);
+        }
       });
-      
-      if (response.spaces) {
-        spacesList = spacesList.concat(response.spaces);
-      }
-      pageToken = response.nextPageToken;
-    } while (pageToken);
+    } else {
+      // Fetch all spaces the user is a member of
+      do {
+        var response = _App_callWithBackoff(function() {
+            return Chat.Spaces.list({
+              pageToken: pageToken
+            });
+        });
+        
+        if (response.spaces) {
+          spacesList = spacesList.concat(response.spaces);
+        }
+        pageToken = response.nextPageToken;
+      } while (pageToken);
+    }
 
     spacesList.forEach(function (space) {
       try {
@@ -117,34 +195,24 @@ function ChatSpaceSync_pullMembers() {
         return a['Space Name'].localeCompare(b['Space Name']);
     });
 
-    SheetManager.overwriteObjects('CHAT_SYNC', outputObjects);
-    
-    var summary = 'Successfully imported ' + outputObjects.length + " members into '" + TARGET_SHEET_NAME + "'.";
-    return _App_ok(summary);
+      SheetManager.overwriteObjects('CHAT_SYNC', outputObjects);
+      
+      var summary = 'Successfully imported ' + outputObjects.length + " members into '" + TARGET_SHEET_NAME + "'.";
+      return _App_ok(summary);
+    });
   });
 }
 
-function ChatSpaceSync_checkForUnsavedChanges() {
-  return Logger.run('CHAT_SYNC', 'Check Unsaved', function () {
-    var hasChanges = false;
-    try {
-      hasChanges = SheetManager.hasPendingActions('CHAT_SYNC');
-    } catch (e) {
-      // If sheet doesn't exist yet, there are no changes
-    }
-    var response = _App_ok('Check complete.', hasChanges);
-    response.hasChanges = hasChanges;
-    return response;
-  });
-}
+
 
 // --- THE "PUSH" WORKFLOW ---
 
 function ChatSpaceSync_pushChanges() {
   return Logger.run('CHAT_SYNC', 'Push Changes', function () {
-    var pendingItems = SheetManager.readPendingObjects('CHAT_SYNC');
+    return _App_withDocumentLock('CHAT_SYNC_PUSH', function () {
+      var pendingItems = SheetManager.readPendingObjects('CHAT_SYNC');
 
-    if (pendingItems.length === 0) return _App_ok("No pending actions found.");
+      if (pendingItems.length === 0) return _App_ok("No pending actions found.");
 
     var stats = _App_BatchProcessor('CHAT_SYNC', pendingItems, function (item) {
       var rowUpdates = {
@@ -209,6 +277,7 @@ function ChatSpaceSync_pushChanges() {
       }
     });
 
-    return _App_ok("Sync Complete. Processed: " + stats.processedCount);
+      return _App_ok("Sync Complete. Processed: " + stats.processedCount);
+    });
   });
 }

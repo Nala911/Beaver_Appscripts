@@ -125,236 +125,224 @@ function CalendarSync_savePreferences(calIds, startStr, endStr) {
 
 function CalendarSync_pullEvents(request) {
   return Logger.run('CALENDAR_SYNC', 'Pull Events', function () {
-    var TARGET_SHEET_NAME = SHEET_NAMES.CALENDAR_SYNC;
-    _App_ensureSheetExists('CALENDAR_SYNC');
+    return _App_withDocumentLock('CALENDAR_SYNC_PULL', function () {
+      var TARGET_SHEET_NAME = SHEET_NAMES.CALENDAR_SYNC;
+      _App_ensureSheetExists('CALENDAR_SYNC');
 
-    var allCals = _App_callWithBackoff(function () { return CalendarApp.getAllCalendars(); });
+      var allCals = _App_callWithBackoff(function () { return CalendarApp.getAllCalendars(); });
 
-    // Fetch Events
-    var start = new Date(request.startDate);
-    var end = new Date(request.endDate);
-    var outputObjects = [];
+      // Fetch Events
+      var start = new Date(request.startDate);
+      var end = new Date(request.endDate);
+      var outputObjects = [];
 
-    allCals.forEach(function (cal) {
-      try {
-        var events = _App_callWithBackoff(function () { return cal.getEvents(start, end); });
-        events.forEach(function (e) {
-          outputObjects.push({
-            'Action': "",
-            'Calendar Name': cal.getName(),
-            'Event Title': e.getTitle(),
-            'Start Time': Utilities.formatDate(e.getStartTime(), Session.getScriptTimeZone(), "MM/dd/yyyy HH:mm:ss"),
-            'End Time': Utilities.formatDate(e.getEndTime(), Session.getScriptTimeZone(), "MM/dd/yyyy HH:mm:ss"),
-            'Description': e.getDescription(),
-            'Location': e.getLocation(),
-            'Add Meet?': false,
-            'Guests': e.getGuestList().map(function (g) { return g.getEmail(); }).join(","),
-            'Color': "Default",
-            'Visibility': "Default",
-            'Event ID': e.getId(),
-            'Calendar ID': cal.getId()
+      allCals.forEach(function (cal) {
+        try {
+          var events = _App_callWithBackoff(function () { return cal.getEvents(start, end); });
+          events.forEach(function (e) {
+            outputObjects.push({
+              'Action': "",
+              'Calendar Name': cal.getName(),
+              'Event Title': e.getTitle(),
+              'Start Time': _App_formatDateTime(e.getStartTime()),
+              'End Time': _App_formatDateTime(e.getEndTime()),
+              'Description': e.getDescription(),
+              'Location': e.getLocation(),
+              'Add Meet?': false,
+              'Guests': e.getGuestList().map(function (g) { return g.getEmail(); }).join(","),
+              'Color': "Default",
+              'Visibility': "Default",
+              'Event ID': e.getId(),
+              'Calendar ID': cal.getId()
+            });
           });
-        });
-        if (events.length > 0) {
+        } catch (err) {
         }
-      } catch (err) {
-      }
+      });
+
+      // Sort by Calendar Name
+      outputObjects.sort(function (a, b) {
+        var nameA = (a['Calendar Name'] || "").toLowerCase();
+        var nameB = (b['Calendar Name'] || "").toLowerCase();
+        if (nameA < nameB) return -1;
+        if (nameA > nameB) return 1;
+        return 0;
+      });
+
+      // Populate Sheet via DAO
+      SheetManager.overwriteObjects('CALENDAR_SYNC', outputObjects);
+
+      CalendarSync_savePreferences(null, request.startDate, request.endDate);
+      var summary = 'Successfully imported ' + outputObjects.length + " events into '" + TARGET_SHEET_NAME + "'.";
+      return _App_ok(summary);
     });
-
-    // Sort by Calendar Name
-    outputObjects.sort(function (a, b) {
-      var nameA = (a['Calendar Name'] || "").toLowerCase();
-      var nameB = (b['Calendar Name'] || "").toLowerCase();
-      if (nameA < nameB) return -1;
-      if (nameA > nameB) return 1;
-      return 0;
-    });
-
-    // Populate Sheet via DAO
-    SheetManager.overwriteObjects('CALENDAR_SYNC', outputObjects);
-
-    CalendarSync_savePreferences(null, request.startDate, request.endDate);
-    var summary = 'Successfully imported ' + outputObjects.length + " events into '" + TARGET_SHEET_NAME + "'.";
-    return _App_ok(summary);
   });
 }
 
-function CalendarSync_checkForUnsavedChanges() {
-  return Logger.run('CALENDAR_SYNC', 'Check Unsaved', function () {
-    var hasChanges = false;
-    try {
-      hasChanges = SheetManager.hasPendingActions('CALENDAR_SYNC');
-    } catch (e) {
-      // If sheet doesn't exist yet, there are no changes
-    }
-    var response = _App_ok('Check complete.', hasChanges);
-    response.hasChanges = hasChanges;
-    return response;
-  });
-}
 
 // --- PART 2: THE "PUSH" WORKFLOW ---
 
 function CalendarSync_pushChanges() {
   return Logger.run('CALENDAR_SYNC', 'Push Changes', function () {
-    var pendingItems = SheetManager.readPendingObjects('CALENDAR_SYNC');
+    return _App_withDocumentLock('CALENDAR_SYNC_PUSH', function () {
+      var pendingItems = SheetManager.readPendingObjects('CALENDAR_SYNC');
 
-    if (pendingItems.length === 0) return _App_ok("No pending actions found.");
+      if (pendingItems.length === 0) return _App_ok("No pending actions found.");
 
-    var allCals = CalendarApp.getAllCalendars();
-    var calMap = new Map();
-    var calObjMap = new Map();
+      var allCals = CalendarApp.getAllCalendars();
+      var calMap = new Map();
+      var calObjMap = new Map();
 
-    allCals.forEach(function (c) {
-      calMap.set(c.getName(), c.getId());
-      calObjMap.set(c.getId(), c);
-    });
+      allCals.forEach(function (c) {
+        calMap.set(c.getName(), c.getId());
+        calObjMap.set(c.getId(), c);
+      });
 
-    var stats = _App_BatchProcessor('CALENDAR_SYNC', pendingItems, function (item) {
-      var rowUpdates = {
-        action: item['Action'],
-        eventId: item['Event ID'] ? String(item['Event ID']) : null,
-        calId: item['Calendar ID'] ? String(item['Calendar ID']) : null,
-        status: "",
-        _rowNumber: item._rowNumber
-      };
-
-      var action = rowUpdates.action.toString().toUpperCase();
-      var targetCalName = item['Calendar Name'];
-        var targetCalId = calMap.get(targetCalName);
-
-        var eventData = {
-          title: item['Event Title'],
-          start: item['Start Time'],
-          end: item['End Time'],
-          desc: item['Description'],
-          loc: item['Location'],
-          meet: item['Add Meet?'],
-          guests: item['Guests'],
-          color: item['Color'],
-          visibility: item['Visibility']
+      var stats = _App_BatchProcessor('CALENDAR_SYNC', pendingItems, function (item) {
+        var rowUpdates = {
+          action: item['Action'],
+          eventId: item['Event ID'] ? String(item['Event ID']) : null,
+          calId: item['Calendar ID'] ? String(item['Calendar ID']) : null,
+          status: "",
+          _rowNumber: item._rowNumber
         };
 
-        if (!(eventData.start instanceof Date)) eventData.start = new Date(eventData.start);
-        if (!(eventData.end instanceof Date)) eventData.end = new Date(eventData.end);
+        var action = rowUpdates.action.toString().toUpperCase();
+        var targetCalName = item['Calendar Name'];
+          var targetCalId = calMap.get(targetCalName);
 
-        if (isNaN(eventData.start.getTime())) throw new Error("⚠️ Data Error: Invalid Start Time format");
-        if (isNaN(eventData.end.getTime())) throw new Error("⚠️ Data Error: Invalid End Time format");
-        if (eventData.end <= eventData.start) throw new Error("⚠️ Data Error: End Time cannot be before or equal to Start Time");
-        if (!eventData.title) throw new Error("⚠️ Data Error: Missing Event Title");
-
-        if (eventData.guests) {
-          var invalidEmails = eventData.guests.split(',').map(function (g) { return g.trim() }).filter(function (e) { return e && !_App_validateEmail(e) });
-          if (invalidEmails.length > 0) throw new Error("⚠️ Data Error: Invalid guest email(s): " + invalidEmails.join(', '));
-        }
-
-        switch (action) {
-          case "CREATE":
-            if (!targetCalName) throw new Error("⚠️ Data Error: Missing Calendar Name");
-            if (!targetCalId) throw new Error("⚠️ Data Error: Calendar '" + targetCalName + "' not found");
-
-            var createCal = calObjMap.get(targetCalId);
-            if (!createCal) throw new Error("❌ API Error: Target calendar object is null");
-
-            var newEvent = _App_callWithBackoff(function () {
-              return createCal.createEvent(eventData.title, eventData.start, eventData.end, {
-                description: eventData.desc,
-                location: eventData.loc,
-                guests: eventData.guests ? eventData.guests.split(',').map(function (g) { return g.trim(); }).join(',') : ""
-              });
-            });
-
-            var optionErr = _CalendarSync_applyEventOptions(newEvent, eventData);
-            if (eventData.meet === true || eventData.meet === 'TRUE') {
-              try { _CalendarSync_addMeetLinkToEvent(targetCalId, newEvent.getId()); }
-              catch (meetErr) { optionErr = optionErr ? optionErr + ", Meet: " + meetErr.message : "Meet: " + meetErr.message; }
-            }
-
-            rowUpdates.eventId = newEvent.getId();
-            rowUpdates.calId = targetCalId;
-            rowUpdates.status = _App_formatStatus('SUCCESS', "Created") + (optionErr ? " (" + _App_formatStatus('WARNING', optionErr) + ")" : "");
-            rowUpdates.action = "";
-            break;
-
-          case "UPDATE":
-            if (!rowUpdates.eventId) throw new Error("⚠️ Data Error: Missing Event ID");
-
-            // Identity Check: If target calendar name doesn't match Calendar ID, perform MOVE
-            if (targetCalId && rowUpdates.calId && targetCalId !== rowUpdates.calId) {
-              rowUpdates = _CalendarSync_processMove(rowUpdates, calObjMap, targetCalId, eventData);
-              break;
-            }
-
-            var updateCal = calObjMap.get(rowUpdates.calId);
-            if (!updateCal) throw new Error("⚠️ Data Error: Calendar ID not found on your account");
-
-            var eventToUpdate = null;
-            try { eventToUpdate = _App_callWithBackoff(function() { return updateCal.getEventById(rowUpdates.eventId); }); } catch(e) {}
-
-            if (!eventToUpdate) throw new Error("⚠️ Data Error: Event ID not found on calendar");
-
-            _App_callWithBackoff(function () {
-              eventToUpdate.setTitle(eventData.title);
-              eventToUpdate.setTime(eventData.start, eventData.end);
-              eventToUpdate.setDescription(eventData.desc);
-              eventToUpdate.setLocation(eventData.loc);
-            });
-
-            var updateOptionErr = _CalendarSync_applyEventOptions(eventToUpdate, eventData);
-            if (eventData.meet === true || eventData.meet === 'TRUE') {
-              try { _CalendarSync_addMeetLinkToEvent(rowUpdates.calId || eventToUpdate.getOriginalCalendarId(), rowUpdates.eventId); }
-              catch (meetErr) { updateOptionErr = updateOptionErr ? updateOptionErr + ", Meet: " + meetErr.message : "Meet: " + meetErr.message; }
-            }
-
-            var currentGuests = eventToUpdate.getGuestList();
-            var targetGuests = eventData.guests ? eventData.guests.split(',').map(function (g) { return g.trim(); }).filter(function (g) { return g !== ""; }) : [];
-
-            currentGuests.forEach(function (guestObj) {
-              var email = guestObj.getEmail();
-              if (targetGuests.indexOf(email) === -1) eventToUpdate.removeGuest(email);
-            });
-            targetGuests.forEach(function (email) { eventToUpdate.addGuest(email); });
-
-            rowUpdates.status = _App_formatStatus('SUCCESS', "Updated") + (updateOptionErr ? " (" + _App_formatStatus('WARNING', updateOptionErr) + ")" : "");
-            rowUpdates.action = "";
-            break;
-
-          case "DELETE":
-            if (!rowUpdates.eventId) throw new Error("⚠️ Data Error: Missing Event ID");
-            var delCal = calObjMap.get(rowUpdates.calId);
-            if (!delCal) throw new Error("⚠️ Data Error: Original Calendar inaccessible");
-
-            var eventToDel = null;
-            try { eventToDel = _App_callWithBackoff(function() { return delCal.getEventById(rowUpdates.eventId); }); } catch(e) {}
-            
-            if (eventToDel) {
-              _App_callWithBackoff(function () { eventToDel.deleteEvent(); });
-              rowUpdates.status = _App_formatStatus('SUCCESS', "Deleted");
-              rowUpdates.action = "";
-            } else {
-              rowUpdates.status = _App_formatStatus('WARNING', "Already Deleted (Event not found)");
-              rowUpdates.action = "";
-            }
-            break;
-
-          default:
-            rowUpdates.status = _App_formatStatus('WARNING', "Unknown Action '" + action + "'");
-        }
-
-        return rowUpdates;
-
-    }, {
-      onBatchComplete: function (batchResults) {
-        _App_batchPatchResults('CALENDAR_SYNC', batchResults, function (res) {
-          return {
-            'Event ID': res.eventId,
-            'Calendar ID': res.calId
+          var eventData = {
+            title: item['Event Title'],
+            start: item['Start Time'],
+            end: item['End Time'],
+            desc: item['Description'],
+            loc: item['Location'],
+            meet: item['Add Meet?'],
+            guests: item['Guests'],
+            color: item['Color'],
+            visibility: item['Visibility']
           };
-        });
-      }
-    });
 
-    return _App_ok("Sync Complete. Processed: " + stats.processedCount);
+          if (!(eventData.start instanceof Date)) eventData.start = new Date(eventData.start);
+          if (!(eventData.end instanceof Date)) eventData.end = new Date(eventData.end);
+
+          if (isNaN(eventData.start.getTime())) throw new Error("⚠️ Data Error: Invalid Start Time format");
+          if (isNaN(eventData.end.getTime())) throw new Error("⚠️ Data Error: Invalid End Time format");
+          if (eventData.end <= eventData.start) throw new Error("⚠️ Data Error: End Time cannot be before or equal to Start Time");
+          if (!eventData.title) throw new Error("⚠️ Data Error: Missing Event Title");
+
+          if (eventData.guests && !_App_validateEmailList(eventData.guests)) {
+            throw new Error("⚠️ Data Error: Invalid guest email address(es)");
+          }
+
+          switch (action) {
+            case "CREATE":
+              if (!targetCalName) throw new Error("⚠️ Data Error: Missing Calendar Name");
+              if (!targetCalId) throw new Error("⚠️ Data Error: Calendar '" + targetCalName + "' not found");
+
+              var createCal = calObjMap.get(targetCalId);
+              if (!createCal) throw new Error("❌ API Error: Target calendar object is null");
+
+              var newEvent = _App_callWithBackoff(function () {
+                return createCal.createEvent(eventData.title, eventData.start, eventData.end, {
+                  description: eventData.desc,
+                  location: eventData.loc,
+                  guests: eventData.guests ? eventData.guests.split(',').map(function (g) { return g.trim(); }).join(',') : ""
+                });
+              });
+
+              var optionErr = _CalendarSync_applyEventOptions(newEvent, eventData);
+              if (eventData.meet === true || eventData.meet === 'TRUE') {
+                try { _CalendarSync_addMeetLinkToEvent(targetCalId, newEvent.getId()); }
+                catch (meetErr) { optionErr = optionErr ? optionErr + ", Meet: " + meetErr.message : "Meet: " + meetErr.message; }
+              }
+
+              rowUpdates.eventId = newEvent.getId();
+              rowUpdates.calId = targetCalId;
+              rowUpdates.status = _App_formatStatus('SUCCESS', "Created") + (optionErr ? " (" + _App_formatStatus('WARNING', optionErr) + ")" : "");
+              rowUpdates.action = "";
+              break;
+
+            case "UPDATE":
+              if (!rowUpdates.eventId) throw new Error("⚠️ Data Error: Missing Event ID");
+
+              // Identity Check: If target calendar name doesn't match Calendar ID, perform MOVE
+              if (targetCalId && rowUpdates.calId && targetCalId !== rowUpdates.calId) {
+                rowUpdates = _CalendarSync_processMove(rowUpdates, calObjMap, targetCalId, eventData);
+                break;
+              }
+
+              var updateCal = calObjMap.get(rowUpdates.calId);
+              if (!updateCal) throw new Error("⚠️ Data Error: Calendar ID not found on your account");
+
+              var eventToUpdate = null;
+              try { eventToUpdate = _App_callWithBackoff(function() { return updateCal.getEventById(rowUpdates.eventId); }); } catch(e) {}
+
+              if (!eventToUpdate) throw new Error("⚠️ Data Error: Event ID not found on calendar");
+
+              _App_callWithBackoff(function () {
+                eventToUpdate.setTitle(eventData.title);
+                eventToUpdate.setTime(eventData.start, eventData.end);
+                eventToUpdate.setDescription(eventData.desc);
+                eventToUpdate.setLocation(eventData.loc);
+              });
+
+              var updateOptionErr = _CalendarSync_applyEventOptions(eventToUpdate, eventData);
+              if (eventData.meet === true || eventData.meet === 'TRUE') {
+                try { _CalendarSync_addMeetLinkToEvent(rowUpdates.calId || eventToUpdate.getOriginalCalendarId(), rowUpdates.eventId); }
+                catch (meetErr) { updateOptionErr = updateOptionErr ? updateOptionErr + ", Meet: " + meetErr.message : "Meet: " + meetErr.message; }
+              }
+
+              var currentGuests = eventToUpdate.getGuestList();
+              var targetGuests = eventData.guests ? eventData.guests.split(',').map(function (g) { return g.trim(); }).filter(function (g) { return g !== ""; }) : [];
+
+              currentGuests.forEach(function (guestObj) {
+                var email = guestObj.getEmail();
+                if (targetGuests.indexOf(email) === -1) eventToUpdate.removeGuest(email);
+              });
+              targetGuests.forEach(function (email) { eventToUpdate.addGuest(email); });
+
+              rowUpdates.status = _App_formatStatus('SUCCESS', "Updated") + (updateOptionErr ? " (" + _App_formatStatus('WARNING', updateOptionErr) + ")" : "");
+              rowUpdates.action = "";
+              break;
+
+            case "DELETE":
+              if (!rowUpdates.eventId) throw new Error("⚠️ Data Error: Missing Event ID");
+              var delCal = calObjMap.get(rowUpdates.calId);
+              if (!delCal) throw new Error("⚠️ Data Error: Original Calendar inaccessible");
+
+              var eventToDel = null;
+              try { eventToDel = _App_callWithBackoff(function() { return delCal.getEventById(rowUpdates.eventId); }); } catch(e) {}
+              
+              if (eventToDel) {
+                _App_callWithBackoff(function () { eventToDel.deleteEvent(); });
+                rowUpdates.status = _App_formatStatus('SUCCESS', "Deleted");
+                rowUpdates.action = "";
+              } else {
+                rowUpdates.status = _App_formatStatus('WARNING', "Already Deleted (Event not found)");
+                rowUpdates.action = "";
+              }
+              break;
+
+            default:
+              rowUpdates.status = _App_formatStatus('WARNING', "Unknown Action '" + action + "'");
+          }
+
+          return rowUpdates;
+
+      }, {
+        onBatchComplete: function (batchResults) {
+          _App_batchPatchResults('CALENDAR_SYNC', batchResults, function (res) {
+            return {
+              'Event ID': res.eventId,
+              'Calendar ID': res.calId
+            };
+          });
+        }
+      });
+
+      return _App_ok("Sync Complete. Processed: " + stats.processedCount);
+    });
   });
 }
 

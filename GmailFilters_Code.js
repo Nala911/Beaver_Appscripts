@@ -54,6 +54,22 @@ SyncEngine.registerTool('GMAIL_FILTERS', {
             { header: 'Action: Also apply filter to previous mails', type: 'CHECKBOX' },
             { header: 'Filter ID', type: 'ID' }
         ]
+    },
+    HELP_ITEMS: {
+        gettingStarted: {
+            title: "Getting Started",
+            content: "<p><strong>Getting Started</strong></p><p>Follow these steps to manage Gmail filters:</p><ol><li><strong>Define Criteria:</strong> Set filter matching rules under <code>Criteria:</code> columns (From, Subject, etc.).</li><li><strong>Set Action:</strong> Set output settings (Skip Inbox, Labels, Delete, etc.).</li><li><strong>Push:</strong> Click <strong>Push Changes</strong> in the sidebar.</li></ol>"
+        },
+        items: [
+            {
+                icon: "help-circle",
+                color: "var(--primary)",
+                label: "Column Guide",
+                shortDesc: "Understand filter criteria and action flags.",
+                tooltipId: "help-columns-guide",
+                tooltipContent: "<p><strong>Core Columns Guide</strong></p><ul><li><strong>Criteria:</strong> The filter rules that match incoming messages (e.g. <code>Criteria: From</code>).</li><li><strong>Action: Labels:</strong> Custom label to apply to matching messages.</li><li><strong>Retroactive:</strong> Tick <code>Also apply filter to previous mails</code> to run the filter matching on past emails.</li></ul>"
+            }
+        ]
     }
 });
 
@@ -73,7 +89,8 @@ function GmailFilters_openSidebar() {
  */
 function GmailFilters_pullFilters() {
     return Logger.run('GMAIL_FILTERS', 'Pull Filters', function () {
-        var labels = _GmailFilters_getLabelMap();
+        return _App_withDocumentLock('GMAIL_FILTERS_PULL', function () {
+            var labels = _GmailFilters_getLabelMap();
         var filtersResponse = _App_callWithBackoff(function () {
             return Gmail.Users.Settings.Filters.list('me');
         });
@@ -115,39 +132,29 @@ function GmailFilters_pullFilters() {
             };
         });
 
-        // Clear existing and write new
-        SheetManager.overwriteObjects('GMAIL_FILTERS', rows);
+            // Clear existing and write new
+            SheetManager.overwriteObjects('GMAIL_FILTERS', rows);
 
-        return _App_ok("Successfully pulled " + rows.length + " filters.");
+            return _App_ok("Successfully pulled " + rows.length + " filters.");
+        });
     });
 }
 
 /**
  * Checks if the Gmail Filters sheet has pending actions.
  */
-function GmailFilters_checkForUnsavedChanges() {
-  return Logger.run('GMAIL_FILTERS', 'Check Unsaved', function () {
-    var hasChanges = false;
-    try {
-      hasChanges = SheetManager.hasPendingActions('GMAIL_FILTERS');
-    } catch (e) {
-      // If sheet doesn't exist yet, there are no changes
-    }
-    var response = _App_ok('Check complete.', hasChanges);
-    response.hasChanges = hasChanges;
-    return response;
-  });
-}
+
 
 /**
  * Processes pending actions (CREATE, UPDATE, DELETE).
  */
 function GmailFilters_processAction() {
     return Logger.run('GMAIL_FILTERS', 'Process Action', function () {
-        var pendingItems = SheetManager.readPendingObjects('GMAIL_FILTERS');
-        if (pendingItems.length === 0) {
-            return _App_ok("No pending actions to process.");
-        }
+        return _App_withDocumentLock('GMAIL_FILTERS_PUSH', function () {
+            var pendingItems = SheetManager.readPendingObjects('GMAIL_FILTERS');
+            if (pendingItems.length === 0) {
+                return _App_ok("No pending actions to process.");
+            }
 
         var labelMap = _GmailFilters_getLabelMap();
 
@@ -212,7 +219,8 @@ function GmailFilters_processAction() {
             }
         });
 
-        return _App_ok("Processed " + stats.processedCount + " filters.");
+            return _App_ok("Processed " + stats.processedCount + " filters.");
+        });
     });
 }
 

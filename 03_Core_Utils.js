@@ -284,3 +284,68 @@ function _App_getColumnLetter(col) {
     return letter;
 }
 
+// ==========================================
+// Centralized Document & Email Utilities
+// ==========================================
+
+/**
+ * Escapes special regex characters in a string.
+ */
+function _App_escapeRegExp(string) {
+  if (!string) return "";
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Retrieves a Drive file blob by URL or raw File ID.
+ */
+function _App_getDriveAttachment(fileIdOrUrl) {
+  try {
+    if (!fileIdOrUrl) return null;
+    var fileId = fileIdOrUrl;
+    var match = fileIdOrUrl.match(/[-\w]{25,}/);
+    if (match) fileId = match[0];
+
+    var file = DriveApp.getFileById(fileId);
+    return file.getBlob();
+  } catch (e) {
+    throw new Error("Cannot find attachment in Drive (" + fileIdOrUrl + ")");
+  }
+}
+
+/**
+ * Merges two comma-separated lists of email addresses uniquely.
+ */
+function _App_mergeEmails(existingStr, newStr) {
+  if (!newStr) return existingStr || "";
+  var existingArr = (existingStr || "").split(',').map(function (e) { return e.trim(); }).filter(function (e) { return e; });
+  var newArr = (newStr || "").split(',').map(function (e) { return e.trim(); }).filter(function (e) { return e; });
+  newArr.forEach(function (em) {
+    if (existingArr.indexOf(em) === -1) {
+      existingArr.push(em);
+    }
+  });
+  return existingArr.join(',');
+}
+
+/**
+ * Formats a Date object or parseable date-time representation safely using the 
+ * spreadsheet's active timezone. Falls back to Session.getScriptTimeZone() if needed.
+ * @param {Date|string|number} date - Date representation to format
+ * @param {string} [format] - Target format string, defaults to "MM/dd/yyyy HH:mm:ss"
+ * @returns {string} Formatted date-time string
+ */
+function _App_formatDateTime(date, format) {
+    if (!date) return "";
+    var targetDate = (date instanceof Date) ? date : new Date(date);
+    if (isNaN(targetDate.getTime())) return "";
+    var tz = Session.getScriptTimeZone();
+    try {
+        tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+    } catch (e) {
+        // Fallback safely if run outside spreadsheet context
+    }
+    return Utilities.formatDate(targetDate, tz, format || "MM/dd/yyyy HH:mm:ss");
+}
+
+

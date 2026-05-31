@@ -21,6 +21,22 @@ SyncEngine.registerTool('BULK_FOLDER', {
             { header: 'Level 2', type: 'TEXT' },
             { header: 'Level 3', type: 'TEXT' }
         ]
+    },
+    HELP_ITEMS: {
+        gettingStarted: {
+            title: "Getting Started",
+            content: "<p><strong>Getting Started</strong></p><p>Follow these steps to create folders in bulk:</p><ol><li><strong>Select Destination:</strong> Pick the parent folder in the sidebar explorer.</li><li><strong>Set Action:</strong> Set the Action column to <code>CREATE</code>.</li><li><strong>Enter Levels:</strong> Provide folder names in Level 1, Level 2, Level 3 to define nested structures.</li><li><strong>Run:</strong> Click <strong>Run Bulk Creation</strong> in the sidebar.</li></ol>"
+        },
+        items: [
+            {
+                icon: "help-circle",
+                color: "var(--primary)",
+                label: "Column Guide",
+                shortDesc: "Action, Status, and Levels.",
+                tooltipId: "help-columns-guide",
+                tooltipContent: "<p><strong>Core Columns Guide</strong></p><ul><li><strong>Action:</strong> Set to <code>CREATE</code> to create folders on Drive.</li><li><strong>Level 1/2/3:</strong> Folders are created nested. e.g. <code>Level 1/Level 2/Level 3</code>.</li><li><strong>Duplicate Check:</strong> If a folder structure already exists, the tool will step inside rather than duplicating it.</li></ul>"
+            }
+        ]
     }
 });
 
@@ -102,10 +118,7 @@ function BulkFolderCreation_getDriveNavData(folderId) {
 
 function BulkFolderCreation_runBulkCreationSequence(targetFolderId) {
   return Logger.run('BULK_FOLDER', 'Batch Creation', function () {
-    var lock = LockService.getScriptLock();
-    if (!lock.tryLock(5000)) throw new Error("⚠️ System is busy. Please try again.");
-
-    try {
+    return _App_withDocumentLock('BULK_FOLDER_CREATION', function () {
       _App_resetExecutionTimer();
       
       var pendingRows = SheetManager.readPendingObjects('BULK_FOLDER');
@@ -195,10 +208,7 @@ function BulkFolderCreation_runBulkCreationSequence(targetFolderId) {
       if (stats.timeLimitReached) finalMsg = "⏳ Time limit reached. " + finalMsg;
 
       return _App_ok(finalMsg);
-
-    } finally {
-      lock.releaseLock();
-    }
+    });
   });
 }
 
@@ -264,7 +274,7 @@ function _BulkFolderCreation_initializeHeaders(sheet) {
     .setBorder(true, true, true, true, true, true, SHEET_THEME.BORDER, SHEET_THEME.BORDER_STYLE);
 
   sheet.setFrozenRows(1);
-  sheet.setFrozenColumns(1); // freeze system columns (Action)
+  sheet.setFrozenColumns(2); // freeze system columns (Action & Status)
 
   // Set widths
   if (SyncEngine.getTool('BULK_FOLDER').COL_WIDTHS) {
