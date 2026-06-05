@@ -914,11 +914,11 @@
         var box = document.createElement('div');
         box.style.backgroundColor = '#fff';
         box.style.padding = '20px';
-        box.style.borderRadius = '8px';
+        box.style.borderRadius = '12px';
         box.style.width = '80%';
         box.style.maxWidth = '400px';
-        box.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
-        box.style.fontFamily = 'sans-serif';
+        box.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)';
+        box.style.fontFamily = 'Inter, system-ui, sans-serif';
 
         var title = document.createElement('h3');
         var severityTitle = 'System Error';
@@ -932,9 +932,30 @@
             titleColor = '#d97706'; // Amber
         }
 
+        var tipText = '';
+        if (msg.indexOf('Authorization Required') !== -1) {
+            severityTitle = 'Authorization Required';
+            titleColor = '#2563eb'; // Blue
+            tipText = 'The script needs Google Account permission updates. Please re-run the menu option or reload to authorize this Google Sheets add-on.';
+        } else if (msg.indexOf('Quota Exceeded') !== -1) {
+            severityTitle = 'Quota Exceeded';
+            titleColor = '#d97706'; // Amber
+            tipText = 'You have reached Google\'s daily service limits. Normal operations will resume automatically tomorrow.';
+        } else if (msg.indexOf('Resource Not Found') !== -1) {
+            severityTitle = 'Resource Inaccessible';
+            titleColor = '#d97706'; // Amber
+            tipText = 'Verify that your Document/Folder ID is correct, has not been deleted, and is shared with the account running this script.';
+        } else if (msg.indexOf('Formatting Error') !== -1 || msg.indexOf('Data Error') !== -1) {
+            severityTitle = 'Data Validation Alert';
+            titleColor = '#d97706'; // Amber
+            tipText = 'Review the highlighted spreadsheet row columns to verify all mandatory fields, emails, dates, or checkboxes are filled out in the correct format.';
+        }
+
         title.innerText = severityTitle;
         title.style.margin = '0 0 10px 0';
         title.style.color = titleColor;
+        title.style.fontSize = '18px';
+        title.style.fontWeight = '600';
 
         var textarea = document.createElement('textarea');
         textarea.value = msg;
@@ -947,6 +968,8 @@
         textarea.style.borderRadius = '4px';
         textarea.style.boxSizing = 'border-box';
         textarea.style.resize = 'vertical';
+        textarea.style.fontFamily = 'monospace';
+        textarea.style.fontSize = '12px';
 
         var btn = document.createElement('button');
         btn.innerText = 'Close';
@@ -954,12 +977,27 @@
         btn.style.backgroundColor = '#e5e7eb';
         btn.style.color = '#374151';
         btn.style.border = 'none';
-        btn.style.borderRadius = '4px';
+        btn.style.borderRadius = '6px';
         btn.style.cursor = 'pointer';
         btn.style.fontWeight = '500';
         btn.onclick = function() { document.body.removeChild(overlay); };
 
         box.appendChild(title);
+        
+        if (tipText) {
+            var tipEl = document.createElement('div');
+            tipEl.style.fontSize = '12px';
+            tipEl.style.color = '#4b5563';
+            tipEl.style.backgroundColor = '#f3f4f6';
+            tipEl.style.borderLeft = '4px solid ' + titleColor;
+            tipEl.style.padding = '8px 12px';
+            tipEl.style.borderRadius = '4px';
+            tipEl.style.marginBottom = '12px';
+            tipEl.style.lineHeight = '1.4';
+            tipEl.innerText = tipText;
+            box.appendChild(tipEl);
+        }
+
         box.appendChild(textarea);
         box.appendChild(btn);
         overlay.appendChild(box);

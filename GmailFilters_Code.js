@@ -46,7 +46,7 @@ SyncEngine.registerTool('GMAIL_FILTERS', {
                     return labels.length ? labels.slice(0, 499) : ['None'];
                 }
             },
-            { header: 'Action: Forward to', type: 'TEXT' },
+            { header: 'Action: Forward to', type: 'EMAIL' },
             { header: 'Action: Delete it', type: 'CHECKBOX' },
             { header: 'Action: Never send it to Spam', type: 'CHECKBOX' },
             { header: 'Action: Always mark it as important', type: 'CHECKBOX' },
@@ -102,12 +102,12 @@ function GmailFilters_pullFilters() {
             var addLabelIds = action.addLabelIds || [];
             var removeLabelIds = action.removeLabelIds || [];
 
-            // Filter out system labels for the "Labels" column (Take only the first custom label)
+            // Filter out system labels for the "Labels" column and get the first user label
             var systemLabelIds = ['INBOX', 'UNREAD', 'STARRED', 'TRASH', 'SPAM', 'IMPORTANT'];
             var userLabelIds = addLabelIds.filter(function (id) {
                 return systemLabelIds.indexOf(id) === -1 && !id.startsWith('CATEGORY_');
             });
-            var singleLabelId = userLabelIds.length > 0 ? userLabelIds[0] : null;
+            var labelsList = userLabelIds.length > 0 ? (labels.idToName[userLabelIds[0]] || userLabelIds[0]) : '';
 
             return {
                 'Action': '',
@@ -121,7 +121,7 @@ function GmailFilters_pullFilters() {
                 'Action: Skip the Inbox (Archive it)': removeLabelIds.indexOf('INBOX') !== -1,
                 'Action: Mark as read': removeLabelIds.indexOf('UNREAD') !== -1,
                 'Action: Star it': addLabelIds.indexOf('STARRED') !== -1,
-                'Action: Labels': singleLabelId ? labels.idToName[singleLabelId] || singleLabelId : '',
+                'Action: Labels': labelsList,
                 'Action: Forward to': action.forward || '',
                 'Action: Delete it': addLabelIds.indexOf('TRASH') !== -1,
                 'Action: Never send it to Spam': removeLabelIds.indexOf('SPAM') !== -1,
@@ -237,7 +237,7 @@ function GmailFilters_getMissingLabels() {
         pendingItems.forEach(function (item) {
             var action = (item['Action'] || '').toString().toUpperCase();
             if (action === 'CREATE' || action === 'UPDATE') {
-                var label = item['Action: Labels'] ? item['Action: Labels'].trim() : '';
+                var label = item['Action: Labels'] ? item['Action: Labels'].toString().trim() : '';
                 if (label && labelsInSheet.indexOf(label) === -1) {
                     labelsInSheet.push(label);
                 }
@@ -248,7 +248,7 @@ function GmailFilters_getMissingLabels() {
 
         var labelMap = _GmailFilters_getLabelMap();
         var missing = labelsInSheet.filter(function (name) {
-            return !labelMap.nameToId[name];
+            return !labelMap.nameToId[name.toLowerCase()];
         });
 
         return _App_ok('Missing labels identified.', missing);
@@ -269,7 +269,7 @@ function _GmailFilters_getLabelMap() {
     var idToName = {};
 
     (response.labels || []).forEach(function (l) {
-        nameToId[l.name] = l.id;
+        nameToId[l.name.toLowerCase()] = l.id;
         idToName[l.id] = l.name;
     });
 
@@ -277,13 +277,11 @@ function _GmailFilters_getLabelMap() {
 }
 
 /**
- * Resolves Label IDs to comma-separated Names.
+ * Resolves Label ID to Name.
  */
 function _GmailFilters_resolveLabelIds(ids, idToName) {
-    if (!ids || !Array.isArray(ids)) return '';
-    return ids.map(function (id) {
-        return idToName[id] || id;
-    }).join(', ');
+    if (!ids || !Array.isArray(ids) || ids.length === 0) return '';
+    return idToName[ids[0]] || ids[0];
 }
 
 /**
@@ -297,6 +295,12 @@ function _GmailFilters_constructFilterResource(item, nameToId) {
     if (item['Criteria: Includes Words']) criteria.query = item['Criteria: Includes Words'];
     if (item['Criteria: Excludes Words']) criteria.negatedQuery = item['Criteria: Excludes Words'];
     if (item['Criteria: Has Attachment']) criteria.hasAttachment = true;
+
+    // Item 5: Validate minimum criteria
+    var hasCriteria = !!(criteria.from || criteria.to || criteria.subject || criteria.query || criteria.negatedQuery || criteria.hasAttachment);
+    if (!hasCriteria) {
+        throw new Error("A filter must specify at least one criteria (e.g., Criteria: From, Criteria: Subject, etc.).");
+    }
 
     var action = {};
     var addLabelIds = [];
@@ -313,24 +317,37 @@ function _GmailFilters_constructFilterResource(item, nameToId) {
     if (item['Action: Never send it to Spam']) removeLabelIds.push('SPAM');
     if (item['Action: Never mark it as important']) removeLabelIds.push('IMPORTANT');
 
-    // Process Label with Auto-Creation (Treat as single label)
+    // Item 5: Conflict checking
+    if (item['Action: Always mark it as important'] && item['Action: Never mark it as important']) {
+        throw new Error("Cannot set a filter to both 'Always mark it as important' and 'Never mark it as important'.");
+    }
+
+    // Process Label with Auto-Creation (Case-Insensitive)
     if (item['Action: Labels']) {
-        var labelName = item['Action: Labels'].trim();
+        var labelName = item['Action: Labels'].toString().trim();
         if (labelName) {
-            var id = nameToId[labelName];
+            var lookupName = labelName.toLowerCase();
+            var id = nameToId[lookupName];
             if (!id) {
                 // Auto-create missing label
                 var newLabel = _App_callWithBackoff(function () {
                     return Gmail.Users.Labels.create({ name: labelName }, 'me');
                 });
                 id = newLabel.id;
-                nameToId[labelName] = id; // Update map for subsequent rows in same batch
+                nameToId[lookupName] = id; // Update map for subsequent rows in same batch
             }
             if (addLabelIds.indexOf(id) === -1) addLabelIds.push(id);
         }
     }
 
     if (item['Action: Forward to']) action.forward = item['Action: Forward to'];
+    
+    // Item 5: Validate minimum action
+    var hasAction = !!(addLabelIds.length > 0 || removeLabelIds.length > 0 || action.forward);
+    if (!hasAction) {
+        throw new Error("A filter must specify at least one action (e.g., Star it, Skip Inbox, Labels, etc.).");
+    }
+
     if (addLabelIds.length > 0) action.addLabelIds = addLabelIds;
     if (removeLabelIds.length > 0) action.removeLabelIds = removeLabelIds;
 

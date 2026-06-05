@@ -55,4 +55,76 @@ function _App_validateEmailList(emailsString, allowEmpty) {
     return true;
 }
 
+/**
+ * Unifies column cell validation by checking its value against schema column type definitions.
+ * @param {string} type - Column schema type (e.g. 'EMAIL', 'DATE', 'BOOLEAN', 'URL', 'DROPDOWN')
+ * @param {*} value - Cell value to check
+ * @param {Object} [fieldConfig] - The schema field configuration object (contains header, options, etc.)
+ * @returns {boolean} True if value is valid, false otherwise.
+ */
+function _App_validateValueByType(type, value, fieldConfig) {
+    var valStr = (value === null || value === undefined) ? '' : String(value).trim();
+    
+    // ACTION, STATUS, ID, and READ_ONLY do not require data-type validation or are handled natively
+    if (type === 'ACTION' || type === 'STATUS' || type === 'ID' || type === 'READ_ONLY') {
+        return true;
+    }
+    
+    switch (type) {
+        case 'EMAIL':
+            if (valStr === '') return true; // Optional fields are empty
+            return _App_validateEmail(valStr);
+            
+        case 'EMAIL_LIST':
+            return _App_validateEmailList(valStr, true);
+            
+        case 'DATE':
+        case 'DATETIME':
+            if (valStr === '') return true;
+            return SYSTEM_VALIDATORS.DATE(value);
+            
+        case 'BOOLEAN':
+            if (valStr === '') return true;
+            return SYSTEM_VALIDATORS.BOOLEAN(value);
+            
+        case 'URL':
+            if (valStr === '') return true;
+            // Simple match for URLs
+            var urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/i;
+            return urlRegex.test(valStr);
+            
+        case 'DOCS_URL':
+            return SYSTEM_VALIDATORS.DOCS_URL(valStr);
+            
+        case 'DRIVE_URL':
+            return SYSTEM_VALIDATORS.DRIVE_URL(valStr);
+            
+        case 'DROPDOWN':
+            if (valStr === '') return true;
+            if (fieldConfig && fieldConfig.allowInvalid) return true;
+            if (fieldConfig && fieldConfig.options) {
+                var opts = fieldConfig.options;
+                if (typeof opts === 'function') {
+                    try {
+                        opts = opts();
+                    } catch (e) {
+                        return true; // If dynamic evaluation fails, pass validation or gracefully ignore
+                    }
+                }
+                if (Array.isArray(opts)) {
+                    var lowerVal = valStr.toLowerCase();
+                    return opts.some(function(opt) {
+                        return String(opt).trim().toLowerCase() === lowerVal;
+                    });
+                }
+            }
+            return true;
+            
+        case 'TEXT':
+        default:
+            return true; // Standard text has no structural restrictions
+    }
+}
+
+
 

@@ -425,8 +425,3 @@ function _CalendarSync_addMeetLinkToEvent(calendarId, eventId) {
   }, calendarId, eventId, { conferenceDataVersion: 1 });
 }
 
-function _CalendarSync_setupSheetStructure(sheet) {
-  // Logic mostly shifted to APP_REGISTRY, kept for backward compatibility if ever called directly
-  var headers = SyncEngine.getTool('CALENDAR_SYNC').HEADERS;
-  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-}

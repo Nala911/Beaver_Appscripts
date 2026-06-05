@@ -82,8 +82,10 @@ Each tool has a Backend file, a Frontend sidebar file, and a global Entry Functi
 
 > [!CAUTION]
 > **Large File Warning:** The following files are large (25KB+). Use surgical/partial reads.
+> - `SidebarShared.html` (~45KB): Central CSS stylesheet, UI layout logic, and the global `SyncSidebar` wrapper.
 > - `DriveFileDetails_Code.js` (~32KB): Complex Drive synchronization logic.
-> - `ContactsSync_Code.js` (~27KB): People API integration logic.
+> - `PipelineControl_Sidebar.html` (~27KB): The standalone pipeline dashboard interface and controls.
+> - `ContactsSync_Code.js` (~22KB): People API integration logic.
 
 ---
 
@@ -161,6 +163,7 @@ All client-to-server communication MUST use the `SyncSidebar` layer from `Sideba
      - `mild`: Blue "Notice" modal for informational non-errors.
      - `medium`: Amber "Warning" modal for recoverable issues.
      - `critical`: Red "System Error" modal for blocking/critical failures (Default).
+- **API Error Translation**: The engine provides `_App_translateApiError(err)` inside `03_Core_Utils.js` which automatically intercepts Google JSON exception strings (like 403 authorization failures or 429 rate limit errors) and translates them into actionable, human-friendly troubleshooting guides displayed in sidebars.
 
 ### 5. The PropertiesService Contract
 Never use `PropertiesService.getDocumentProperties()` directly in a tool. 
@@ -175,10 +178,12 @@ Never use `PropertiesService.getDocumentProperties()` directly in a tool.
   - **Progress Tracking**: Automatically updates CacheService with progress data for sidebar polling.
 - **Execution Time Limits**: Global timing is managed via `_App_resetExecutionTimer()` and `_App_isExecutionLimitApproaching()`. The processor pauses execution at 5.5 minutes, allowing for safe partial completions and saving the progress.
 - **Trigger Management**: Background sync tools should manage their own `ScriptApp` triggers. Use an internal `_ToolName_manageTrigger` function called from the setting update handler to ensure triggers are created/removed in sync with user preferences.
+- **Intelligent Halting**: If the `_App_BatchProcessor` intercepts a fatal system or authorization error (e.g. rate limit exceeded or access token revoked), it flushes all currently successful segment row status modifications and halts execution immediately. This prevents cascading raw API errors and preserves the Action column state for the remaining unprocessed rows.
 
 ### 7. Centralized Validation Contract
 - **Deprecating Local Helpers**: Do not write custom local validators inside tool modules for common validation needs (like email syntax verification).
 - **Core Validators**: Always call `_App_validateEmail` or `_App_validateEmailList` from `04_Core_Validators.js`. Any future general validators should be added to that central module rather than being duplicated in tool backends.
+- **Schema-Driven Pre-Validation**: The engine provides a unified data pre-validation engine. The `_App_BatchProcessor` dynamically invokes `_App_validateRowAgainstSchema(item, toolKey)` based on the tool's registered `COL_SCHEMA` rules before executing the tool's backend logic. Schema types like `EMAIL`, `DATE`, `DATETIME`, `BOOLEAN`, `URL`, `DOCS_URL`, `DRIVE_URL`, and `DROPDOWN` are validated automatically using `_App_validateValueByType()` in `04_Core_Validators.js`.
 
 ### 8. Batch Result Patching & Action Preservation
 - **Reporting Success/Failure**: When batch execution completes, do not write raw status strings to the sheet manually. Call `_App_batchPatchResults` (defined in `03_Core_Utils.js`) within the `onBatchComplete` hook of your `_App_BatchProcessor`.
@@ -240,7 +245,7 @@ All keys used across the codebase. **Do NOT invent new key names** — check her
 | `selectedChatSpaces` | `ChatSpaceSync_Code.js` | `UserProperties` | JSON array of selected chat space IDs |
 | `FORMSSYNC_CURRENT_FORM` | `FormsSync_Code.js` | `DocumentProperties` | Stores currently synced form ID |
 | `FORMSSYNC_SELECTED_FORM` | `FormsSync_Code.js` | `UserProperties` | Stores user's selected form ID for sidebar auto-selection |
-| `selectedTasksList` | `TasksSync_Code.js` | `UserProperties` | Stores user's selected tasks list ID/name for sidebar auto-selection |
+| `selectedTasksList` | `TasksSync_Code.js` | `UserProperties` | (Registered but currently unused/reserved; TasksSync pulls all lists) |
 
 ---
 
@@ -265,6 +270,8 @@ Before completing any task, mentally run this checklist. Do not proceed until yo
 - [ ] If I added a new setting, is it declared in `APP_PROPS` in `00_Config_Constants.js`?
 - [ ] If my tool processes rows, did I use `_App_BatchProcessor` and `_App_batchPatchResults` to apply patches and preserve Action columns on failure?
 - [ ] Did I use centralized validation functions (e.g., `_App_validateEmailList` in `04_Core_Validators.js`) instead of writing local duplicate validation helpers?
+- [ ] Did I register my tool's schema in `FORMAT_CONFIG.COL_SCHEMA` correctly so the core validation engine (`_App_validateRowAgainstSchema`) validates row cell types automatically before sync begins?
+- [ ] Did I ensure that any custom backend exceptions thrown return descriptive messages, allowing the translation engine `_App_translateApiError` to map errors correctly?
 - [ ] If my sidebar dynamically modifies the DOM to add elements with icons, did I call `SyncSidebar.refreshIcons()` afterward?
 - [ ] Is my sidebar strictly including `<?!= _App_include('SidebarShared'); ?>` to inherit standard WorkspaceSync UI libraries?
 - [ ] Are all backend calls in the sidebar routed through `SyncSidebar.run()` instead of raw `google.script.run`?

@@ -100,9 +100,6 @@ function MailSender_executeActions() {
           var targetPdfName = item['PDF Name'];
 
           if (!targetTo && !targetThreadId) throw new Error("⚠️ Missing Email To");
-          if (targetTo && !_App_validateEmailList(targetTo)) throw new Error("⚠️ Invalid Email To address");
-          if (!_App_validateEmailList(targetCc)) throw new Error("⚠️ Invalid CC address");
-          if (!_App_validateEmailList(targetBcc)) throw new Error("⚠️ Invalid BCC address");
 
           var emailSubject = item['Email Subject'];
           var emailBody = item['Email Body'] ? String(item['Email Body']).replace(/\r?\n/g, '<br>') : "";

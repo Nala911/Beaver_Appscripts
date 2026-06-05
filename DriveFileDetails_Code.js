@@ -50,10 +50,7 @@ var DRIVE_SYNC_COL = {
 // --- SIDEBAR & SHEET SETUP ---
 function _DriveFileDetails_InternalFunction() { } 
 
-/** @deprecated — Use _App_ensureSheetExists('DRIVE_SYNC') instead. */
-function _DriveFileDetails_ensureSheetExistsAndActivate() {
-    return _App_ensureSheetExists('DRIVE_SYNC');
-}
+
 
 /** Opens the Drive Sync sidebar and ensures the sheet exists. */
 function DriveFileDetails_openSidebar() {
@@ -500,12 +497,7 @@ function DriveFileDetails_runPushSequence() {
   });
 }
 
-function DriveFileDetails_setupSheet(sheet) {
-  return Logger.run('DRIVE_SYNC', 'Setup Sheet', function () {
-    _App_ensureSheetExists('DRIVE_SYNC');
-    return _App_ok("Sheet has been reset successfully.");
-  });
-}
+
 
 /* ==========================================================================
    PRIVATE HELPER FUNCTIONS

@@ -20,7 +20,7 @@ SyncEngine.registerTool('CONTACTS_SYNC', {
             { header: 'Status', type: 'STATUS' },
             { header: 'First Name', type: 'TEXT' },
             { header: 'Last Name', type: 'TEXT' },
-            { header: 'Email', type: 'TEXT' },
+            { header: 'Email', type: 'EMAIL' },
             { header: 'Phone', type: 'TEXT' },
             { header: 'Company', type: 'TEXT' },
             { header: 'Job Title', type: 'TEXT' },
@@ -201,17 +201,7 @@ function ContactsSync_pullContacts(request) {
     });
 }
 
-// Kept for backward compatibility — now delegates to shared utility
-function _ContactsSync_highlightDuplicates(sheet) {
-    var lastRow = sheet.getLastRow();
-    var numDataRows = lastRow > 1 ? lastRow - 1 : 0;
-    var formatConfig = JSON.parse(JSON.stringify(SyncEngine.getTool('CONTACTS_SYNC').FORMAT_CONFIG));
-    formatConfig.conditionalRules = formatConfig.conditionalRules.concat([
-        { type: 'custom', formula: '=AND($F2<>"", COUNTIF($F:$F, $F2)>1)', color: SHEET_THEME.STATUS.WARNING, scope: 'custom_col', col: 6 },
-        { type: 'custom', formula: '=AND($G2<>"", COUNTIF($G:$G, $G2)>1)', color: SHEET_THEME.STATUS.WARNING, scope: 'custom_col', col: 7 }
-    ]);
-    _App_applyBodyFormatting(sheet, numDataRows, formatConfig);
-}
+
 
 
 
@@ -257,10 +247,6 @@ function ContactsSync_pushChanges() {
                         groupsStr: item['Groups/Labels'] !== "" ? String(item['Groups/Labels']) : "",
                         notes: item['Notes'] !== "" ? String(item['Notes']) : ""
                     };
-
-                    if (contactData.email && !_App_validateEmail(contactData.email)) {
-                        throw new Error("⚠️ Invalid email format");
-                    }
 
                     var person = { names: [], emailAddresses: [], phoneNumbers: [], organizations: [], biographies: [], addresses: [] };
 
@@ -434,18 +420,5 @@ function _ContactsSync_applyGroups(resourceName, groupsStr, groupNameToId) {
     });
 }
 
-// Stage 1: Skeleton — headers, column widths, freeze, data validations only
-function _ContactsSync_setupSheetStructure(sheet) {
-    var tool = SyncEngine.getTool('CONTACTS_SYNC');
-    _App_applyBodyFormatting(sheet, 0, tool.FORMAT_CONFIG);
-}
 
-function _ContactsSync_applyDataValidationsInternal(sheet) {
-    var maxRows = sheet.getMaxRows();
-    if (maxRows < 2) return;
-    var headers = SheetManager.getHeaders('CONTACTS_SYNC');
-    var actionColIndex = headers.indexOf('Action') + 1;
-    var ruleAction = SpreadsheetApp.newDataValidation().requireValueInList(["CREATE", "UPDATE", "DELETE"], true).build();
-    if (actionColIndex > 0) sheet.getRange(2, actionColIndex, maxRows - 1).setDataValidation(ruleAction);
-}
 

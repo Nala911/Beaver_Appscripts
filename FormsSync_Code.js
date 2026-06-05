@@ -30,11 +30,7 @@ SyncEngine.registerTool('FORMS_SYNC', {
 
 
 
-// --- SHEET SETUP LOGIC ---
-/** @deprecated — Use _App_ensureSheetExists('FORMS_SYNC') instead. */
-function _FormsSync_ensureSheetExistsAndActivate() {
-    return _App_ensureSheetExists('FORMS_SYNC');
-}
+
 
 /** Opens the Forms Sync sidebar and ensures the sheet exists. */
 function FormsSync_openSidebar() {
@@ -53,252 +49,9 @@ function _FormsSync_extractFormId(inputUrlOrId) {
     return match ? match[1] : inputUrlOrId; // If match fails, assume it's already an ID
 }
 
-function _FormsSync_pullForm(formInput) {
-    return Logger.run('FORMS_SYNC', 'Pull Form', function () {
-        var formId = _FormsSync_extractFormId(formInput);
-        if (!formId) return _App_fail("Invalid Form URL or ID");
 
-        try {
-            var form = _App_callWithBackoff(function () { return FormApp.openById(formId); });
-            var items = _App_callWithBackoff(function () { return form.getItems(); });
 
-            var sheetData = [];
 
-            for (var i = 0; i < items.length; i++) {
-                var item = items[i];
-                var id = item.getId().toString();
-                var title = item.getTitle() || "";
-                var type = item.getType().toString();
-                var options = "";
-                var helpText = item.getHelpText() || "";
-                var required = false;
-
-                // Extract type-specific properties (options, required)
-                try {
-                    if (type === "MULTIPLE_CHOICE") {
-                        var mcItem = item.asMultipleChoiceItem();
-                        required = mcItem.isRequired();
-                        options = mcItem.getChoices().map(function (c) { return c.getValue(); }).join("\n");
-                    } else if (type === "CHECKBOX") {
-                        var cbItem = item.asCheckboxItem();
-                        required = cbItem.isRequired();
-                        options = cbItem.getChoices().map(function (c) { return c.getValue(); }).join("\n");
-                    } else if (type === "LIST") {
-                        var liItem = item.asListItem();
-                        required = liItem.isRequired();
-                        options = liItem.getChoices().map(function (c) { return c.getValue(); }).join("\n");
-                    } else if (type === "TEXT") {
-                        required = item.asTextItem().isRequired();
-                    } else if (type === "PARAGRAPH_TEXT") {
-                        required = item.asParagraphTextItem().isRequired();
-                    } else if (type === "DATE") {
-                        required = item.asDateItem().isRequired();
-                    } else if (type === "TIME") {
-                        required = item.asTimeItem().isRequired();
-                    } else if (type === "DATETIME") {
-                        required = item.asDateTimeItem().isRequired();
-                    } else if (type === "DURATION") {
-                        required = item.asDurationItem().isRequired();
-                    } else if (type === "SCALE") {
-                        required = item.asScaleItem().isRequired();
-                    } else if (type === "GRID") {
-                        var gridItem = item.asGridItem();
-                        required = gridItem.isRequired();
-                        var gridRows = gridItem.getRows() || [];
-                        var gridCols = gridItem.getColumns() || [];
-                        options = gridRows.join("\n") + "\n||\n" + gridCols.join("\n");
-                    } else if (type === "CHECKBOX_GRID") {
-                        var cbGridItem = item.asCheckboxGridItem();
-                        required = cbGridItem.isRequired();
-                        var cbGridRows = cbGridItem.getRows() || [];
-                        var cbGridCols = cbGridItem.getColumns() || [];
-                        options = cbGridRows.join("\n") + "\n||\n" + cbGridCols.join("\n");
-                    }
-                } catch (propErr) {
-                    Logger.warn(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Property Error', "Error reading item properties for ID " + id + ": " + propErr);
-                }
-
-                sheetData.push(["", "", title, type, options, helpText, required, id]);
-            }
-
-            var sheet = _App_ensureSheetExists('FORMS_SYNC');
-
-            // Clear old data
-            var lastRow = sheet.getLastRow();
-            if (lastRow > 1) {
-                var headers = SheetManager.getHeaders('FORMS_SYNC');
-                var reqColIndex = headers.indexOf('Required') + 1;
-                sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
-                if (reqColIndex > 0) sheet.getRange(2, reqColIndex, lastRow - 1, 1).removeCheckboxes();
-            }
-
-            // Set New Data
-            if (sheetData.length > 0) {
-                var targetRange = sheet.getRange(2, 1, sheetData.length, sheetData[0].length);
-                targetRange.setValues(sheetData);
-            }
-
-            // Apply body formatting via shared utility
-            _App_applyBodyFormatting(sheet, sheetData.length, SyncEngine.getTool('FORMS_SYNC').FORMAT_CONFIG);
-
-            // Save Form ID to PropertiesService for syncing back
-            _App_setProperty(APP_PROPS.FORMS_CURRENT_FORM, formId);
-            // Save to UserProperties for sidebar auto-selection
-            _App_setProperty(APP_PROPS.FORMS_SELECTED_FORM, formId);
-
-            return _App_ok("Successfully pulled " + sheetData.length + " items.");
-        } catch (e) {
-            throw e;
-        }
-    });
-}
-
-function _FormsSync_syncToForm() {
-    return Logger.run('FORMS_SYNC', 'Sync to Form', function () {
-        var formId = _App_getProperty(APP_PROPS.FORMS_CURRENT_FORM);
-        if (!formId) return _App_fail("No form connected. Please Pull data first.");
-
-        try {
-            var form = _App_callWithBackoff(function () { return FormApp.openById(formId); });
-            
-            var pendingRows = SheetManager.readPendingObjects('FORMS_SYNC', { useDisplayValues: true });
-
-            if (pendingRows.length === 0) return _App_ok("No pending actions found.");
-
-            var stats = _App_BatchProcessor('FORMS_SYNC', pendingRows, function (item) {
-                var action = (item['Action'] || "").toString().trim().toUpperCase();
-                var id = (item['Item ID'] || "").toString().trim();
-                var title = (item['Question Title'] || "").toString();
-                var type = (item['Type'] || "").toString();
-                var optionsRaw = (item['Options'] || "").toString();
-                var helpText = (item['Help Text'] || "").toString();
-                var required = item['Required'] === true || item['Required'] === 'TRUE';
-
-                var updateObj = {
-                    action: action,
-                    id: id,
-                    status: "",
-                    _rowNumber: item._rowNumber
-                };
-
-                var optionsArr = [];
-                var gridRows = [];
-                var gridCols = [];
-
-                if (type === "GRID" || type === "CHECKBOX_GRID") {
-                    var gridParts = optionsRaw.split("||");
-                    gridRows = (gridParts[0] || "").split("\n").map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });
-                    gridCols = (gridParts[1] || "").split("\n").map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });
-                } else {
-                    optionsArr = optionsRaw ? optionsRaw.split("\n").map(function (o) { return o.trim(); }).filter(function (o) { return o.length > 0; }) : [];
-                }
-
-                    if (action === "CREATE") {
-                        if (!title) throw new Error("Missing Title");
-                        var targetItem = null;
-
-                        _App_callWithBackoff(function () {
-                            if (type === "MULTIPLE_CHOICE") targetItem = form.addMultipleChoiceItem();
-                            else if (type === "CHECKBOX") targetItem = form.addCheckboxItem();
-                            else if (type === "LIST") targetItem = form.addListItem();
-                            else if (type === "TEXT") targetItem = form.addTextItem();
-                            else if (type === "PARAGRAPH_TEXT") targetItem = form.addParagraphTextItem();
-                            else if (type === "DATE") targetItem = form.addDateItem();
-                            else if (type === "TIME") targetItem = form.addTimeItem();
-                            else if (type === "DATETIME") targetItem = form.addDateTimeItem();
-                            else if (type === "DURATION") targetItem = form.addDurationItem();
-                            else if (type === "SCALE") targetItem = form.addScaleItem();
-                            else if (type === "GRID") targetItem = form.addGridItem();
-                            else if (type === "CHECKBOX_GRID") targetItem = form.addCheckboxGridItem();
-                            else { targetItem = form.addTextItem(); type = "TEXT"; }
-                        });
-
-                        _App_callWithBackoff(function () {
-                            targetItem.setTitle(title);
-                            targetItem.setHelpText(helpText);
-                            _FormsSync_applyItemProperties(targetItem, type, required, optionsArr, gridRows, gridCols);
-                        });
-
-                        updateObj.id = targetItem.getId().toString();
-                        updateObj.action = "";
-                        updateObj.status = _App_formatStatus('SUCCESS', "Created");
-                    }
-                    else if (action === "UPDATE") {
-                        if (!id) throw new Error("Missing ID");
-                        var updItem = _App_callWithBackoff(function () { return form.getItemById(parseInt(id, 10)); });
-                        if (!updItem) throw new Error("Item ID not found");
-
-                        var currentType = updItem.getType().toString();
-
-                        if (currentType === type) {
-                            _App_callWithBackoff(function () {
-                                updItem.setTitle(title);
-                                updItem.setHelpText(helpText);
-                                _FormsSync_applyItemProperties(updItem, type, required, optionsArr, gridRows, gridCols);
-                            });
-                            updateObj.status = _App_formatStatus('SUCCESS', "Updated");
-                        } else {
-                            var targetIndex = updItem.getIndex();
-                            _App_callWithBackoff(function () { form.deleteItem(updItem); });
-
-                            var newItem = null;
-                            _App_callWithBackoff(function () {
-                                if (type === "MULTIPLE_CHOICE") newItem = form.addMultipleChoiceItem();
-                                else if (type === "CHECKBOX") newItem = form.addCheckboxItem();
-                                else if (type === "LIST") newItem = form.addListItem();
-                                else if (type === "TEXT") newItem = form.addTextItem();
-                                else if (type === "PARAGRAPH_TEXT") newItem = form.addParagraphTextItem();
-                                else if (type === "DATE") newItem = form.addDateItem();
-                                else if (type === "TIME") newItem = form.addTimeItem();
-                                else if (type === "DATETIME") newItem = form.addDateTimeItem();
-                                else if (type === "DURATION") newItem = form.addDurationItem();
-                                else if (type === "SCALE") newItem = form.addScaleItem();
-                                else if (type === "GRID") newItem = form.addGridItem();
-                                else if (type === "CHECKBOX_GRID") newItem = form.addCheckboxGridItem();
-                                else { newItem = form.addTextItem(); type = "TEXT"; }
-                            });
-
-                            _App_callWithBackoff(function () {
-                                newItem.setTitle(title);
-                                newItem.setHelpText(helpText);
-                                _FormsSync_applyItemProperties(newItem, type, required, optionsArr, gridRows, gridCols);
-                                form.moveItem(newItem.getIndex(), targetIndex);
-                            });
-
-                            updateObj.id = newItem.getId().toString();
-                            updateObj.status = _App_formatStatus('SUCCESS', "Updated (Type Recreated)");
-                        }
-                        updateObj.action = "";
-                    }
-                    else if (action === "DELETE") {
-                        if (!id) throw new Error("Missing ID");
-                        var delItem = _App_callWithBackoff(function () { return form.getItemById(parseInt(id, 10)); });
-                        if (delItem) {
-                            _App_callWithBackoff(function () { form.deleteItem(delItem); });
-                            updateObj.status = _App_formatStatus('SUCCESS', "Deleted");
-                        } else {
-                            updateObj.status = _App_formatStatus('WARNING', "Already Deleted");
-                        }
-                        updateObj.action = "";
-                    }
-
-                return updateObj;
-            }, {
-                onBatchComplete: function (batchResults) {
-                    _App_batchPatchResults('FORMS_SYNC', batchResults, function (res) {
-                        return {
-                            'Item ID': res.id
-                        };
-                    });
-                }
-            });
-
-            return _App_ok("Sync Complete. Processed: " + stats.processedCount);
-        } catch (e) {
-            throw e;
-        }
-    });
-}
 
 function _FormsSync_applyItemProperties(targetItem, type, required, optionsArr, gridRows, gridCols) {
     try {
@@ -444,7 +197,101 @@ function FormsSync_getForms() {
 function FormsSync_pullForm(formInput) {
     return Logger.run('FORMS_SYNC', 'Pull Form', function () {
         return _App_withDocumentLock('FORMS_SYNC_PULL', function () {
-            return _FormsSync_pullForm(formInput);
+            var formId = _FormsSync_extractFormId(formInput);
+            if (!formId) return _App_fail("Invalid Form URL or ID");
+
+            try {
+                var form = _App_callWithBackoff(function () { return FormApp.openById(formId); });
+                var items = _App_callWithBackoff(function () { return form.getItems(); });
+
+                var sheetData = [];
+
+                for (var i = 0; i < items.length; i++) {
+                    var item = items[i];
+                    var id = item.getId().toString();
+                    var title = item.getTitle() || "";
+                    var type = item.getType().toString();
+                    var options = "";
+                    var helpText = item.getHelpText() || "";
+                    var required = false;
+
+                    // Extract type-specific properties (options, required)
+                    try {
+                        if (type === "MULTIPLE_CHOICE") {
+                            var mcItem = item.asMultipleChoiceItem();
+                            required = mcItem.isRequired();
+                            options = mcItem.getChoices().map(function (c) { return c.getValue(); }).join("\n");
+                        } else if (type === "CHECKBOX") {
+                            var cbItem = item.asCheckboxItem();
+                            required = cbItem.isRequired();
+                            options = cbItem.getChoices().map(function (c) { return c.getValue(); }).join("\n");
+                        } else if (type === "LIST") {
+                            var liItem = item.asListItem();
+                            required = liItem.isRequired();
+                            options = liItem.getChoices().map(function (c) { return c.getValue(); }).join("\n");
+                        } else if (type === "TEXT") {
+                            required = item.asTextItem().isRequired();
+                        } else if (type === "PARAGRAPH_TEXT") {
+                            required = item.asParagraphTextItem().isRequired();
+                        } else if (type === "DATE") {
+                            required = item.asDateItem().isRequired();
+                        } else if (type === "TIME") {
+                            required = item.asTimeItem().isRequired();
+                        } else if (type === "DATETIME") {
+                            required = item.asDateTimeItem().isRequired();
+                        } else if (type === "DURATION") {
+                            required = item.asDurationItem().isRequired();
+                        } else if (type === "SCALE") {
+                            required = item.asScaleItem().isRequired();
+                        } else if (type === "GRID") {
+                            var gridItem = item.asGridItem();
+                            required = gridItem.isRequired();
+                            var gridRows = gridItem.getRows() || [];
+                            var gridCols = gridItem.getColumns() || [];
+                            options = gridRows.join("\n") + "\n||\n" + gridCols.join("\n");
+                        } else if (type === "CHECKBOX_GRID") {
+                            var cbGridItem = item.asCheckboxGridItem();
+                            required = cbGridItem.isRequired();
+                            var cbGridRows = cbGridItem.getRows() || [];
+                            var cbGridCols = cbGridItem.getColumns() || [];
+                            options = cbGridRows.join("\n") + "\n||\n" + cbGridCols.join("\n");
+                        }
+                    } catch (propErr) {
+                        Logger.warn(SyncEngine.getTool('FORMS_SYNC').TITLE, 'Property Error', "Error reading item properties for ID " + id + ": " + propErr);
+                    }
+
+                    sheetData.push(["", "", title, type, options, helpText, required, id]);
+                }
+
+                var sheet = _App_ensureSheetExists('FORMS_SYNC');
+
+                // Clear old data
+                var lastRow = sheet.getLastRow();
+                if (lastRow > 1) {
+                    var headers = SheetManager.getHeaders('FORMS_SYNC');
+                    var reqColIndex = headers.indexOf('Required') + 1;
+                    sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
+                    if (reqColIndex > 0) sheet.getRange(2, reqColIndex, lastRow - 1, 1).removeCheckboxes();
+                }
+
+                // Set New Data
+                if (sheetData.length > 0) {
+                    var targetRange = sheet.getRange(2, 1, sheetData.length, sheetData[0].length);
+                    targetRange.setValues(sheetData);
+                }
+
+                // Apply body formatting via shared utility
+                _App_applyBodyFormatting(sheet, sheetData.length, SyncEngine.getTool('FORMS_SYNC').FORMAT_CONFIG);
+
+                // Save Form ID to PropertiesService for syncing back
+                _App_setProperty(APP_PROPS.FORMS_CURRENT_FORM, formId);
+                // Save to UserProperties for sidebar auto-selection
+                _App_setProperty(APP_PROPS.FORMS_SELECTED_FORM, formId);
+
+                return _App_ok("Successfully pulled " + sheetData.length + " items.");
+            } catch (e) {
+                throw e;
+            }
         });
     });
 }
@@ -452,7 +299,148 @@ function FormsSync_pullForm(formInput) {
 function FormsSync_syncToForm() {
     return Logger.run('FORMS_SYNC', 'Sync to Form', function () {
         return _App_withDocumentLock('FORMS_SYNC_PUSH', function () {
-            return _FormsSync_syncToForm();
+            var formId = _App_getProperty(APP_PROPS.FORMS_CURRENT_FORM);
+            if (!formId) return _App_fail("No form connected. Please Pull data first.");
+
+            try {
+                var form = _App_callWithBackoff(function () { return FormApp.openById(formId); });
+                
+                var pendingRows = SheetManager.readPendingObjects('FORMS_SYNC', { useDisplayValues: true });
+
+                if (pendingRows.length === 0) return _App_ok("No pending actions found.");
+
+                var stats = _App_BatchProcessor('FORMS_SYNC', pendingRows, function (item) {
+                    var action = (item['Action'] || "").toString().trim().toUpperCase();
+                    var id = (item['Item ID'] || "").toString().trim();
+                    var title = (item['Question Title'] || "").toString();
+                    var type = (item['Type'] || "").toString();
+                    var optionsRaw = (item['Options'] || "").toString();
+                    var helpText = (item['Help Text'] || "").toString();
+                    var required = item['Required'] === true || item['Required'] === 'TRUE';
+
+                    var updateObj = {
+                        action: action,
+                        id: id,
+                        status: "",
+                        _rowNumber: item._rowNumber
+                    };
+
+                    var optionsArr = [];
+                    var gridRows = [];
+                    var gridCols = [];
+
+                    if (type === "GRID" || type === "CHECKBOX_GRID") {
+                        var gridParts = optionsRaw.split("||");
+                        gridRows = (gridParts[0] || "").split("\n").map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });
+                        gridCols = (gridParts[1] || "").split("\n").map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });
+                    } else {
+                        optionsArr = optionsRaw ? optionsRaw.split("\n").map(function (o) { return o.trim(); }).filter(function (o) { return o.length > 0; }) : [];
+                    }
+
+                        if (action === "CREATE") {
+                            if (!title) throw new Error("Missing Title");
+                            var targetItem = null;
+
+                            _App_callWithBackoff(function () {
+                                if (type === "MULTIPLE_CHOICE") targetItem = form.addMultipleChoiceItem();
+                                else if (type === "CHECKBOX") targetItem = form.addCheckboxItem();
+                                else if (type === "LIST") targetItem = form.addListItem();
+                                else if (type === "TEXT") targetItem = form.addTextItem();
+                                else if (type === "PARAGRAPH_TEXT") targetItem = form.addParagraphTextItem();
+                                else if (type === "DATE") targetItem = form.addDateItem();
+                                else if (type === "TIME") targetItem = form.addTimeItem();
+                                else if (type === "DATETIME") targetItem = form.addDateTimeItem();
+                                else if (type === "DURATION") targetItem = form.addDurationItem();
+                                else if (type === "SCALE") targetItem = form.addScaleItem();
+                                else if (type === "GRID") targetItem = form.addGridItem();
+                                else if (type === "CHECKBOX_GRID") targetItem = form.addCheckboxGridItem();
+                                else { targetItem = form.addTextItem(); type = "TEXT"; }
+                            });
+
+                            _App_callWithBackoff(function () {
+                                targetItem.setTitle(title);
+                                targetItem.setHelpText(helpText);
+                                _FormsSync_applyItemProperties(targetItem, type, required, optionsArr, gridRows, gridCols);
+                            });
+
+                            updateObj.id = targetItem.getId().toString();
+                            updateObj.action = "";
+                            updateObj.status = _App_formatStatus('SUCCESS', "Created");
+                        }
+                        else if (action === "UPDATE") {
+                            if (!id) throw new Error("Missing ID");
+                            var updItem = _App_callWithBackoff(function () { return form.getItemById(parseInt(id, 10)); });
+                            if (!updItem) throw new Error("Item ID not found");
+
+                            var currentType = updItem.getType().toString();
+
+                            if (currentType === type) {
+                                _App_callWithBackoff(function () {
+                                    updItem.setTitle(title);
+                                    updItem.setHelpText(helpText);
+                                    _FormsSync_applyItemProperties(updItem, type, required, optionsArr, gridRows, gridCols);
+                                });
+                                updateObj.status = _App_formatStatus('SUCCESS', "Updated");
+                            } else {
+                                var targetIndex = updItem.getIndex();
+                                _App_callWithBackoff(function () { form.deleteItem(updItem); });
+
+                                var newItem = null;
+                                _App_callWithBackoff(function () {
+                                    if (type === "MULTIPLE_CHOICE") newItem = form.addMultipleChoiceItem();
+                                    else if (type === "CHECKBOX") newItem = form.addCheckboxItem();
+                                    else if (type === "LIST") newItem = form.addListItem();
+                                    else if (type === "TEXT") newItem = form.addTextItem();
+                                    else if (type === "PARAGRAPH_TEXT") newItem = form.addParagraphTextItem();
+                                    else if (type === "DATE") newItem = form.addDateItem();
+                                    else if (type === "TIME") newItem = form.addTimeItem();
+                                    else if (type === "DATETIME") newItem = form.addDateTimeItem();
+                                    else if (type === "DURATION") newItem = form.addDurationItem();
+                                    else if (type === "SCALE") newItem = form.addScaleItem();
+                                    else if (type === "GRID") newItem = form.addGridItem();
+                                    else if (type === "CHECKBOX_GRID") newItem = form.addCheckboxGridItem();
+                                    else { newItem = form.addTextItem(); type = "TEXT"; }
+                                });
+
+                                _App_callWithBackoff(function () {
+                                    newItem.setTitle(title);
+                                    newItem.setHelpText(helpText);
+                                    _FormsSync_applyItemProperties(newItem, type, required, optionsArr, gridRows, gridCols);
+                                    form.moveItem(newItem.getIndex(), targetIndex);
+                                });
+
+                                updateObj.id = newItem.getId().toString();
+                                updateObj.status = _App_formatStatus('SUCCESS', "Updated (Type Recreated)");
+                            }
+                            updateObj.action = "";
+                        }
+                        else if (action === "DELETE") {
+                            if (!id) throw new Error("Missing ID");
+                            var delItem = _App_callWithBackoff(function () { return form.getItemById(parseInt(id, 10)); });
+                            if (delItem) {
+                                _App_callWithBackoff(function () { form.deleteItem(delItem); });
+                                updateObj.status = _App_formatStatus('SUCCESS', "Deleted");
+                            } else {
+                                updateObj.status = _App_formatStatus('WARNING', "Already Deleted");
+                            }
+                            updateObj.action = "";
+                        }
+
+                    return updateObj;
+                }, {
+                    onBatchComplete: function (batchResults) {
+                        _App_batchPatchResults('FORMS_SYNC', batchResults, function (res) {
+                            return {
+                                'Item ID': res.id
+                            };
+                        });
+                    }
+                });
+
+                return _App_ok("Sync Complete. Processed: " + stats.processedCount);
+            } catch (e) {
+                throw e;
+            }
         });
     });
 }

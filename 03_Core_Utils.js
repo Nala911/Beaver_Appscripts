@@ -127,6 +127,128 @@ function _App_isExecutionLimitApproaching() {
 }
 
 // ==========================================
+// ==========================================
+// Centralized Google API Error Translation Engine
+// ==========================================
+/**
+ * Parses raw JSON or Google Apps Script exception messages and returns a user-friendly, actionable description.
+ *
+ * @param {Error|string|Object} err - The original exception thrown by an API or system call
+ * @returns {Object} { message: string, isFatal: boolean, category: string }
+ */
+function _App_translateApiError(err) {
+    var rawMsg = '';
+    if (err) {
+        if (typeof err === 'string') rawMsg = err;
+        else if (err.message) rawMsg = err.message;
+        else rawMsg = String(err);
+    }
+    
+    var lower = rawMsg.toLowerCase();
+    var result = {
+        message: rawMsg,
+        isFatal: false,
+        category: 'unknown'
+    };
+
+    // 1. Authorization / OAuth Scope Errors
+    if (lower.indexOf('authentication') !== -1 ||
+        lower.indexOf('authorization') !== -1 ||
+        lower.indexOf('scopes') !== -1 ||
+        lower.indexOf('403') !== -1 ||
+        lower.indexOf('access_denied') !== -1 ||
+        lower.indexOf('unauthorized') !== -1 ||
+        lower.indexOf('access denied') !== -1) {
+        
+        result.message = "⚠️ Authorization Required: The script lacks necessary Google permissions. Please re-authorize the script and try again.";
+        result.isFatal = true;
+        result.category = 'auth';
+    }
+    // 2. Rate Limits & Quotas
+    else if (lower.indexOf('quota') !== -1 ||
+             lower.indexOf('limit exceeded') !== -1 ||
+             lower.indexOf('too many') !== -1 ||
+             lower.indexOf('429') !== -1 ||
+             lower.indexOf('rate limit') !== -1) {
+             
+        result.message = "⚠️ Quota Exceeded: You have hit Google's daily API limits for this service. Please wait a few hours or until tomorrow to resume syncing.";
+        result.isFatal = true;
+        result.category = 'quota';
+    }
+    // 3. Document or Resource Not Found
+    else if (lower.indexOf('not found') !== -1 ||
+             lower.indexOf('404') !== -1 ||
+             lower.indexOf('cannot find') !== -1 ||
+             lower.indexOf('inaccessible') !== -1) {
+             
+        result.message = "⚠️ Resource Not Found: The specified event, file, calendar, or folder ID is invalid, was deleted, or is not shared with this Google Account.";
+        result.isFatal = false;
+        result.category = 'not_found';
+    }
+    // 4. Temporary / Transient Server Failure
+    else if (lower.indexOf('500') !== -1 ||
+             lower.indexOf('502') !== -1 ||
+             lower.indexOf('503') !== -1 ||
+             lower.indexOf('internal error') !== -1 ||
+             lower.indexOf('service unavailable') !== -1) {
+             
+        result.message = "❌ Service Error: Google servers are temporarily overwhelmed. The system will auto-retry, but please wait and try again if it continues to fail.";
+        result.isFatal = false;
+        result.category = 'transient';
+    }
+    // 5. Native parameter mismatch
+    else if (lower.indexOf("don't match the method signature") !== -1 ||
+             lower.indexOf("invalid parameter") !== -1 ||
+             lower.indexOf("400") !== -1) {
+             
+        result.message = "⚠️ Formatting Error: The data provided in the sheet doesn't match the required types (e.g. invalid date formats, missing compulsory fields).";
+        result.isFatal = false;
+        result.category = 'validation';
+    }
+    
+    return result;
+}
+
+// ==========================================
+// Centralized Sheet Row Validator
+// ==========================================
+/**
+ * Validates a sheet row object against the tool's registered COL_SCHEMA rules.
+ * @param {Object} item - Row object (usually from SheetManager.readPendingObjects)
+ * @param {string} toolKey - Tool identifier (e.g. 'CALENDAR_SYNC')
+ * @returns {string|null} Error string if validation fails, or null if row is fully valid.
+ */
+function _App_validateRowAgainstSchema(item, toolKey) {
+    if (typeof SyncEngine === 'undefined' || !toolKey) return null;
+    try {
+        var toolCfg = SyncEngine.getTool(toolKey);
+        if (!toolCfg || !toolCfg.FORMAT_CONFIG || !toolCfg.FORMAT_CONFIG.COL_SCHEMA) {
+            return null;
+        }
+        var schema = toolCfg.FORMAT_CONFIG.COL_SCHEMA;
+        for (var i = 0; i < schema.length; i++) {
+            var col = schema[i];
+            var colHeader = col.header;
+            var colType = col.type;
+            
+            // Skip validation on standard structural columns
+            if (colHeader === 'Action' || colHeader === 'Status') continue;
+            
+            if (item && Object.prototype.hasOwnProperty.call(item, colHeader)) {
+                var val = item[colHeader];
+                var isValid = _App_validateValueByType(colType, val, col);
+                if (!isValid) {
+                    return "⚠️ Data Error: Invalid format in column '" + colHeader + "' (Expected " + colType + ")";
+                }
+            }
+        }
+    } catch (e) {
+        // Fallback gracefully
+    }
+    return null;
+}
+
+// ==========================================
 // _App_BatchProcessor — Unified Iteration Engine
 // ==========================================
 
@@ -183,6 +305,12 @@ function _App_BatchProcessor(toolKey, items, processFn, options) {
             var globalIndex = i + j;
 
             try {
+                // 3a. Pre-Validation Engine Check
+                var schemaValidationError = _App_validateRowAgainstSchema(item, toolKey);
+                if (schemaValidationError) {
+                    throw new Error(schemaValidationError);
+                }
+
                 // Wrap in backoff retry for transient API issues
                 var result = _App_callWithBackoff(function() {
                     return processFn(item, globalIndex);
@@ -194,18 +322,37 @@ function _App_BatchProcessor(toolKey, items, processFn, options) {
             } catch (err) {
                 stats.errorCount++;
                 
+                var translated = _App_translateApiError(err);
+                
+                // Return an error object to the tool so it can write to the Status column
+                var errObj = { isError: true, error: translated.message };
+                if (item && item._rowNumber !== undefined) {
+                    errObj._rowNumber = item._rowNumber;
+                }
+                
+                segmentResults.push(errObj);
+                stats.results.push(errObj);
+                
+                // If it is a fatal system/connection error (OAuth scopes / Rate limit), halt the execution
+                if (translated.isFatal) {
+                    _App_clearProgress(toolKey);
+                    
+                    // Flush what was successfully processed (and the current fatal item) before halting
+                    if (opts.onBatchComplete && segmentResults.length > 0) {
+                        try {
+                            opts.onBatchComplete(segmentResults);
+                        } catch (writeErr) {
+                            // Suppress errors during flush write to prioritize bubbling up original fatal error
+                        }
+                    }
+                    
+                    throw new Error(translated.message);
+                }
+                
                 if (opts.stopOnFailure) {
                     _App_clearProgress(toolKey);
                     throw err;
                 }
-                
-                // Return an error object to the tool so it can write to the Status column
-                var errObj = { isError: true, error: err.message };
-                if (item && item._rowNumber !== undefined) {
-                    errObj._rowNumber = item._rowNumber;
-                }
-                segmentResults.push(errObj);
-                stats.results.push(errObj);
             }
 
             // Optional: Frequent progress updates for UI responsiveness
@@ -216,7 +363,7 @@ function _App_BatchProcessor(toolKey, items, processFn, options) {
         _App_setProgress(toolKey, stats.processedCount + stats.errorCount, total);
 
         // 4. Batch Lifecycle Hook
-        if (opts.onBatchComplete) {
+        if (opts.onBatchComplete && segmentResults.length > 0) {
             opts.onBatchComplete(segmentResults);
         }
     }

@@ -21,7 +21,7 @@ SyncEngine.registerTool('MAIL_MERGE', {
         COL_SCHEMA: [
             { header: 'Action', type: 'ACTION', options: ['SEND', 'DRAFT'] },
             { header: 'Status', type: 'STATUS' },
-            { header: 'To', type: 'TEXT' },
+            { header: 'To', type: 'EMAIL_LIST' },
             { header: 'CC', type: 'EMAIL_LIST' },
             { header: 'BCC', type: 'EMAIL_LIST' },
             { header: 'Thread ID or Subject', type: 'TEXT' },
@@ -187,9 +187,6 @@ function MailMerge_executeActions(draftId, startIndex) {
         var targetAttachments = item['Attachments'];
 
         if (!targetTo && !targetThreadId) throw new Error("Missing Email To");
-        if (targetTo && !_App_validateEmailList(targetTo)) throw new Error("Invalid Email To address");
-        if (!_App_validateEmailList(targetCc)) throw new Error("Invalid CC address");
-        if (!_App_validateEmailList(targetBcc)) throw new Error("Invalid BCC address");
 
         var emailBody = template.body;
         var emailSubject = template.subject;
