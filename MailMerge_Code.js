@@ -142,19 +142,14 @@ function MailMerge_syncPlaceholders(draftId) {
 // Centralized helpers from 03_Core_Utils.js are used instead.
 
 
-function MailMerge_executeActions(draftId, startIndex) {
+function MailMerge_executeActions(draftId) {
   return Logger.run('MAIL_MERGE', 'Execute Actions', function () {
     return _App_withDocumentLock('MAIL_MERGE_EXECUTE', function () {
-      var start = startIndex || 0;
-      var batchSize = 10; 
-
       var pendingRows = SheetManager.readPendingObjects('MAIL_MERGE', { useDisplayValues: true });
 
-      if (pendingRows.length === 0) return _App_ok(start > 0 ? "Batch finished!" : "Nothing to do! No 'SEND' or 'DRAFT' actions pending.", { completed: true, message: start > 0 ? "Batch finished!" : "Nothing to do! No 'SEND' or 'DRAFT' actions pending." });
-      if (start >= pendingRows.length) return _App_ok("Batch complete!", { completed: true, message: "Batch complete!" });
-
-      var batchItems = pendingRows.slice(start, start + batchSize);
-      var remainingPending = pendingRows.length - (start + batchItems.length);
+      if (pendingRows.length === 0) {
+        return _App_ok("Nothing to do! No 'SEND' or 'DRAFT' actions pending.");
+      }
 
       var template = null;
       try {
@@ -170,7 +165,7 @@ function MailMerge_executeActions(draftId, startIndex) {
         throw new Error("⚠️ Failed to load Draft: " + e.message);
       }
 
-      var stats = _App_BatchProcessor('MAIL_MERGE', batchItems, function (item) {
+      var stats = _App_BatchProcessor('MAIL_MERGE', pendingRows, function (item) {
         var rowUpdates = {
           action: item['Action'],
           status: "",
@@ -273,7 +268,7 @@ function MailMerge_executeActions(draftId, startIndex) {
             GmailApp.sendEmail(targetTo, emailSubject, "", options);
           }
 
-          rowUpdates.status = _App_formatStatus('SUCCESS', "Sent (" + new Date().toLocaleString() + ")");
+          rowUpdates.status = _App_formatStatus('SUCCESS', "Sent (" + _App_formatDateTime(new Date()) + ")");
           rowUpdates.action = "";
         } else if (action === "DRAFT") {
           var options = {
@@ -331,12 +326,11 @@ function MailMerge_executeActions(draftId, startIndex) {
         }
       });
 
-      return _App_ok('Processed mail merge batch.', {
-        completed: stats.processedCount + stats.errorCount >= pendingRows.length - start,
-        nextIndex: start + batchItems.length,
-        remainingPending: remainingPending,
-        processed: stats.processedCount
-      });
+      var finalMsg = "Successfully processed " + stats.processedCount + " emails.";
+      if (stats.errorCount > 0) finalMsg += " (" + stats.errorCount + " errors)";
+      if (stats.timeLimitReached) finalMsg = "⏳ Time limit reached. " + finalMsg;
+
+      return _App_ok(finalMsg);
     });
   });
 }

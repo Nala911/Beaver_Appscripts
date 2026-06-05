@@ -195,20 +195,16 @@ function _DocsMerge_replacePlaceholders(body, headers, rowObj) {
 
 // execution context - no longer a single monolith function
 
-function DocsMerge_executeBatch(config, startIndex) {
+function DocsMerge_executeBatch(config) {
   return Logger.run('DOCS_MERGE', 'Execute Batch', function () {
     return _App_withDocumentLock('DOCS_MERGE_EXECUTE', function () {
-      var start = startIndex || 0;
-      var batchSize = 10;
       var mode = config.mode || "INDIVIDUAL";
 
       var pendingRows = SheetManager.readPendingObjects('DOCS_MERGE', { useDisplayValues: true });
 
-      if (pendingRows.length === 0) return _App_ok(start > 0 ? "Batch finished!" : "Nothing to do! No 'Generate PDF' or 'Generate Doc' actions pending.", { completed: true, message: start > 0 ? "Batch finished!" : "Nothing to do! No 'Generate PDF' or 'Generate Doc' actions pending." });
-      if (start >= pendingRows.length) return _App_ok("Batch complete!", { completed: true, message: "Batch complete!" });
-
-      var batchItems = pendingRows.slice(start, start + batchSize);
-      var remainingPending = pendingRows.length - (start + batchItems.length);
+      if (pendingRows.length === 0) {
+        return _App_ok("Nothing to do! No 'Generate PDF' or 'Generate Doc' actions pending.");
+      }
 
       var templateId = _DocsMerge_extractIdFromUrl(config.templateUrl);
       var folderId = _DocsMerge_extractIdFromUrl(config.folderUrl);
@@ -217,16 +213,14 @@ function DocsMerge_executeBatch(config, startIndex) {
         throw new Error("Could not extract IDs from URLs. Please provide full valid URLs.");
       }
 
-      if (start === 0) {
-        // Save config for future use on first run
-        var saveResult = DocsMerge_saveConfig({
-          templateUrl: config.templateUrl,
-          folderUrl: config.folderUrl,
-          templateName: config.templateName,
-          folderName: config.folderName
-        });
-        if (!saveResult.success) throw new Error(saveResult.message);
-      }
+      // Save config for future use
+      var saveResult = DocsMerge_saveConfig({
+        templateUrl: config.templateUrl,
+        folderUrl: config.folderUrl,
+        templateName: config.templateName,
+        folderName: config.folderName
+      });
+      if (!saveResult.success) throw new Error(saveResult.message);
 
       var templateFile = null;
       var targetFolder = null;
@@ -239,28 +233,21 @@ function DocsMerge_executeBatch(config, startIndex) {
 
       var masterDocId = null;
       if (mode === "SINGLE") {
-        if (start === 0) {
-          var dateStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm");
-          var masterDoc = templateFile.makeCopy('Merged_Doc_' + dateStr);
-          masterDocId = masterDoc.getId();
-          _App_setProperty(APP_PROPS.DOCS_MERGE_MASTER_DOC_ID, masterDocId);
+        var dateStr = _App_formatDateTime(new Date(), "yyyy-MM-dd HH:mm");
+        var masterDoc = templateFile.makeCopy('Merged_Doc_' + dateStr);
+        masterDocId = masterDoc.getId();
+        _App_setProperty(APP_PROPS.DOCS_MERGE_MASTER_DOC_ID, masterDocId);
 
-          var masterDocOpen = DocumentApp.openById(masterDocId);
-          masterDocOpen.getBody().clear();
-          masterDocOpen.saveAndClose();
-        } else {
-          masterDocId = _App_getProperty(APP_PROPS.DOCS_MERGE_MASTER_DOC_ID);
-          if (!masterDocId) throw new Error("Could not find master document ID to resume batch.");
-        }
+        var masterDocOpen = DocumentApp.openById(masterDocId);
+        masterDocOpen.getBody().clear();
+        masterDocOpen.saveAndClose();
       }
 
       var headers = SheetManager.getHeaders('DOCS_MERGE');
       var rowLinkColName = "Merged File Link";
       var linkColIndex = headers.indexOf(rowLinkColName) + 1; // 1-based index
 
-      var isLastBatch = (start + batchItems.length) >= pendingRows.length;
-
-      var stats = _App_BatchProcessor('DOCS_MERGE', batchItems, function (item, index) {
+      var stats = _App_BatchProcessor('DOCS_MERGE', pendingRows, function (item, index) {
         var rowUpdates = {
           action: item['Action'],
           _rowNumber: item._rowNumber,
@@ -268,8 +255,8 @@ function DocsMerge_executeBatch(config, startIndex) {
           linkUrl: null
         };
         
-        var isFirstInWholeProcess = (start === 0 && index === 0);
-        var isLastInWholeProcess = (isLastBatch && index === (batchItems.length - 1));
+        var isFirstInWholeProcess = (index === 0);
+        var isLastInWholeProcess = (index === (pendingRows.length - 1));
         var outputFormat = item['Action'] === "Generate PDF" ? "PDF" : "DOC";
 
         if (mode === "SINGLE") {
@@ -360,8 +347,8 @@ function DocsMerge_executeBatch(config, startIndex) {
         }
       });
 
-      // Handle finish step for SINGLE mode if it's the absolute last batch
-      if (mode === "SINGLE" && isLastBatch) {
+      // Handle finish step for SINGLE mode
+      if (mode === "SINGLE" && masterDocId) {
         try {
           var masterFile = DriveApp.getFileById(masterDocId);
           var finalMasterUrl = "";
@@ -392,15 +379,16 @@ function DocsMerge_executeBatch(config, startIndex) {
           }
         } catch (err) {
           throw new Error("Finish Export Failed: " + err.message);
+        } finally {
+          _App_deleteProperty(APP_PROPS.DOCS_MERGE_MASTER_DOC_ID);
         }
       }
 
-      return _App_ok('Processed Docs Merge batch.', {
-        completed: stats.processedCount + stats.errorCount >= pendingRows.length - start,
-        nextIndex: start + batchItems.length,
-        remainingPending: remainingPending,
-        processed: stats.processedCount
-      });
+      var finalMsg = "Successfully processed " + stats.processedCount + " documents.";
+      if (stats.errorCount > 0) finalMsg += " (" + stats.errorCount + " errors)";
+      if (stats.timeLimitReached) finalMsg = "⏳ Time limit reached. " + finalMsg;
+
+      return _App_ok(finalMsg);
     });
   });
 }

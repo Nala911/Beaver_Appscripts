@@ -247,8 +247,7 @@ function PipelineControl_getPipelineDashboardData() {
 
                 var formattedDate = "";
                 if (lastRun && lastRun instanceof Date) {
-                    var opts = { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-                    formattedDate = lastRun.toLocaleDateString(undefined, opts);
+                    formattedDate = _App_formatDateTime(lastRun, "MMM d, h:mm a");
                 } else if (lastRun) {
                     formattedDate = String(lastRun);
                 }

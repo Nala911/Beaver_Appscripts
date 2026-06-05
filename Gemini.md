@@ -46,14 +46,14 @@ The system logic is split into sequential modules evaluated in order:
 - `01_Config_Theme.js`: Default theme definitions, colors, and `SHEET_THEME` proxy.
 - `01_SheetManager.js`: Centralized data access object (DAO). Uses `SyncEngine` configurations to map sheet data to JavaScript objects and vice-versa.
 - `02_Config_Storage.js`: Unified properties service wrappers (`_App_getProperty`, `_App_setProperty`, `_App_deleteProperty`, `_App_getRawProperty`).
-- `03_Core_Utils.js`: Core utilities (`_App_throttle`, `_App_callWithBackoff`, `_App_setProgress`, `_App_getColumnLetter`, `_App_escapeRegExp`, `_App_getDriveAttachment`, `_App_mergeEmails`, etc.).
-- `04_Core_Validators.js`: Validation helpers for types and constraints.
+- `03_Core_Utils.js`: Core utilities (`_App_BatchProcessor`, `_App_batchPatchResults`, `_App_throttle`, `_App_callWithBackoff`, `_App_setProgress`, `_App_getColumnLetter`, `_App_formatDateTime`, etc.).
+- `04_Core_Validators.js`: Validation helpers for types and constraints (`_App_validateEmail`, `_App_validateEmailList`, `_App_validateValueByType`).
 - `05_Core_State.js`: Global application state management.
 - `06_Sheets_Helpers.js`: Low-level spreadsheet helpers (`_App_canScaffoldSheet`, `_App_assertActiveSheet`, `_App_validateActiveSheet`).
 - `07_Sheets_Formatting.js`: UI/styling application to sheets (`_App_applyBodyFormatting`).
 - `08_Engine_Core.js`: The `SyncEngine` plugin registration and retrieval system.
 - `09_Engine_UI.js`: UI abstractions for opening sidebars/dialogs and scaffolding sheets (`_App_openSidebar`, `_App_launchTool`, `_App_ensureSheetExists`).
-- `UI.js`: The central UI orchestrator. Responsible for creating the custom "Workspace Sync Tools" menu (`onOpen`), providing the global wrapper for the Settings sidebar, and connecting user actions to the tools.
+- `UI.js`: The central UI orchestrator. Responsible for creating the custom "Workspace Sync Tools" menu (`onOpen`) and providing server-side UI helper entry points for sidebars (polling progress, retrieving help documentation, checking for unsaved changes).
 - `SidebarShared.html`: Shared HTML, CSS, and JS runtime for sidebars. Owns the common loading/toast/tooltip shell, `SyncSidebar` action helpers, global button locking, and reusable layout/action primitives consumed by tool sidebars.
 - `PipelineControl_Sidebar.html`: Standalone pipeline dashboard sidebar. The legacy `PipelineControl_CSS.html` / `PipelineControl_JS.html` partials have been retired and their logic now lives here.
 - `Logger.js`: Silent execution boundary. Provides `Logger.run` and no-op logging methods; expected failures should return `_App_fail(...)`, while unexpected exceptions are rethrown to the caller. All console-based logging is strictly forbidden.
@@ -109,7 +109,7 @@ To maintain a professional and consistent user experience, the following strings
 - **Column Categories**: Formatting is strictly schema-driven and positional. The engine maps types to three visual categories:
     - **First Columns (Action/Status)**: Includes `type: 'ACTION'` and `type: 'STATUS'`. Colors use `SHEET_THEME.FIRST_COLS_COLOR`.
     - **Last Columns (Read-Only/IDs)**: Includes `type: 'READ_ONLY'` and `type: 'ID'`. **Crucial**: All System IDs (e.g., `type: 'ID'`) MUST be placed at the very end of the `COL_SCHEMA` array to hide non-actionable technical data from the user's immediate view. Colors use `SHEET_THEME.LAST_COLS_COLOR`.
-    - **Middle Columns (Editable)**: Includes all other data input types (`TEXT`, `URL`, `DROPDOWN`, `CHECKBOX`, `EMAIL`, etc.). Colors use `SHEET_THEME.MIDDLE_COLS_COLOR`.
+    - **Middle Columns (Editable)**: Includes all other data input types (`TEXT`, `URL`, `DROPDOWN`, `CHECKBOX`, `EMAIL`, `EMAIL_LIST`, etc.). Colors use `SHEET_THEME.MIDDLE_COLS_COLOR`.
 - **Frozen Columns**: To ensure these system columns remain visible at all times, the engine enforces a default of 2 frozen columns. Tools can omit `FROZEN_COLS` in registration metadata to let the engine apply this default, but if specified, it must be set to `2`.
 - **Sidebar Documentation**: Only tool sidebars that benefit from guided onboarding need a "Help & Guide" section at the bottom, using the standardized `.sync-sidebar-help-guide-card` architecture.
 
@@ -179,11 +179,12 @@ Never use `PropertiesService.getDocumentProperties()` directly in a tool.
 - **Execution Time Limits**: Global timing is managed via `_App_resetExecutionTimer()` and `_App_isExecutionLimitApproaching()`. The processor pauses execution at 5.5 minutes, allowing for safe partial completions and saving the progress.
 - **Trigger Management**: Background sync tools should manage their own `ScriptApp` triggers. Use an internal `_ToolName_manageTrigger` function called from the setting update handler to ensure triggers are created/removed in sync with user preferences.
 - **Intelligent Halting**: If the `_App_BatchProcessor` intercepts a fatal system or authorization error (e.g. rate limit exceeded or access token revoked), it flushes all currently successful segment row status modifications and halts execution immediately. This prevents cascading raw API errors and preserves the Action column state for the remaining unprocessed rows.
+- **Server-Side Execution**: Always run batch processing entirely on the server via `_App_BatchProcessor` rather than manual client-side slicing. The client sidebar must invoke the action once and include the `toolKey` parameter in the action config so that `SyncSidebar` automatically handles loading progress percentage updates.
 
 ### 7. Centralized Validation Contract
 - **Deprecating Local Helpers**: Do not write custom local validators inside tool modules for common validation needs (like email syntax verification).
 - **Core Validators**: Always call `_App_validateEmail` or `_App_validateEmailList` from `04_Core_Validators.js`. Any future general validators should be added to that central module rather than being duplicated in tool backends.
-- **Schema-Driven Pre-Validation**: The engine provides a unified data pre-validation engine. The `_App_BatchProcessor` dynamically invokes `_App_validateRowAgainstSchema(item, toolKey)` based on the tool's registered `COL_SCHEMA` rules before executing the tool's backend logic. Schema types like `EMAIL`, `DATE`, `DATETIME`, `BOOLEAN`, `URL`, `DOCS_URL`, `DRIVE_URL`, and `DROPDOWN` are validated automatically using `_App_validateValueByType()` in `04_Core_Validators.js`.
+- **Schema-Driven Pre-Validation**: The engine provides a unified data pre-validation engine. The `_App_BatchProcessor` dynamically invokes `_App_validateRowAgainstSchema(item, toolKey)` based on the tool's registered `COL_SCHEMA` rules before executing the tool's backend logic. Schema types like `EMAIL`, `EMAIL_LIST`, `DATE`, `DATETIME`, `BOOLEAN`, `URL`, `DOCS_URL`, `DRIVE_URL`, and `DROPDOWN` are validated automatically using `_App_validateValueByType()` in `04_Core_Validators.js`.
 
 ### 8. Batch Result Patching & Action Preservation
 - **Reporting Success/Failure**: When batch execution completes, do not write raw status strings to the sheet manually. Call `_App_batchPatchResults` (defined in `03_Core_Utils.js`) within the `onBatchComplete` hook of your `_App_BatchProcessor`.
@@ -280,6 +281,7 @@ Before completing any task, mentally run this checklist. Do not proceed until yo
 - [ ] If my tool overwrites spreadsheet rows during a Pull action, did I bind the centralized `'UI_checkForUnsavedChanges'` helper as `unsavedCheckMethod` in the sidebar `runPullAction` call and pass the tool key in `unsavedCheckArgs`?
 - [ ] Did I wrap heavy backend push and pull entry points with `_App_withDocumentLock` to ensure concurrency protection?
 - [ ] Did I use the central `_App_formatDateTime` utility for timezone-safe date-time formatting to the spreadsheet?
+- [ ] Did I run the batch process entirely on the server using `_App_BatchProcessor` (avoiding manual client-side slicing/looping) and pass `toolKey` in `SyncSidebar` calls to hydrate the progress overlay?
 
 ---
 

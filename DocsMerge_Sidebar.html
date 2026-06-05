@@ -441,7 +441,7 @@
                 : "Generate a single merged PDF for all 'Generate Doc/PDF' actions?";
 
             SyncSidebar.showConfirmDialog(confirmMsg, function() {
-                setStatus('working', 'Initializing...');
+                setStatus('working', 'Processing Items...');
 
                 const config = {
                     templateUrl: templateUrl,
@@ -451,32 +451,22 @@
                     mode: currentMode
                 };
 
-                executeBatch(config, 0);
-            });
-        }
-
-        function executeBatch(config, startIndex) {
-            SyncSidebar.runPushAction({
-                action: {
-                    method: 'DocsMerge_executeBatch',
-                    args: [config, startIndex],
-                    loadingText: 'Generating documents...',
-                    showSuccessToast: false,
-                    toast: false,
-                    onSuccess: function (res) {
-                        if (res.completed) {
+                SyncSidebar.runPushAction({
+                    action: {
+                        method: 'DocsMerge_executeBatch',
+                        args: [config],
+                        toolKey: 'DOCS_MERGE',
+                        loadingText: 'Generating documents...',
+                        onSuccess: function (res) {
                             setStatus('ready');
-                            log("Batch complete! Processed: " + res.processed, "success");
-                        } else {
-                            log("Processed batch. " + res.remainingPending + " rows remaining. Resuming...", "success");
-                            executeBatch(config, res.nextIndex);
+                            log(res.message || "Execution completed successfully.", "success");
+                        },
+                        onError: function (err) {
+                            log("Halted due to error: " + err, "error");
+                            setStatus('error');
                         }
-                    },
-                    onError: function (err) {
-                        log("Batch halted due to error: " + err, "error");
-                        setStatus('error');
                     }
-                }
+                });
             });
         }
 

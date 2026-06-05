@@ -170,7 +170,7 @@ function MailSender_executeActions() {
               GmailApp.sendEmail(targetTo, emailSubject, "", options);
             }
 
-            resultStatus = _App_formatStatus('SUCCESS', "Sent (" + new Date().toLocaleString() + ")");
+            resultStatus = _App_formatStatus('SUCCESS', "Sent (" + _App_formatDateTime(new Date()) + ")");
             rowUpdates.action = "";
           } else if (action === "DRAFT") {
             var options = {

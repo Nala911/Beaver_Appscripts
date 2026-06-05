@@ -196,69 +196,33 @@
     }
 
     // ── Run Main Action ──
-    function executeActions(startIndex) {
+    function executeActions() {
       var draftId = document.getElementById('draft-select').value;
       if (!draftId) return log("Please select a template draft first.", 'error');
 
-      var start = startIndex || 0;
-
-      if (start === 0) {
-        SyncSidebar.showConfirmDialog("Execute all 'SEND' and 'DRAFT' actions in the sheet?", function() {
-          setStatus('working', 'Processing Items...');
-          log("Running Mail Merge Engine... Please wait.");
-          
-          SyncSidebar.runPushAction({
-            action: {
-              method: 'MailMerge_executeActions',
-              args: [draftId, start],
-              loadingText: 'Running mail merge...',
-              showSuccessToast: false,
-              toast: false,
-              onSuccess: function (response) { showResult(response, draftId); },
-              onError: handleError
-            }
-          });
-        });
-      } else {
+      SyncSidebar.showConfirmDialog("Execute all 'SEND' and 'DRAFT' actions in the sheet?", function() {
         setStatus('working', 'Processing Items...');
-
+        log("Running Mail Merge Engine... Please wait.");
+        
         SyncSidebar.runPushAction({
           action: {
             method: 'MailMerge_executeActions',
-            args: [draftId, start],
+            args: [draftId],
+            toolKey: 'MAIL_MERGE',
             loadingText: 'Running mail merge...',
-            showSuccessToast: false,
-            toast: false,
-            onSuccess: function (response) { showResult(response, draftId); },
+            onSuccess: function (res) {
+              setStatus('ready');
+              log(res.message || "Execution completed successfully.", "success");
+              // Update quota after returning entirely
+              SyncSidebar.run('MailMerge_getQuota', [], {
+                onSuccess: function (data) { updateQuota(data.remaining); },
+                toast: false
+              });
+            },
             onError: handleError
           }
         });
-      }
-    }
-
-    function showResult(response, draftId) {
-      if (!response) {
-        setStatus('error');
-        return log("Empty response received.", 'error');
-      }
-
-      if (response.completed) {
-        setStatus('ready');
-        log(response.message || "Batch process finished successfully.", "success");
-        // Update quota after returning entirely
-        SyncSidebar.run('MailMerge_getQuota', [], {
-          onSuccess: function (data) { updateQuota(data.remaining); },
-          toast: false
-        });
-      } else {
-        // Stream progress and fire off next batch
-        log(response.message);
-        setStatus('working', 'Items left: ' + response.remainingPending);
-        // Queue next run avoiding infinite stack freeze
-        setTimeout(function () {
-          executeActions(response.nextIndex);
-        }, 150);
-      }
+      });
     }
 
     // ── Helpers ──

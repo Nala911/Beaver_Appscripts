@@ -430,7 +430,7 @@ function DriveFileDetails_runPushSequence() {
   return Logger.run('DRIVE_SYNC', 'Push Sequence', function () {
     return _App_withDocumentLock('DRIVE_SYNC_PUSH', function () {
       var logs = [];
-      function log(msg) { logs.push("[" + new Date().toLocaleTimeString() + "] " + msg); }
+      function log(msg) { logs.push("[" + _App_formatDateTime(new Date(), "HH:mm:ss") + "] " + msg); }
       log("Starting Push Sequence...");
 
       var pendingRows = SheetManager.readPendingObjects('DRIVE_SYNC');
