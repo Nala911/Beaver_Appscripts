@@ -329,7 +329,7 @@ function DocsMerge_executeBatch(config) {
 
       }, {
         onBatchComplete: function (batchResults) {
-          var sheet = SpreadsheetApp.getActiveSheet();
+          var sheet = SheetManager.getSheet('DOCS_MERGE');
           
           batchResults.forEach(function (res) {
             if (res && res._rowNumber !== undefined && !res.isError) {
@@ -366,7 +366,7 @@ function DocsMerge_executeBatch(config) {
             finalMasterUrl = masterFile.getUrl();
           }
 
-          var sheet = SpreadsheetApp.getActiveSheet();
+          var sheet = SheetManager.getSheet('DOCS_MERGE');
           var richTextMaster = SpreadsheetApp.newRichTextValue()
             .setText("View Master File")
             .setLinkUrl(finalMasterUrl)

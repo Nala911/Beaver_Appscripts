@@ -14,7 +14,11 @@ SyncEngine.registerTool('CONTACTS_SYNC', {
     SIDEBAR_HTML: 'ContactsSync_Sidebar',
     SIDEBAR_WIDTH: 400,
     FORMAT_CONFIG: {
-        conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
+        conditionalRules: [
+            { type: 'pending', actionCol: 'A', scope: 'actionOnly' },
+            { type: 'custom', formula: '=AND($E2<>\'\', COUNTIF($E:$E, $E2)>1)', color: SHEET_THEME.STATUS.WARNING, scope: 'custom_col', col: 5 },
+            { type: 'custom', formula: '=AND($F2<>\'\', COUNTIF($F:$F, $F2)>1)', color: SHEET_THEME.STATUS.WARNING, scope: 'custom_col', col: 6 }
+        ],
         COL_SCHEMA: [
             { header: 'Action', type: 'ACTION', options: ['CREATE', 'UPDATE', 'DELETE'] },
             { header: 'Status', type: 'STATUS' },
@@ -184,15 +188,10 @@ function ContactsSync_pullContacts(request) {
                 pageToken = response.nextPageToken;
             } while (pageToken);
 
-            // Apply body formatting with duplicate highlighting
-            var formatConfig = JSON.parse(JSON.stringify(SyncEngine.getTool('CONTACTS_SYNC').FORMAT_CONFIG));
-            formatConfig.conditionalRules = formatConfig.conditionalRules.concat([
-                { type: 'custom', formula: '=AND($F2<>\'\', COUNTIF($F:$F, $F2)>1)', color: SHEET_THEME.STATUS.WARNING, scope: 'custom_col', col: 6 },
-                { type: 'custom', formula: '=AND($G2<>\'\', COUNTIF($G:$G, $G2)>1)', color: SHEET_THEME.STATUS.WARNING, scope: 'custom_col', col: 7 }
-            ]);
+            // Apply body formatting using the registered tool config directly
             SheetManager.overwriteRows('CONTACTS_SYNC', outputData, {
                 totalCols: SyncEngine.getTool('CONTACTS_SYNC').HEADERS.length,
-                formatConfig: formatConfig
+                formatConfig: SyncEngine.getTool('CONTACTS_SYNC').FORMAT_CONFIG
             });
 
             ContactsSync_savePreferences(groupIds);

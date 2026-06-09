@@ -161,20 +161,29 @@ function _App_applyBodyFormatting(sheet, numDataRows, config, forceConditional) 
 
     sheet.setRowHeights(startRow, actualRows, SHEET_THEME.LAYOUT.BODY_ROW_HEIGHT);
 
-    // Apply Schema-driven validations and formats
+    // Apply Schema-driven validations and formats in batches
     if (config.COL_SCHEMA) {
+        var colFontFamilies = [];
+        var colFontStyles = [];
+        var colBackgrounds = [];
+        var colNumberFormats = [];
+        var colValidations = [];
+
         config.COL_SCHEMA.forEach(function(colDef, index) {
             var colNum = index + 1;
-            var range = sheet.getRange(startRow, colNum, actualRows, 1);
-            var valRange = range; // Standardize validation range to actualRows
             
             // Fonts
+            var fontFamily = SHEET_THEME.FONTS.PRIMARY;
             if (colDef.type === 'ID' || colDef.type === 'URL') {
-                range.setFontFamily(SHEET_THEME.FONTS.MONOSPACE);
+                fontFamily = SHEET_THEME.FONTS.MONOSPACE;
             }
+            colFontFamilies.push(fontFamily);
+
+            var fontStyle = 'normal';
             if (colDef.type === 'URL' || colDef.italic) {
-                range.setFontStyle('italic');
+                fontStyle = 'italic';
             }
+            colFontStyles.push(fontStyle);
             
             // Background Colors (Schema-driven Categorization)
             var category = colDef.category;
@@ -184,22 +193,26 @@ function _App_applyBodyFormatting(sheet, numDataRows, config, forceConditional) 
                 else category = 'MIDDLE_COLS';
             }
 
+            var bg = SHEET_THEME.MIDDLE_COLS_COLOR;
             if (category === 'FIRST_COLS') {
-                range.setBackground(SHEET_THEME.FIRST_COLS_COLOR);
+                bg = SHEET_THEME.FIRST_COLS_COLOR;
             } else if (category === 'LAST_COLS') {
-                range.setBackground(SHEET_THEME.LAST_COLS_COLOR);
-            } else {
-                range.setBackground(SHEET_THEME.MIDDLE_COLS_COLOR);
+                bg = SHEET_THEME.LAST_COLS_COLOR;
             }
+            colBackgrounds.push(bg);
 
             // Number Formats
+            var numFormat = '@'; // Force Plain Text by default
             if (colDef.type === 'DATETIME') {
-                range.setNumberFormat('MM/dd/yyyy hh:mm:ss AM/PM');
+                numFormat = 'MM/dd/yyyy hh:mm:ss AM/PM';
             } else if (colDef.type === 'DATE') {
-                range.setNumberFormat('MM/dd/yyyy');
+                numFormat = 'MM/dd/yyyy';
             } else if (colDef.type === 'ID' || colDef.type === 'TEXT') {
-                range.setNumberFormat('@'); // Force Plain Text
+                numFormat = '@';
+            } else {
+                numFormat = '';
             }
+            colNumberFormats.push(numFormat);
 
             // Validations
             var rule = null;
@@ -215,12 +228,45 @@ function _App_applyBodyFormatting(sheet, numDataRows, config, forceConditional) 
                 var re = colDef.type === 'EMAIL' ? 'ISEMAIL(' + letter + '2)' : 'REGEXMATCH(' + letter + '2, "^[\\\\w\\\\.\\\\-@\\\\s,]+$")';
                 var formula = '=OR(ISBLANK(' + letter + '2), ' + re + ')';
                 rule = SpreadsheetApp.newDataValidation().requireFormulaSatisfied(formula).setHelpText('Enter valid email(s).').setAllowInvalid(true).build();
+            } else if (colDef.type === 'DATE' || colDef.type === 'DATETIME') {
+                rule = SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(true).setHelpText('Enter a valid date.').build();
+            } else if (colDef.type === 'URL') {
+                var letter = _App_getColumnLetter(colNum);
+                var formula = '=OR(ISBLANK(' + letter + '2), REGEXMATCH(' + letter + '2, "^https?:\\/\\/"))';
+                rule = SpreadsheetApp.newDataValidation().requireFormulaSatisfied(formula).setHelpText('Enter a valid URL starting with http:// or https://.').setAllowInvalid(true).build();
+            } else if (colDef.type === 'DOCS_URL') {
+                var letter = _App_getColumnLetter(colNum);
+                var formula = '=OR(ISBLANK(' + letter + '2), REGEXMATCH(' + letter + '2, "docs\\.google\\.com\\/document"))';
+                rule = SpreadsheetApp.newDataValidation().requireFormulaSatisfied(formula).setHelpText('Enter a valid Google Docs URL.').setAllowInvalid(true).build();
+            } else if (colDef.type === 'DRIVE_URL') {
+                var letter = _App_getColumnLetter(colNum);
+                var formula = '=OR(ISBLANK(' + letter + '2), OR(REGEXMATCH(' + letter + '2, "drive\\.google\\.com"), REGEXMATCH(' + letter + '2, "docs\\.google\\.com")))';
+                rule = SpreadsheetApp.newDataValidation().requireFormulaSatisfied(formula).setHelpText('Enter a valid Google Drive or Docs URL.').setAllowInvalid(true).build();
             }
-
-            if (rule) {
-                valRange.setDataValidation(rule);
-            }
+            colValidations.push(rule);
         });
+
+        // Build 2D formatting grids in memory
+        var fontFamilies2D = [];
+        var fontStyles2D = [];
+        var backgrounds2D = [];
+        var numberFormats2D = [];
+        var validations2D = [];
+
+        for (var r = 0; r < actualRows; r++) {
+            fontFamilies2D.push(colFontFamilies);
+            fontStyles2D.push(colFontStyles);
+            backgrounds2D.push(colBackgrounds);
+            numberFormats2D.push(colNumberFormats);
+            validations2D.push(colValidations);
+        }
+
+        // Apply formatting grids in single batch calls
+        dataRange.setFontFamilies(fontFamilies2D);
+        dataRange.setFontStyles(fontStyles2D);
+        dataRange.setBackgrounds(backgrounds2D);
+        dataRange.setNumberFormats(numberFormats2D);
+        dataRange.setDataValidations(validations2D);
     }
 
     // 6. Conditional formatting rules
@@ -269,7 +315,7 @@ function _App_applyConditionalRules(sheet, numRows, totalCols, ruleDescriptors, 
         } else if (desc.type === 'error') {
             rule = SpreadsheetApp.newConditionalFormatRule()
                 .whenFormulaSatisfied('=REGEXMATCH($' + desc.statusCol + '2, "⚠️")')
-                .setBackground(SHEET_THEME.STATUS.ERROR)
+                .setBackground(SHEET_THEME.STATUS.WARNING)
                 .setRanges([targetRange]).build();
         } else if (desc.type === 'errorCross') {
             rule = SpreadsheetApp.newConditionalFormatRule()
