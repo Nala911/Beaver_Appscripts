@@ -1,0 +1,14 @@
+[
+  {
+    "timestamp": "2026-07-02T20:13:30.951Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {},
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  }
+]

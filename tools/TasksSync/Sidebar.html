@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <?!= _App_include('tools/TasksSync/Sidebar_Css'); ?>
+</head>
+
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-title">
+      <i data-lucide="check-square" style="width:18px;"></i>
+      Google Tasks
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="container">
+
+    <!-- Import Tasks -->
+    <div>
+      <div class="section-label">
+        <i data-lucide="download-cloud" style="width:16px;"></i> Import Tasks
+      </div>
+      <div class="card">
+        <button class="btn btn-primary btn-pull" onclick="runPull()">
+          <i data-lucide="download-cloud" style="width:16px;"></i>
+          Pull Tasks
+        </button>
+      </div>
+    </div>
+
+    <!-- Sync Actions -->
+    <div>
+      <div class="section-label">
+        <i data-lucide="refresh-cw" style="width:16px;"></i> Sync Actions
+      </div>
+      <div class="card">
+        <button class="btn btn-success btn-push" onclick="runPush()">
+          <i data-lucide="upload-cloud" style="width:16px;"></i>
+          Push Changes
+        </button>
+      </div>
+    </div>
+
+    <!-- Help & Guide Container -->
+    <div id="sync-sidebar-help-container"></div>
+
+  </div>
+
+  <?!= _App_include('core/SidebarShared'); ?>
+  <?!= _App_include('tools/TasksSync/Sidebar_Js'); ?>
+</body>
+
+</html>

@@ -1,0 +1,798 @@
+/**
+ * Google Drive
+ * Server-side Logic — Version 5.0 (Plugin Architecture — registers with SyncEngine)
+ */
+
+SyncEngine.registerTool('DRIVE_SYNC', {
+    REQUIRED_SERVICES: [ { name: 'Drive API', test: function() { return typeof Drive !== 'undefined'; } } ],
+    SHEET_NAME: SHEET_NAMES.DRIVE_SYNC,
+    FROZEN_COLS: 2,
+    TITLE: SHEET_NAMES.DRIVE_SYNC,
+    MENU_LABEL: SHEET_NAMES.DRIVE_SYNC,
+    MENU_ENTRYPOINT: 'DriveFileDetails_openSidebar',
+    MENU_ORDER: 90,
+    SIDEBAR_HTML: 'tools/DriveFileDetails_Sidebar',
+    SIDEBAR_WIDTH: 400,
+    FORMAT_CONFIG: {
+        conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
+        COL_SCHEMA: [
+            { header: 'Action', type: 'ACTION', options: ['CREATE', 'UPDATE', 'DELETE'] },
+            { header: 'Status', type: 'STATUS' },
+            { header: 'Item Name', type: 'TEXT' },
+            { header: 'Description', type: 'TEXT' },
+            { header: 'Starred', type: 'CHECKBOX' },
+            { header: 'Type', type: 'DROPDOWN', options: ['Folder', 'Google Doc', 'Google Sheet', 'Google Slide', 'Google Form', 'PDF', 'Image', 'Video', 'Audio', 'Zip', 'Text', 'Code', 'File'] },
+            { header: 'Editors', type: 'TEXT' },
+            { header: 'Viewers', type: 'TEXT' },
+            { header: 'Is Public?', type: 'CHECKBOX' },
+            { header: 'Parent Path', type: 'TEXT' },
+            { header: 'Item Path', type: 'TEXT', italic: true },
+            { header: 'Size', type: 'TEXT' },
+            { header: 'Owner', type: 'TEXT' },
+            { header: 'URL', type: 'URL' },
+            { header: 'Item ID', type: 'ID' },
+            { header: 'Parent ID', type: 'ID' }
+        ]
+    },
+    ACTIONS: {
+        getFolderContent: function(folderId) {
+            try {
+                var parentId = folderId || "root";
+                var query = "'" + parentId + "' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
+                var folders = [];
+                var pageToken = null;
+
+                var currentFolder = null;
+                try {
+                    currentFolder = Drive.Files.get(parentId, { fields: "id, name", supportsAllDrives: true });
+                } catch (e) {
+                    try {
+                        var drv = Drive.Drives.get(parentId);
+                        currentFolder = { id: drv.id, name: drv.name };
+                    } catch (e2) {
+                        currentFolder = { id: parentId, name: parentId === "root" ? "Root" : "Unknown" };
+                    }
+                }
+
+                do {
+                    var result = Drive.Files.list({
+                        q: query,
+                        fields: "nextPageToken, files(id, name)",
+                        orderBy: "name",
+                        pageToken: pageToken,
+                        includeItemsFromAllDrives: true,
+                        supportsAllDrives: true
+                    });
+                    if (result.files) folders = folders.concat(result.files);
+                    pageToken = result.nextPageToken;
+                } while (pageToken);
+
+                return _App_ok('Folder content loaded', {
+                    current: { id: currentFolder.id, name: currentFolder.name },
+                    children: folders
+                });
+            } catch (e) {
+                return _App_fail(e.message);
+            }
+        },
+        getDrivesList: function() {
+            try {
+                var drives = [];
+                var pageToken = null;
+                do {
+                    var result = _DriveFileDetails_safeListDrives({
+                        pageToken: pageToken,
+                        fields: "nextPageToken, drives(id, name)"
+                    });
+                    if (result && result.drives) drives = drives.concat(result.drives);
+                    pageToken = result ? result.nextPageToken : null;
+                } while (pageToken);
+
+                drives.sort(function (a, b) {
+                    return a.name.localeCompare(b.name);
+                });
+
+                return _App_ok('Drives loaded', { drives: drives });
+            } catch (e) {
+                return _App_fail(e.message);
+            }
+        },
+        getFolderHierarchy: function() {
+            try {
+                var query = "mimeType = 'application/vnd.google-apps.folder' and trashed = false";
+                var folders = [];
+                var pageToken = null;
+
+                // 1. Fetch all folders
+                do {
+                    var result = _App_callWithBackoff(function () {
+                        return Drive.Files.list({
+                            q: query,
+                            fields: "nextPageToken, files(id, name, parents)",
+                            orderBy: "name",
+                            pageToken: pageToken,
+                            includeItemsFromAllDrives: true,
+                            supportsAllDrives: true,
+                            pageSize: 1000
+                        });
+                    });
+                    if (result.files) folders = folders.concat(result.files);
+                    pageToken = result.nextPageToken;
+                } while (pageToken);
+
+                // 2. Fetch all shared drives
+                var drives = [];
+                var drivePageToken = null;
+                do {
+                    var dResult = _DriveFileDetails_safeListDrives({
+                        pageToken: drivePageToken,
+                        fields: "nextPageToken, drives(id, name)"
+                    });
+                    if (dResult && dResult.drives) drives = drives.concat(dResult.drives);
+                    drivePageToken = dResult ? dResult.nextPageToken : null;
+                } while (drivePageToken);
+
+                drives.sort(function (a, b) {
+                    return a.name.localeCompare(b.name);
+                });
+
+                var topology = {
+                    rootDrives: drives,
+                    dict: {},
+                    myDriveId: "root"
+                };
+
+                // 3. Resolve the actual ID of "My Drive"
+                try {
+                    var actualRoot = Drive.Files.get("root", { fields: "id", supportsAllDrives: true });
+                    if (actualRoot && actualRoot.id) {
+                        topology.myDriveId = actualRoot.id;
+                    }
+                } catch (e) { }
+
+                // 4. Group folders by parentId
+                for (var i = 0; i < folders.length; i++) {
+                    var f = folders[i];
+                    if (f.parents && f.parents.length > 0) {
+                        var parentId = f.parents[0];
+                        if (!topology.dict[parentId]) {
+                            topology.dict[parentId] = [];
+                        }
+                        topology.dict[parentId].push({ id: f.id, name: f.name });
+                    }
+                }
+
+                return _App_ok('Hierarchy loaded', { topology: topology });
+            } catch (e) {
+                return _App_fail(e.message);
+            }
+        },
+        getPendingStats: function() {
+            SheetManager.assertActiveSheet('DRIVE_SYNC');
+            var stats = SheetManager.getActionStats('DRIVE_SYNC', ['CREATE', 'UPDATE', 'DELETE']);
+            stats.total = (stats.CREATE || 0) + (stats.UPDATE || 0) + (stats.DELETE || 0);
+            return _App_ok('Pending stats loaded.', {
+                creates: stats.CREATE || 0,
+                updates: stats.UPDATE || 0,
+                deletes: stats.DELETE || 0,
+                total: stats.total
+            });
+        },
+        pull: function(targetFolderId, isShallow) {
+            return _DriveFileDetails_pullFromDrive(targetFolderId, isShallow);
+        },
+        push: function() {
+            return _DriveFileDetails_runPushSequence();
+        },
+        fillActivePath: function(folderId, pathString) {
+            var sheet = _App_assertActiveSheet(SHEET_NAMES.DRIVE_SYNC);
+
+            var cell = sheet.getActiveCell();
+            var row = cell.getRow();
+
+            if (row < 2) throw new Error("Please select a row in the data area (Row 2 or below).");
+
+            sheet.getRange(row, DRIVE_SYNC_COL.PARENT_PATH + 1).setValue(pathString);
+            sheet.getRange(row, DRIVE_SYNC_COL.PARENT_ID + 1).setValue(folderId);
+
+            return "Updated Row " + row + " with path: " + pathString;
+        }
+    }
+});
+
+/* ==========================================================================
+   CONFIGURATION
+   ========================================================================== */
+
+// Column-index aliases — kept for backward-compat; metadata now in SyncEngine.getTool('DRIVE_SYNC').
+var DRIVE_SYNC_COL = {
+  ACTION: 0, STATUS: 1, NAME: 2, DESC: 3, STARRED: 4, TYPE: 5,
+  EDITORS: 6, VIEWERS: 7, IS_PUBLIC: 8, PARENT_PATH: 9, ITEM_PATH: 10,
+  SIZE: 11, OWNER: 12, URL: 13, ITEM_ID: 14, PARENT_ID: 15
+};
+
+// --- SIDEBAR & SHEET SETUP ---
+function _DriveFileDetails_InternalFunction() { } 
+
+
+
+/** Opens the Drive Sync sidebar and ensures the sheet exists. */
+function DriveFileDetails_openSidebar() {
+  return Logger.run('DRIVE_SYNC', 'Open Sidebar', function () {
+    _App_launchTool('DRIVE_SYNC');
+  });
+}
+
+
+
+
+/* ==========================================================================
+   CORE LOGIC
+   ========================================================================== */
+
+function _DriveFileDetails_pullFromDrive(targetFolderId, isShallow) {
+  return Logger.run('DRIVE_SYNC', 'Pull from Drive', function () {
+    return _App_withDocumentLock('DRIVE_SYNC_PULL', function () {
+      _App_resetExecutionTimer();
+      targetFolderId = targetFolderId || "root";
+
+      var sheet = _App_ensureSheetExists('DRIVE_SYNC');
+
+      SheetManager.clearData('DRIVE_SYNC');
+
+      var allItems = [];
+      var folderMap = new Map();
+
+      // Recursive Fetch with Error Guard
+      function recursiveFetch(parentId) {
+        if (_App_isExecutionLimitApproaching()) {
+          throw new Error("⏳ Time limit approaching. Operation paused safely.");
+        }
+        try {
+          var query = "'" + parentId + "' in parents and trashed = false";
+          var fields = "files(id, name, description, starred, mimeType, parents, webViewLink, size, permissions(type, role, emailAddress))";
+          var items = _DriveFileDetails_fetchAllItems(query, fields);
+
+          items.forEach(function (item) {
+            item._traversalParentId = parentId; // Track which folder we found this in
+            allItems.push(item);
+            if (item.mimeType === 'application/vnd.google-apps.folder') {
+              folderMap.set(item.id, { name: item.name, parentId: parentId });
+              if (!isShallow) {
+                recursiveFetch(item.id);
+              }
+            }
+          });
+        } catch (e) {
+          if (e.message && e.message.indexOf("Time limit") !== -1) throw e;
+          Logger.warn(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'recursiveFetch', "Error fetching folder " + parentId + ": " + e.message);
+        }
+      }
+
+      var rootObj = { id: targetFolderId, name: "Root", parents: [] };
+      try {
+        var drv = Drive.Drives.get(targetFolderId);
+        if (drv && drv.name) rootObj.name = drv.name;
+        else rootObj = Drive.Files.get(targetFolderId, { fields: "id, name, parents", supportsAllDrives: true });
+      } catch (e) {
+        rootObj = Drive.Files.get(targetFolderId, { fields: "id, name, parents", supportsAllDrives: true });
+      }
+
+      var rootParent = (rootObj.parents && rootObj.parents.length > 0) ? rootObj.parents[0] : null;
+      folderMap.set(rootObj.id, { name: rootObj.name, parentId: rootParent });
+
+      // Resolve full path of the target folder (start point)
+      var targetFolderFullPath = "";
+      var rootFolderName = "My Drive"; // Default fallback
+      var foundSharedDriveRoot = false;
+
+      try {
+        if (targetFolderId !== "root") {
+          var driveObj = Drive.Drives.get(targetFolderId);
+          if (driveObj && driveObj.name) {
+            rootFolderName = driveObj.name;
+            foundSharedDriveRoot = true;
+          }
+        }
+      } catch (e) { }
+
+      if (!foundSharedDriveRoot) {
+        try {
+          var actualRoot = Drive.Files.get("root", { fields: "name", supportsAllDrives: true });
+          if (actualRoot && actualRoot.name) rootFolderName = actualRoot.name;
+        } catch (e) { Logger.warn(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'Path Resolution', "Could not fetch root name, using default."); }
+      }
+
+      if (targetFolderId === "root" || foundSharedDriveRoot) {
+        targetFolderFullPath = rootFolderName;
+      } else {
+        var parts = [];
+        var curr = targetFolderId;
+        var depth = 0;
+        var foundRoot = false;
+        while (curr && depth < 50) {
+          if (curr === "root") {
+            foundRoot = true;
+            break;
+          }
+          try {
+            var isDrive = false;
+            try {
+              var drv2 = Drive.Drives.get(curr);
+              if (drv2 && drv2.name) {
+                rootFolderName = drv2.name;
+                foundRoot = true;
+                isDrive = true;
+              }
+            } catch (e2) { }
+            if (isDrive) break;
+
+            var f = Drive.Files.get(curr, { fields: "name, parents", supportsAllDrives: true });
+            parts.unshift(f.name);
+            curr = (f.parents && f.parents.length) ? f.parents[0] : null;
+            depth++;
+          } catch (e) { break; }
+        }
+        var rootPrefix = foundRoot ? rootFolderName : "";
+        var partsStr = parts.join("/");
+        if (rootPrefix && partsStr) {
+          targetFolderFullPath = rootPrefix + "/" + partsStr;
+        } else if (rootPrefix) {
+          targetFolderFullPath = rootPrefix;
+        } else if (partsStr) {
+          targetFolderFullPath = partsStr;
+        } else {
+          targetFolderFullPath = "";
+        }
+      }
+
+      var isPartialPull = false;
+      try {
+        recursiveFetch(targetFolderId);
+      } catch (timeoutEx) {
+        if (timeoutEx.message && timeoutEx.message.indexOf("Time limit") !== -1) {
+          isPartialPull = true;
+        } else {
+          throw timeoutEx;
+        }
+      }
+
+      var rows = [];
+
+      var getPath = function (itemId, currentPath) {
+        if (!currentPath) currentPath = [];
+        var item = folderMap.get(itemId);
+        if (!item || itemId === targetFolderId) {
+          var relative = currentPath.join("/");
+          if (targetFolderFullPath && relative) {
+            return targetFolderFullPath + "/" + relative;
+          } else if (targetFolderFullPath) {
+            return targetFolderFullPath;
+          } else if (relative) {
+            return relative;
+          } else {
+            return "";
+          }
+        }
+        currentPath.unshift(item.name);
+        return getPath(item.parentId, currentPath);
+      };
+
+      var headers = SyncEngine.getTool('DRIVE_SYNC').HEADERS;
+      for (var i = 0; i < allItems.length; i++) {
+        var item = allItems[i];
+        var parentId = item._traversalParentId || ((item.parents && item.parents.length > 0) ? item.parents[0] : "");
+        var path = parentId ? getPath(parentId) : targetFolderFullPath;
+
+        var perms = _DriveFileDetails_parsePermissions(item.permissions);
+
+        var row = new Array(headers.length);
+        row[DRIVE_SYNC_COL.ACTION] = "";
+        row[DRIVE_SYNC_COL.STATUS] = "";
+        row[DRIVE_SYNC_COL.NAME] = item.name;
+        row[DRIVE_SYNC_COL.DESC] = item.description || "";
+        row[DRIVE_SYNC_COL.STARRED] = item.starred || false;
+        row[DRIVE_SYNC_COL.TYPE] = _DriveFileDetails_getFriendlyType(item.mimeType);
+
+        row[DRIVE_SYNC_COL.SIZE] = _DriveFileDetails_formatBytes(item.size);
+        row[DRIVE_SYNC_COL.OWNER] = perms.owners.join(", ");
+        row[DRIVE_SYNC_COL.EDITORS] = perms.editors.join(", ");
+        row[DRIVE_SYNC_COL.VIEWERS] = perms.viewers.join(", ");
+        row[DRIVE_SYNC_COL.IS_PUBLIC] = perms.isPublic;
+
+        row[DRIVE_SYNC_COL.PARENT_PATH] = path;
+        row[DRIVE_SYNC_COL.ITEM_PATH] = path ? path + "/" + item.name : item.name;
+        row[DRIVE_SYNC_COL.ITEM_ID] = item.id;
+        row[DRIVE_SYNC_COL.PARENT_ID] = parentId;
+        row[DRIVE_SYNC_COL.URL] = item.webViewLink;
+        rows.push(row);
+      }
+
+      if (rows.length > 0) {
+        var rowParams = { start: 2, total: rows.length };
+        var range = sheet.getRange(rowParams.start, 1, rowParams.total, rows[0].length);
+        range.setValues(rows);
+
+        _App_applyBodyFormatting(sheet, rows.length, SyncEngine.getTool('DRIVE_SYNC').FORMAT_CONFIG);
+
+        var msg = "Successfully pulled " + rows.length + " items from " + (targetFolderId === "root" ? "Root Drive" : rootObj.name) + ".";
+        if (isPartialPull) {
+          msg = "⚠️ Partial Pull: " + msg + " (Execution Time Limit Reached. Run again to continue)";
+        }
+        Logger.info(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'Pull Complete', msg);
+        return _App_ok(msg);
+      } else {
+        return _App_ok("Target folder is empty.");
+      }
+
+    });
+  });
+}
+
+function _DriveFileDetails_runPushSequence() {
+  return Logger.run('DRIVE_SYNC', 'Push Sequence', function () {
+    return _App_withDocumentLock('DRIVE_SYNC_PUSH', function () {
+      var logs = [];
+      function log(msg) { logs.push("[" + _App_formatDateTime(new Date(), "HH:mm:ss") + "] " + msg); }
+      log("Starting Push Sequence...");
+
+      var pendingRows = SheetManager.readPendingObjects('DRIVE_SYNC');
+
+      if (pendingRows.length === 0) {
+        log("No pending actions found.");
+        return logs;
+      }
+
+      log("Found " + pendingRows.length + " pending actions.");
+
+      pendingRows.sort(function (a, b) {
+        var score = function (obj) {
+          var act = obj['Action'];
+          var type = obj['Type'];
+          if (act === 'CREATE' && type === 'Folder') return 1;
+          if (act === 'CREATE') return 2;
+          if (act === 'UPDATE') return 3;
+          return 4;
+        };
+        return score(a) - score(b);
+      });
+
+      var stats = _App_BatchProcessor('DRIVE_SYNC', pendingRows, function (item) {
+          var statusMsg = "";
+          var action = item['Action'];
+          var resultValues = {};
+
+          if (action === 'CREATE') statusMsg = _DriveFileDetails_handleCreate(item, resultValues);
+          else if (action === 'UPDATE') statusMsg = _DriveFileDetails_handleUpdate(item);
+          else if (action === 'DELETE') statusMsg = _DriveFileDetails_handleDelete(item);
+
+          log("Row " + item._rowNumber + ": " + statusMsg);
+
+          return {
+            _rowNumber: item._rowNumber,
+            action: "",
+            status: statusMsg,
+            itemId: resultValues.id,
+            url: resultValues.url,
+            size: resultValues.size
+          };
+
+      }, {
+        onBatchComplete: function (results) {
+          _App_batchPatchResults('DRIVE_SYNC', results, function (res) {
+            var fields = {};
+            if (res.itemId) fields['Item ID'] = res.itemId;
+            if (res.url) fields['URL'] = res.url;
+            if (res.size) fields['Size'] = res.size;
+            return fields;
+          });
+        }
+      });
+
+      if (stats.timeLimitReached) {
+        log("Sequence Paused: 5.5-minute time limit approached. Please run again to process remaining items.");
+      } else {
+        log("Sequence Complete.");
+      }
+      return logs;
+
+    });
+  });
+}
+
+
+
+/* ==========================================================================
+   PRIVATE HELPER FUNCTIONS
+   ========================================================================== */
+
+function _DriveFileDetails_validateHeaders(sheet) {
+  var headers = SyncEngine.getTool('DRIVE_SYNC').HEADERS;
+  var currentHeaders = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
+  if (currentHeaders[0] !== headers[0] || currentHeaders[DRIVE_SYNC_COL.ITEM_ID] !== headers[DRIVE_SYNC_COL.ITEM_ID]) {
+    _App_applyHeaderFormatting(sheet, headers);
+  }
+}
+
+function _DriveFileDetails_fetchAllItems(query, fields) {
+  var items = [];
+  var pageToken = null;
+  do {
+    var result = _App_callWithBackoff(function () {
+      return Drive.Files.list({
+        q: query,
+        fields: "nextPageToken, " + fields,
+        pageToken: pageToken,
+        pageSize: 1000,
+        includeItemsFromAllDrives: true,
+        supportsAllDrives: true
+      });
+    });
+    if (result.files) items = items.concat(result.files);
+    pageToken = result.nextPageToken;
+  } while (pageToken);
+  return items;
+}
+
+/**
+ * Safely lists shared drives with error shielding for cases where they are not supported or enabled.
+ * @param {Object} params - API parameters for Drive.Drives.list
+ * @returns {Object|null} Result object or null on failure.
+ */
+function _DriveFileDetails_safeListDrives(params) {
+  try {
+    return _App_callWithBackoff(function () {
+      return Drive.Drives.list(params);
+    });
+  } catch (e) {
+    Logger.warn(SyncEngine.getTool('DRIVE_SYNC').TITLE, 'safeListDrives', "Shared Drives listing failed or unsupported: " + e.message);
+    return null;
+  }
+}
+
+
+
+
+function _DriveFileDetails_formatBytes(bytes) {
+  if (!bytes || bytes == 0) return "-";
+  var k = 1024;
+  var sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  var i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function _DriveFileDetails_parsePermissions(permissions) {
+  var res = { owners: [], editors: [], viewers: [], isPublic: false };
+  if (!permissions) return res;
+
+  permissions.forEach(function (p) {
+    if (p.type === 'anyone') res.isPublic = true;
+    if (p.emailAddress) {
+      if (p.role === 'owner') res.owners.push(p.emailAddress);
+      else if (p.role === 'writer' || p.role === 'fileOrganizer') res.editors.push(p.emailAddress);
+      else if (p.role === 'reader') res.viewers.push(p.emailAddress);
+    }
+  });
+  return res;
+}
+
+function _DriveFileDetails_parseEmailList(str) {
+  if (!str) return [];
+  return str.toString().split(',').map(function (s) { return s.trim().toLowerCase(); }).filter(function (s) { return s !== ""; });
+}
+
+function _DriveFileDetails_getFriendlyType(mimeType) {
+  if (!mimeType) return 'File';
+  if (mimeType === 'application/vnd.google-apps.folder') return 'Folder';
+  if (mimeType === 'application/vnd.google-apps.spreadsheet') return 'Google Sheet';
+  if (mimeType === 'application/vnd.google-apps.document') return 'Google Doc';
+  if (mimeType === 'application/vnd.google-apps.presentation') return 'Google Slide';
+  if (mimeType === 'application/vnd.google-apps.form') return 'Google Form';
+  if (mimeType === 'application/pdf') return 'PDF';
+  return 'File';
+}
+
+function _DriveFileDetails_getMimeTypeFromFriendly(friendlyType) {
+  switch (friendlyType) {
+    case 'Folder': return 'application/vnd.google-apps.folder';
+    case 'Google Sheet': return 'application/vnd.google-apps.spreadsheet';
+    case 'Google Doc': return 'application/vnd.google-apps.document';
+    case 'Google Slide': return 'application/vnd.google-apps.presentation';
+    case 'Google Form': return 'application/vnd.google-apps.form';
+    case 'PDF': return 'application/pdf';
+    default: return 'application/vnd.google-apps.folder';
+  }
+}
+
+// Stage 1: Data validations removed, using registry instead.
+
+// --- Handlers ---
+
+function _DriveFileDetails_handleCreate(rowObj, res) {
+  var name = rowObj['Item Name'];
+  if (!name) throw new Error("Name is required");
+
+  var pathStr = rowObj['Parent Path'];
+  if (!pathStr || pathStr.trim() === "") {
+    throw new Error("Parent Path is required for creating an item.");
+  }
+
+  var desc = rowObj['Description'];
+  var starred = rowObj['Starred'] === true || rowObj['Starred'] === 'TRUE';
+  var friendlyType = rowObj['Type'] || 'Folder';
+
+  var parentId = rowObj['Parent ID'];
+
+  // Priority: Path > ParentID
+  try {
+    parentId = _DriveFileDetails_resolveFolderIdFromPath(pathStr);
+  } catch (e) {
+    throw new Error("Path resolution failed: " + e.message);
+  }
+
+  var mimeType = _DriveFileDetails_getMimeTypeFromFriendly(friendlyType);
+
+  var resource = { name: name, description: desc, starred: starred, parents: [parentId], mimeType: mimeType };
+  var file = _App_callWithBackoff(function () { return Drive.Files.create(resource, null, { fields: 'id, webViewLink, mimeType', supportsAllDrives: true }); });
+
+  res.id = file.id;
+  res.url = file.webViewLink;
+  res.mime = file.mimeType;
+
+  return _App_formatStatus('SUCCESS', "Created (" + (friendlyType || 'Folder') + ")");
+}
+
+function _DriveFileDetails_resolveFolderIdFromPath(pathString) {
+  if (!pathString || pathString === "/" || pathString.trim() === "") return "root";
+
+  // Normalize path: Remove leading/trailing slashes and split
+  var parts = pathString.split("/").filter(function (p) { return p.trim() !== ""; });
+
+  var possibleSharedDrive = null;
+  if (parts.length > 0) {
+    var first = parts[0].toLowerCase();
+    if (first === "my drive" || first === "drive") {
+      parts.shift();
+    } else {
+      try {
+        var drivesResult = Drive.Drives.list({ fields: "drives(id, name)" });
+        if (drivesResult && drivesResult.drives) {
+          for (var d = 0; d < drivesResult.drives.length; d++) {
+            if (drivesResult.drives[d].name.toLowerCase() === first) {
+              possibleSharedDrive = drivesResult.drives[d];
+              parts.shift();
+              break;
+            }
+          }
+        }
+      } catch (e) { }
+    }
+  }
+
+  var currentId = possibleSharedDrive ? possibleSharedDrive.id : "root";
+  var resolvedSoFar = [];
+  if (possibleSharedDrive) resolvedSoFar.push(possibleSharedDrive.name);
+
+  for (var i = 0; i < parts.length; i++) {
+    var folderName = parts[i];
+
+    // Search for existing folder in current parent
+    var query = "'" + currentId + "' in parents and name = '" + folderName.replace(/'/g, "\\'") + "' and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
+    var folders = [];
+    try {
+      var result = Drive.Files.list({ q: query, fields: "files(id, name)", pageSize: 1, includeItemsFromAllDrives: true, supportsAllDrives: true });
+      if (result.files && result.files.length > 0) {
+        folders = result.files;
+      }
+    } catch (e) {
+      throw new Error("Drive API error while searching for '" + folderName + "': " + e.message);
+    }
+
+    if (folders.length > 0) {
+      currentId = folders[0].id;
+      resolvedSoFar.push(folderName);
+    } else {
+      // Folder not found — inform the user instead of auto-creating
+      var resolvedPath = resolvedSoFar.length > 0 ? resolvedSoFar.join("/") : "(root)";
+      throw new Error(
+        "Folder not found: '" + folderName + "' does not exist. " +
+        "Resolved up to: " + resolvedPath + ". " +
+        "Remaining path: " + parts.slice(i).join("/") + ". " +
+        "Please create the folder first or correct the path."
+      );
+    }
+  }
+
+  return currentId;
+}
+
+function _DriveFileDetails_handleUpdate(rowObj) {
+  var fileId = rowObj['Item ID'];
+  if (!fileId) throw new Error("Cannot Update: Item ID is missing.");
+
+  var newName = rowObj['Item Name'];
+  var newDesc = rowObj['Description'];
+  var newStarred = rowObj['Starred'] === true || rowObj['Starred'] === 'TRUE';
+
+  var currentFile = _App_callWithBackoff(function () {
+    return Drive.Files.get(fileId, { fields: 'name, description, starred, permissions(id, role, emailAddress, type)', supportsAllDrives: true });
+  });
+
+  var changes = [];
+  var resource = {};
+  if (newName && newName !== currentFile.name) resource.name = newName;
+  if (newDesc !== (currentFile.description || "")) resource.description = newDesc;
+  if (newStarred !== (currentFile.starred || false)) resource.starred = newStarred;
+
+  var optionalArgs = { supportsAllDrives: true };
+
+  if (Object.keys(resource).length > 0) {
+    _App_callWithBackoff(function () { Drive.Files.update(resource, fileId, null, optionalArgs); });
+    changes.push("Properties");
+  }
+
+  // Permissions
+  var newEditors = _DriveFileDetails_parseEmailList(rowObj['Editors']);
+  var newViewers = _DriveFileDetails_parseEmailList(rowObj['Viewers']);
+  var targetIsPublic = rowObj['Is Public?'] === true || rowObj['Is Public?'] === 'TRUE';
+
+  var currentEmailPerms = {};
+  var publicPermId = null;
+
+  if (currentFile.permissions) {
+    currentFile.permissions.forEach(function (p) {
+      if (p.type === 'anyone') publicPermId = p.id;
+      else if (p.emailAddress) currentEmailPerms[p.emailAddress.toLowerCase()] = p;
+    });
+  }
+
+  if (targetIsPublic && !publicPermId) {
+    _App_callWithBackoff(function () { Drive.Permissions.create({ role: 'reader', type: 'anyone' }, fileId, { supportsAllDrives: true }); });
+    changes.push("Made Public");
+  } else if (!targetIsPublic && publicPermId) {
+    _App_callWithBackoff(function () { Drive.Permissions.remove(fileId, publicPermId, { supportsAllDrives: true }); });
+    changes.push("Made Private");
+  }
+
+  var permChanges = false;
+  Object.keys(currentEmailPerms).forEach(function (email) {
+    var p = currentEmailPerms[email];
+    if (p.role === 'owner' || p.role === 'organizer') return;
+
+    var shouldBeEditor = newEditors.indexOf(email) !== -1;
+    var shouldBeViewer = newViewers.indexOf(email) !== -1;
+
+    if (!shouldBeEditor && !shouldBeViewer) {
+      _App_callWithBackoff(function () { Drive.Permissions.remove(fileId, p.id, { supportsAllDrives: true }); });
+      permChanges = true;
+    } else if (shouldBeEditor && p.role !== 'writer' && p.role !== 'fileOrganizer') {
+      _App_callWithBackoff(function () { Drive.Permissions.update({ role: 'writer' }, fileId, p.id, { supportsAllDrives: true }); });
+      permChanges = true;
+    } else if (shouldBeViewer && p.role !== 'reader') {
+      _App_callWithBackoff(function () { Drive.Permissions.update({ role: 'reader' }, fileId, p.id, { supportsAllDrives: true }); });
+      permChanges = true;
+    }
+  });
+
+  var allTargetEmails = newEditors.concat(newViewers);
+  allTargetEmails.forEach(function (email) {
+    if (currentEmailPerms[email]) return;
+    var role = newEditors.indexOf(email) !== -1 ? 'writer' : 'reader';
+    _App_callWithBackoff(function () {
+      Drive.Permissions.create({ role: role, type: 'user', emailAddress: email }, fileId, { sendNotificationEmails: false, supportsAllDrives: true });
+    });
+    permChanges = true;
+  });
+
+  if (permChanges) changes.push("Permissions");
+
+  return changes.length > 0 ? _App_formatStatus('SUCCESS', "Updated: " + changes.join(", ")) : _App_formatStatus('INFO', "No Changes Needed");
+}
+
+function _DriveFileDetails_handleDelete(rowObj) {
+  var fileId = rowObj['Item ID'];
+  if (!fileId) throw new Error("Cannot Delete: Item ID is missing.");
+  _App_callWithBackoff(function () { Drive.Files.update({ trashed: true }, fileId, null, { supportsAllDrives: true }); });
+  return _App_formatStatus('SUCCESS', "Deleted (Trashed)");
+}
+

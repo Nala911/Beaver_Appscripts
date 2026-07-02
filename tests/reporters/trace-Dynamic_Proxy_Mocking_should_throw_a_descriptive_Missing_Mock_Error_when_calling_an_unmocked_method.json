@@ -1,0 +1,10 @@
+[
+  {
+    "timestamp": "2026-07-02T20:13:30.953Z",
+    "service": "SpreadsheetApp",
+    "method": "someUnmockedMethod",
+    "arguments": [],
+    "status": "FAILED",
+    "error": "Missing Mock Error: 'SpreadsheetApp.someUnmockedMethod' was called but is not mocked in tests/mocks/gas-mocks.js. Please define its return value in your test."
+  }
+]

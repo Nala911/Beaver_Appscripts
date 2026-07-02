@@ -1,0 +1,14 @@
+{
+  "name": "workspace-sync-appscripts-tests",
+  "version": "1.0.0",
+  "description": "Local test runner for Workspace Sync Google Apps Scripts",
+  "scripts": {
+    "test": "jest",
+    "test:agent": "jest --config jest.config.js",
+    "test:watch": "jest --watch",
+    "deploy": "node validate-and-push.js"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

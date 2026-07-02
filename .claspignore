@@ -8,3 +8,6 @@ Gemini.md
 .claspignore
 .clasp.json
 .gitmessage
+tests/**
+jest.config.js
+agent_failure_report.md

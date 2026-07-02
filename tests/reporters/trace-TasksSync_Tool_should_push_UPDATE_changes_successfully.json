@@ -1,0 +1,436 @@
+[
+  {
+    "timestamp": "2026-07-02T20:13:30.803Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "📋 Google Tasks": {
+          "name": "📋 Google Tasks",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "Task List Name",
+              "Task Title",
+              "Description",
+              "Due Date",
+              "Completed?",
+              "Task ID",
+              "Task List ID"
+            ],
+            [
+              "",
+              "✅ Updated",
+              "Work Tasks",
+              "Updated Task Name",
+              "Updated Desc",
+              "",
+              "Completed",
+              "task-777",
+              "list-1"
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 150,
+            "4": 200,
+            "5": 200,
+            "6": 120,
+            "7": 150,
+            "8": 150,
+            "9": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T20:13:30.803Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "📋 Google Tasks": {
+          "name": "📋 Google Tasks",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "Task List Name",
+              "Task Title",
+              "Description",
+              "Due Date",
+              "Completed?",
+              "Task ID",
+              "Task List ID"
+            ],
+            [
+              "",
+              "✅ Updated",
+              "Work Tasks",
+              "Updated Task Name",
+              "Updated Desc",
+              "",
+              "Completed",
+              "task-777",
+              "list-1"
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 150,
+            "4": 200,
+            "5": 200,
+            "6": 120,
+            "7": 150,
+            "8": 150,
+            "9": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T20:13:30.804Z",
+    "service": "LockService",
+    "method": "getDocumentLock",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T20:13:30.804Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "📋 Google Tasks": {
+          "name": "📋 Google Tasks",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "Task List Name",
+              "Task Title",
+              "Description",
+              "Due Date",
+              "Completed?",
+              "Task ID",
+              "Task List ID"
+            ],
+            [
+              "",
+              "✅ Updated",
+              "Work Tasks",
+              "Updated Task Name",
+              "Updated Desc",
+              "",
+              "Completed",
+              "task-777",
+              "list-1"
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 150,
+            "4": 200,
+            "5": 200,
+            "6": 120,
+            "7": 150,
+            "8": 150,
+            "9": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T20:13:30.804Z",
+    "service": "CacheService",
+    "method": "getDocumentCache",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "cache": {
+        "formatted_rows_📋_Google_Tasks": "31"
+      }
+    }
+  },
+  {
+    "timestamp": "2026-07-02T20:13:30.804Z",
+    "service": "CacheService",
+    "method": "getDocumentCache",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "cache": {
+        "formatted_rows_📋_Google_Tasks": "31"
+      }
+    }
+  },
+  {
+    "timestamp": "2026-07-02T20:13:30.804Z",
+    "service": "SpreadsheetApp",
+    "method": "newDataValidation",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T20:13:30.804Z",
+    "service": "SpreadsheetApp",
+    "method": "newDataValidation",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T20:13:30.804Z",
+    "service": "SpreadsheetApp",
+    "method": "newDataValidation",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T20:13:30.804Z",
+    "service": "SpreadsheetApp",
+    "method": "newDataValidation",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T20:13:30.805Z",
+    "service": "SpreadsheetApp",
+    "method": "newConditionalFormatRule",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T20:13:30.805Z",
+    "service": "SpreadsheetApp",
+    "method": "newConditionalFormatRule",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T20:13:30.805Z",
+    "service": "SpreadsheetApp",
+    "method": "newConditionalFormatRule",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T20:13:30.805Z",
+    "service": "SpreadsheetApp",
+    "method": "newConditionalFormatRule",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T20:13:30.805Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "📋 Google Tasks": {
+          "name": "📋 Google Tasks",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "Task List Name",
+              "Task Title",
+              "Description",
+              "Due Date",
+              "Completed?",
+              "Task ID",
+              "Task List ID"
+            ],
+            [
+              "",
+              "✅ Updated",
+              "Work Tasks",
+              "Updated Task Name",
+              "Updated Desc",
+              "",
+              "Completed",
+              "task-777",
+              "list-1"
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 150,
+            "4": 200,
+            "5": 200,
+            "6": 120,
+            "7": 150,
+            "8": 150,
+            "9": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T20:13:30.806Z",
+    "service": "CacheService",
+    "method": "getUserCache",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "cache": {}
+    }
+  },
+  {
+    "timestamp": "2026-07-02T20:13:30.806Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "📋 Google Tasks": {
+          "name": "📋 Google Tasks",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "Task List Name",
+              "Task Title",
+              "Description",
+              "Due Date",
+              "Completed?",
+              "Task ID",
+              "Task List ID"
+            ],
+            [
+              "",
+              "✅ Updated",
+              "Work Tasks",
+              "Updated Task Name",
+              "Updated Desc",
+              "",
+              "Completed",
+              "task-777",
+              "list-1"
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 150,
+            "4": 200,
+            "5": 200,
+            "6": 120,
+            "7": 150,
+            "8": 150,
+            "9": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T20:13:30.806Z",
+    "service": "CacheService",
+    "method": "getUserCache",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "cache": {}
+    }
+  },
+  {
+    "timestamp": "2026-07-02T20:13:30.806Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "📋 Google Tasks": {
+          "name": "📋 Google Tasks",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "Task List Name",
+              "Task Title",
+              "Description",
+              "Due Date",
+              "Completed?",
+              "Task ID",
+              "Task List ID"
+            ],
+            [
+              "",
+              "✅ Updated",
+              "Work Tasks",
+              "Updated Task Name",
+              "Updated Desc",
+              "",
+              "Completed",
+              "task-777",
+              "list-1"
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 150,
+            "4": 200,
+            "5": 200,
+            "6": 120,
+            "7": 150,
+            "8": 150,
+            "9": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  }
+]

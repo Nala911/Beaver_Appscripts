@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* ── Folder Search ── */
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+            box-shadow: var(--shadow-md);
+            max-height: 150px;
+            overflow-y: auto;
+            z-index: 10;
+            display: none;
+        }
+
+        .search-results.active {
+            display: block;
+        }
+
+        .folder-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 11px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .folder-item:hover {
+            background: var(--hover-bg);
+        }
+
+        .folder-item i {
+            color: var(--primary-light);
+        }
+
+        .folder-item:last-child {
+            border-bottom: none;
+        }
+
+        /* ── Selected State ── */
+        .selected-info {
+            margin-top: 6px;
+            color: var(--success-dark);
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            animation: fadeSlide 0.3s ease;
+            font-weight: 500;
+        }
+
+        .selected-info i {
+            color: var(--success);
+        }
+
+        .input-has-selection {
+            border-color: var(--success) !important;
+            background-color: var(--success-bg) !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-title">
+            <i data-lucide="file-text" style="width:18px;"></i>
+            Docs Merge
+        </div>
+        <div id="statusBadge" class="status-badge">
+            Ready
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main">
+
+        <!-- Mode Selection -->
+        <div>
+            <div class="section-label">
+                <i data-lucide="settings" style="width:13px;"></i> Export Mode
+                <i data-lucide="help-circle" class="help-trigger" data-help-target="help-tips" style="width:13px; margin-left: auto;"></i>
+            </div>
+            <div class="card" style="flex-direction: row; gap: 8px; padding: 10px;">
+                <button class="btn btn-outline active" style="flex:1; height: 32px;" id="mode-individual"
+                    onclick="setMode('INDIVIDUAL')">
+                    Individual Files
+                </button>
+                <button class="btn btn-outline" style="flex:1; height: 32px;" id="mode-single"
+                    onclick="setMode('SINGLE')">
+                    Single File
+                </button>
+            </div>
+            <p style="color:var(--text-secondary); margin-top: 6px; font-size:11px; padding: 0 4px;"
+                id="mode-description">
+                Generates a separate PDF for each non-empty row.
+            </p>
+        </div>
+
+        <!-- Configuration -->
+        <div>
+            <div class="section-label">
+                <i data-lucide="link" style="width:13px;"></i> Configuration URLs
+                <i data-lucide="help-circle" class="help-trigger" data-help-target="help-getting-started" style="width:13px; margin-left: auto;"></i>
+            </div>
+            <div class="card">
+                <div>
+                    <label class="input-label">Template Google Doc</label>
+                    <div style="position: relative;">
+                        <input type="text" id="doc-query" class="input-field"
+                            placeholder="Type document name to search..." oninput="debounceSearchDoc()"
+                            autocomplete="off">
+                        <div id="doc-results" class="search-results"></div>
+                    </div>
+                    <!-- Hidden input to store selected URL -->
+                    <input type="hidden" id="template-url">
+                    <div id="selected-doc-display" class="selected-info" style="display: none;">
+                        <i data-lucide="check-circle" style="width: 13px; height: 13px;"></i>
+                        <span></span>
+                    </div>
+                </div>
+                <div>
+                    <label class="input-label">Destination Folder</label>
+                    <div style="position: relative;">
+                        <input type="text" id="folder-query" class="input-field"
+                            placeholder="Type folder name to search..." oninput="debounceSearch()" autocomplete="off">
+                        <div id="folder-results" class="search-results"></div>
+                    </div>
+                    <!-- Hidden input to store selected URL -->
+                    <input type="hidden" id="folder-url">
+                    <div id="selected-folder-display" class="selected-info" style="display: none;">
+                        <i data-lucide="check-circle" style="width: 13px; height: 13px;"></i>
+                        <span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div>
+            <div class="section-label">
+                <i data-lucide="zap" style="width:13px;"></i> Actions
+                <i data-lucide="help-circle" class="help-trigger" data-help-target="help-actions" style="width:13px; margin-left: auto;"></i>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-pull btn-full" id="btn-sync" onclick="syncPlaceholders()">
+                    <i data-lucide="columns" style="width:15px;"></i> Pull Placeholders
+                </button>
+                <button class="btn btn-push btn-full" id="btn-run" onclick="executeActions()">
+                    <i data-lucide="printer" style="width:15px;"></i> Run Docs Merge
+                </button>
+            </div>
+        </div>
+
+        <!-- Help & Guide Container -->
+        <div id="sync-sidebar-help-container"></div>
+
+    </div>
+
+    <!-- Help Content (Hidden) -->
+    <div style="display: none;">
+        <div id="help-getting-started">
+            <p><strong>Getting Started</strong></p>
+            <p>Follow these steps to merge your first document:</p>
+            <ol>
+                <li><strong>Prepare Doc:</strong> Create a Google Doc with <code>{{placeholder}}</code> tags.</li>
+                <li><strong>Setup URLs:</strong> Search and select your Template Doc and Destination Folder.</li>
+                <li><strong>Sync & Run:</strong> Click <strong>Pull Placeholders</strong> to add columns, then click <strong>Run</strong>.</li>
+            </ol>
+        </div>
+
+        <div id="help-actions">
+            <p><strong>Docs Merge Process</strong></p>
+            <ul>
+                <li><strong>Pull Placeholders:</strong> Scans your template for tags and creates the corresponding columns in this sheet.</li>
+                <li><strong>Run Docs Merge:</strong> Processes rows where an Action is selected.</li>
+            </ul>
+        </div>
+    </div>
+
+    <?!= _App_include('core/SidebarShared'); ?>
+    <script>
+
+        // ── Init ──
+        window.onload = function () {
+            SyncSidebar.initSidebar({
+                toolKey: 'DOCS_MERGE',
+                onLoad: function () {
+                    log("Booting system... Dashboard ready.", "success");
+                    loadConfig();
+                }
+            });
+        };
+
+        let currentMode = 'INDIVIDUAL';
+        let searchTimeout = null;
+        let searchDocTimeout = null;
+
+        function getSearchConfig(kind) {
+            return kind === 'folder' ? {
+                queryInputId: 'folder-query',
+                hiddenUrlInputId: 'folder-url',
+                resultsBoxId: 'folder-results',
+                selectedDisplayId: 'selected-folder-display',
+                searchActionName: 'searchFolders',
+                resultKey: 'results',
+                resultIcon: 'folder',
+                emptyText: 'No folders found',
+                searchingText: 'Searching...',
+                errorText: 'Search failed',
+                selectedPlaceholder: 'Search again to change folder...'
+            } : {
+                queryInputId: 'doc-query',
+                hiddenUrlInputId: 'template-url',
+                resultsBoxId: 'doc-results',
+                selectedDisplayId: 'selected-doc-display',
+                searchActionName: 'searchDocs',
+                resultKey: 'results',
+                resultIcon: 'file-text',
+                emptyText: 'No documents found',
+                searchingText: 'Searching...',
+                errorText: 'Search failed',
+                selectedPlaceholder: 'Search again to change doc...'
+            };
+        }
+
+        function resetSearchSelection(config) {
+            document.getElementById(config.hiddenUrlInputId).value = "";
+            document.getElementById(config.queryInputId).classList.remove('input-has-selection');
+            document.getElementById(config.selectedDisplayId).style.display = 'none';
+        }
+
+        function toggleSearchResults(config, show) {
+            document.getElementById(config.resultsBoxId).classList.toggle('active', show);
+        }
+
+        function renderSearchState(config, html) {
+            var resultsBox = document.getElementById(config.resultsBoxId);
+            resultsBox.innerHTML = html;
+            toggleSearchResults(config, true);
+        }
+
+        function applySelectedItem(config, item) {
+            document.getElementById(config.hiddenUrlInputId).value = item.url;
+            document.getElementById(config.queryInputId).value = "";
+            document.getElementById(config.queryInputId).placeholder = config.selectedPlaceholder;
+            document.getElementById(config.queryInputId).classList.add('input-has-selection');
+            toggleSearchResults(config, false);
+
+            var display = document.getElementById(config.selectedDisplayId);
+            display.style.display = 'flex';
+            display.querySelector('span').innerText = item.name;
+            lucide.createIcons();
+        }
+
+        function renderSearchResults(config, results) {
+            var resultsBox = document.getElementById(config.resultsBoxId);
+            resultsBox.innerHTML = '';
+
+            if (!results || results.length === 0) {
+                resultsBox.innerHTML = '<div class="folder-item">' + config.emptyText + '</div>';
+                return;
+            }
+
+            results.forEach(function (item) {
+                var div = document.createElement('div');
+                div.className = 'folder-item';
+                div.innerHTML = '<i data-lucide="' + config.resultIcon + '" style="width:14px;height:14px;"></i> ' + item.name;
+                div.onclick = function () {
+                    applySelectedItem(config, item);
+                };
+                resultsBox.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        function runSearch(config, query) {
+            renderSearchState(config, '<div class="folder-item">' + config.searchingText + '</div>');
+
+            SyncSidebar.runAction({
+                toolKey: 'DOCS_MERGE',
+                actionName: config.searchActionName,
+                args: [query],
+                onSuccess: function (data) {
+                    renderSearchResults(config, data[config.resultKey]);
+                },
+                onError: function () {
+                    renderSearchState(config, '<div class="folder-item" style="color:var(--danger)">' + config.errorText + '</div>');
+                },
+                toast: false
+            });
+        }
+
+        function loadConfig() {
+            setStatus('working', 'Loading settings...');
+            SyncSidebar.runAction({
+                toolKey: 'DOCS_MERGE',
+                actionName: 'getConfig',
+                onSuccess: function (config) {
+                    if (config.templateUrl) {
+                        document.getElementById('template-url').value = config.templateUrl;
+                        document.getElementById('doc-query').classList.add('input-has-selection');
+                        document.getElementById('selected-doc-display').style.display = 'flex';
+                        document.getElementById('selected-doc-display').querySelector('span').innerText = config.templateName || "Saved Document";
+                    }
+                    if (config.folderUrl) {
+                        document.getElementById('folder-url').value = config.folderUrl;
+                        document.getElementById('folder-query').classList.add('input-has-selection');
+                        document.getElementById('selected-folder-display').style.display = 'flex';
+                        document.getElementById('selected-folder-display').querySelector('span').innerText = config.folderName || "Saved Folder";
+                    }
+                    setStatus('ready');
+                },
+                onError: function (err) {
+                    log("Failed to load prev config: " + err, 'error');
+                    setStatus('ready');
+                },
+                toast: false
+            });
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+
+            const btnIndiv = document.getElementById('mode-individual');
+            const btnSingle = document.getElementById('mode-single');
+            const desc = document.getElementById('mode-description');
+
+            if (mode === 'INDIVIDUAL') {
+                btnIndiv.classList.add('active');
+                btnSingle.classList.remove('active');
+                desc.innerText = "Generates a separate PDF/Doc for each non-empty row.";
+            } else {
+                btnSingle.classList.add('active');
+                btnIndiv.classList.remove('active');
+                desc.innerText = "Merges all generated pages into a single large PDF.";
+            }
+        }
+
+        // ── Folder Search ──
+        function debounceSearch() {
+            clearTimeout(searchTimeout);
+            var config = getSearchConfig('folder');
+            var query = document.getElementById(config.queryInputId).value.trim();
+
+            resetSearchSelection(config);
+
+            if (query.length < 2) {
+                toggleSearchResults(config, false);
+                return;
+            }
+
+            searchTimeout = setTimeout(function () {
+                runSearch(config, query);
+            }, 600);
+        }
+
+        function selectFolder(folder) {
+            applySelectedItem(getSearchConfig('folder'), folder);
+        }
+
+        // Hide results when clicking outside
+        document.addEventListener('click', function (e) {
+            ['folder', 'doc'].forEach(function (kind) {
+                var config = getSearchConfig(kind);
+                if (!e.target.closest('#' + config.resultsBoxId) && !e.target.closest('#' + config.queryInputId)) {
+                    toggleSearchResults(config, false);
+                }
+            });
+        });
+
+        // ── Template Doc Search ──
+        function debounceSearchDoc() {
+            clearTimeout(searchDocTimeout);
+            var config = getSearchConfig('doc');
+            var query = document.getElementById(config.queryInputId).value.trim();
+
+            resetSearchSelection(config);
+
+            if (query.length < 2) {
+                toggleSearchResults(config, false);
+                return;
+            }
+
+            searchDocTimeout = setTimeout(function () {
+                runSearch(config, query);
+            }, 600);
+        }
+
+        function selectDoc(doc) {
+            applySelectedItem(getSearchConfig('doc'), doc);
+        }
+
+        function syncPlaceholders() {
+            const url = document.getElementById('template-url').value.trim();
+            if (!url) {
+                return log('Please provide a Template Google Doc URL.', 'error');
+            }
+
+            setStatus('working', 'Syncing columns...');
+            log('Syncing placeholder columns from template...');
+
+            SyncSidebar.runPullAction({
+                action: {
+                    toolKey: 'DOCS_MERGE',
+                    actionName: 'syncPlaceholders',
+                    args: [url],
+                    loadingText: 'Syncing placeholders...',
+                    showSuccessToast: false,
+                    toast: false,
+                    onSuccess: function (res) {
+                        setStatus('ready');
+                        log(res.message, "success");
+                    },
+                    onError: handleError
+                }
+            });
+        }
+
+        // ── Real-time Execution Engine ──
+
+        function executeActions() {
+            const templateUrl = document.getElementById('template-url').value.trim();
+            const folderUrl = document.getElementById('folder-url').value.trim();
+            const templateName = document.getElementById('selected-doc-display').querySelector('span').innerText;
+            const folderName = document.getElementById('selected-folder-display').querySelector('span').innerText;
+
+            if (!templateUrl || !folderUrl) {
+                return log('Both Template Doc URL and Destination Folder are required.', 'error');
+            }
+
+            const confirmMsg = currentMode === 'INDIVIDUAL'
+                ? "Generate individual documents for all 'Generate PDF/Doc' actions?"
+                : "Generate a single merged PDF for all 'Generate Doc/PDF' actions?";
+
+            SyncSidebar.showConfirmDialog(confirmMsg, function() {
+                setStatus('working', 'Processing Items...');
+
+                const config = {
+                    templateUrl: templateUrl,
+                    folderUrl: folderUrl,
+                    templateName: templateName,
+                    folderName: folderName,
+                    mode: currentMode
+                };
+
+                SyncSidebar.runPushAction({
+                    action: {
+                        toolKey: 'DOCS_MERGE',
+                        actionName: 'executeBatch',
+                        args: [config],
+                        loadingText: 'Generating documents...',
+                        onSuccess: function (res) {
+                            setStatus('ready');
+                            log(res.message || "Execution completed successfully.", "success");
+                        },
+                        onError: function (err) {
+                            log("Halted due to error: " + err, "error");
+                            setStatus('error');
+                        }
+                    }
+                });
+            });
+        }
+
+        // ── Helpers ──
+        function setStatus(state, workingText = 'Working...') {
+            SyncSidebar.setStatusBadge('statusBadge', state, {
+                workingText: workingText,
+                spinnerHtml: '<div class="loader" style="width:10px;height:10px;border-width:1.5px;"></div>'
+            });
+        }
+
+        function log(msg, type) {
+            var message = (typeof msg === 'object' && msg.message) ? msg.message : String(msg);
+            SyncSidebar.showToast(message, type === 'error' || message.startsWith('Error:'));
+        }
+
+        function handleError(err) {
+            SyncSidebar.handleError(err, { context: 'Sidebar Operation' });
+            setStatus('error');
+        }
+    </script>
+</body>
+
+</html>
