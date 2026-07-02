@@ -89,8 +89,8 @@ function _App_validateValueByType(type, value, fieldConfig) {
             
         case 'URL':
             if (valStr === '') return true;
-            // Simple match for URLs
-            var urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/i;
+            // Match URLs, allowing optional query parameters and hash fragments
+            var urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*(\?[^\s]*)?(#[^\s]*)?$/i;
             return urlRegex.test(valStr);
             
         case 'DOCS_URL':

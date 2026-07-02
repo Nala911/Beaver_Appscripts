@@ -54,7 +54,7 @@ if (fs.existsSync(localJsonReportPath)) {
 }
 
 // 2. Run Clasp Push
-const claspPush = spawnSync('npx', ['clasp', 'push'], {
+const claspPush = spawnSync('npx', ['clasp', 'push', '-f'], {
   stdio: 'inherit',
   shell: true
 });

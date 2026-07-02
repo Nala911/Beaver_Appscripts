@@ -443,6 +443,25 @@ global.CalendarApp = {
   })),
 };
 
+global.Drive = {
+  Files: {
+    get: jest.fn(() => ({})),
+    list: jest.fn(() => ({ files: [] })),
+    create: jest.fn(() => ({ id: 'mock-file-id' })),
+    update: jest.fn(() => ({ id: 'mock-file-id' })),
+    remove: jest.fn(() => {}),
+  },
+  Drives: {
+    list: jest.fn(() => ({ drives: [] })),
+    get: jest.fn(() => ({ id: 'mock-drive-id' })),
+  },
+  Permissions: {
+    create: jest.fn(() => ({ id: 'mock-perm-id' })),
+    update: jest.fn(() => ({ id: 'mock-perm-id' })),
+    remove: jest.fn(() => {}),
+  }
+};
+
 global.DriveApp = {
   getRootFolder: jest.fn(() => ({
     getId: () => 'mock-root-folder-id',
@@ -540,6 +559,7 @@ global.Tasks = _createGasMockProxy('Tasks', global.Tasks);
 global.Calendar = _createGasMockProxy('Calendar', global.Calendar);
 global.CalendarApp = _createGasMockProxy('CalendarApp', global.CalendarApp);
 global.DriveApp = _createGasMockProxy('DriveApp', global.DriveApp);
+global.Drive = _createGasMockProxy('Drive', global.Drive);
 global.DocumentApp = _createGasMockProxy('DocumentApp', global.DocumentApp);
 global.FormApp = _createGasMockProxy('FormApp', global.FormApp);
 global.MailApp = _createGasMockProxy('MailApp', global.MailApp);
@@ -548,7 +568,7 @@ global.UrlFetchApp = _createGasMockProxy('UrlFetchApp', global.UrlFetchApp);
 global.Session = _createGasMockProxy('Session', global.Session);
 
 // Dynamic autoloader for Advanced Google services to prevent cryptic ReferenceErrors
-var knownServices = ['People', 'Maps', 'XmlService', 'LanguageApp', 'ContactsApp', 'AdminDirectory', 'AdminReports', 'Gmail', 'Sheets', 'Drive'];
+var knownServices = ['People', 'Maps', 'XmlService', 'LanguageApp', 'ContactsApp', 'AdminDirectory', 'AdminReports', 'Gmail', 'Sheets'];
 knownServices.forEach(function(service) {
   Object.defineProperty(global, service, {
     get: function() {

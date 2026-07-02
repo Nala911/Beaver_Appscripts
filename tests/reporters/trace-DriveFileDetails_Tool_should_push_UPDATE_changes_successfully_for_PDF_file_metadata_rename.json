@@ -1,0 +1,1070 @@
+[
+  {
+    "timestamp": "2026-07-02T21:22:34.920Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "💾 Google Drive": {
+          "name": "💾 Google Drive",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "Item Name",
+              "Description",
+              "Starred",
+              "Type",
+              "Editors",
+              "Viewers",
+              "Is Public?",
+              "Parent Path",
+              "Item Path",
+              "Size",
+              "Owner",
+              "URL",
+              "Item ID",
+              "Parent ID"
+            ],
+            [
+              "",
+              "✅ Updated: Properties",
+              "new_name.pdf",
+              "My PDF Description",
+              false,
+              "PDF",
+              "",
+              "",
+              false,
+              "My Drive",
+              "",
+              "",
+              "",
+              "",
+              "file-pdf-123",
+              ""
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 200,
+            "4": 200,
+            "5": 100,
+            "6": 150,
+            "7": 200,
+            "8": 200,
+            "9": 100,
+            "10": 200,
+            "11": 200,
+            "12": 200,
+            "13": 200,
+            "14": 250,
+            "15": 150,
+            "16": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.921Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "💾 Google Drive": {
+          "name": "💾 Google Drive",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "Item Name",
+              "Description",
+              "Starred",
+              "Type",
+              "Editors",
+              "Viewers",
+              "Is Public?",
+              "Parent Path",
+              "Item Path",
+              "Size",
+              "Owner",
+              "URL",
+              "Item ID",
+              "Parent ID"
+            ],
+            [
+              "",
+              "✅ Updated: Properties",
+              "new_name.pdf",
+              "My PDF Description",
+              false,
+              "PDF",
+              "",
+              "",
+              false,
+              "My Drive",
+              "",
+              "",
+              "",
+              "",
+              "file-pdf-123",
+              ""
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 200,
+            "4": 200,
+            "5": 100,
+            "6": 150,
+            "7": 200,
+            "8": 200,
+            "9": 100,
+            "10": 200,
+            "11": 200,
+            "12": 200,
+            "13": 200,
+            "14": 250,
+            "15": 150,
+            "16": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.922Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "💾 Google Drive": {
+          "name": "💾 Google Drive",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "Item Name",
+              "Description",
+              "Starred",
+              "Type",
+              "Editors",
+              "Viewers",
+              "Is Public?",
+              "Parent Path",
+              "Item Path",
+              "Size",
+              "Owner",
+              "URL",
+              "Item ID",
+              "Parent ID"
+            ],
+            [
+              "",
+              "✅ Updated: Properties",
+              "new_name.pdf",
+              "My PDF Description",
+              false,
+              "PDF",
+              "",
+              "",
+              false,
+              "My Drive",
+              "",
+              "",
+              "",
+              "",
+              "file-pdf-123",
+              ""
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 200,
+            "4": 200,
+            "5": 100,
+            "6": 150,
+            "7": 200,
+            "8": 200,
+            "9": 100,
+            "10": 200,
+            "11": 200,
+            "12": 200,
+            "13": 200,
+            "14": 250,
+            "15": 150,
+            "16": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.922Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "💾 Google Drive": {
+          "name": "💾 Google Drive",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "Item Name",
+              "Description",
+              "Starred",
+              "Type",
+              "Editors",
+              "Viewers",
+              "Is Public?",
+              "Parent Path",
+              "Item Path",
+              "Size",
+              "Owner",
+              "URL",
+              "Item ID",
+              "Parent ID"
+            ],
+            [
+              "",
+              "✅ Updated: Properties",
+              "new_name.pdf",
+              "My PDF Description",
+              false,
+              "PDF",
+              "",
+              "",
+              false,
+              "My Drive",
+              "",
+              "",
+              "",
+              "",
+              "file-pdf-123",
+              ""
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 200,
+            "4": 200,
+            "5": 100,
+            "6": 150,
+            "7": 200,
+            "8": 200,
+            "9": 100,
+            "10": 200,
+            "11": 200,
+            "12": 200,
+            "13": 200,
+            "14": 250,
+            "15": 150,
+            "16": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.922Z",
+    "service": "LockService",
+    "method": "getDocumentLock",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.923Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "💾 Google Drive": {
+          "name": "💾 Google Drive",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "Item Name",
+              "Description",
+              "Starred",
+              "Type",
+              "Editors",
+              "Viewers",
+              "Is Public?",
+              "Parent Path",
+              "Item Path",
+              "Size",
+              "Owner",
+              "URL",
+              "Item ID",
+              "Parent ID"
+            ],
+            [
+              "",
+              "✅ Updated: Properties",
+              "new_name.pdf",
+              "My PDF Description",
+              false,
+              "PDF",
+              "",
+              "",
+              false,
+              "My Drive",
+              "",
+              "",
+              "",
+              "",
+              "file-pdf-123",
+              ""
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 200,
+            "4": 200,
+            "5": 100,
+            "6": 150,
+            "7": 200,
+            "8": 200,
+            "9": 100,
+            "10": 200,
+            "11": 200,
+            "12": 200,
+            "13": 200,
+            "14": 250,
+            "15": 150,
+            "16": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.923Z",
+    "service": "CacheService",
+    "method": "getDocumentCache",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "cache": {
+        "formatted_rows_💾_Google_Drive": "31"
+      }
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.923Z",
+    "service": "CacheService",
+    "method": "getDocumentCache",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "cache": {
+        "formatted_rows_💾_Google_Drive": "31"
+      }
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.924Z",
+    "service": "SpreadsheetApp",
+    "method": "newDataValidation",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.924Z",
+    "service": "SpreadsheetApp",
+    "method": "newDataValidation",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.924Z",
+    "service": "SpreadsheetApp",
+    "method": "newDataValidation",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.924Z",
+    "service": "SpreadsheetApp",
+    "method": "newDataValidation",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.924Z",
+    "service": "SpreadsheetApp",
+    "method": "newDataValidation",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.925Z",
+    "service": "SpreadsheetApp",
+    "method": "newConditionalFormatRule",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.925Z",
+    "service": "SpreadsheetApp",
+    "method": "newConditionalFormatRule",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.925Z",
+    "service": "SpreadsheetApp",
+    "method": "newConditionalFormatRule",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.926Z",
+    "service": "SpreadsheetApp",
+    "method": "newConditionalFormatRule",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.926Z",
+    "service": "LockService",
+    "method": "getDocumentLock",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.926Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "💾 Google Drive": {
+          "name": "💾 Google Drive",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "Item Name",
+              "Description",
+              "Starred",
+              "Type",
+              "Editors",
+              "Viewers",
+              "Is Public?",
+              "Parent Path",
+              "Item Path",
+              "Size",
+              "Owner",
+              "URL",
+              "Item ID",
+              "Parent ID"
+            ],
+            [
+              "",
+              "✅ Updated: Properties",
+              "new_name.pdf",
+              "My PDF Description",
+              false,
+              "PDF",
+              "",
+              "",
+              false,
+              "My Drive",
+              "",
+              "",
+              "",
+              "",
+              "file-pdf-123",
+              ""
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 200,
+            "4": 200,
+            "5": 100,
+            "6": 150,
+            "7": 200,
+            "8": 200,
+            "9": 100,
+            "10": 200,
+            "11": 200,
+            "12": 200,
+            "13": 200,
+            "14": 250,
+            "15": 150,
+            "16": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.926Z",
+    "service": "Utilities",
+    "method": "formatDate",
+    "arguments": [
+      "2026-07-02T21:22:34.926Z",
+      "GMT",
+      "HH:mm:ss"
+    ],
+    "status": "SUCCESS",
+    "returnValue": "2026-07-02T21:22:34.926Z"
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.926Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "💾 Google Drive": {
+          "name": "💾 Google Drive",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "Item Name",
+              "Description",
+              "Starred",
+              "Type",
+              "Editors",
+              "Viewers",
+              "Is Public?",
+              "Parent Path",
+              "Item Path",
+              "Size",
+              "Owner",
+              "URL",
+              "Item ID",
+              "Parent ID"
+            ],
+            [
+              "",
+              "✅ Updated: Properties",
+              "new_name.pdf",
+              "My PDF Description",
+              false,
+              "PDF",
+              "",
+              "",
+              false,
+              "My Drive",
+              "",
+              "",
+              "",
+              "",
+              "file-pdf-123",
+              ""
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 200,
+            "4": 200,
+            "5": 100,
+            "6": 150,
+            "7": 200,
+            "8": 200,
+            "9": 100,
+            "10": 200,
+            "11": 200,
+            "12": 200,
+            "13": 200,
+            "14": 250,
+            "15": 150,
+            "16": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.927Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "💾 Google Drive": {
+          "name": "💾 Google Drive",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "Item Name",
+              "Description",
+              "Starred",
+              "Type",
+              "Editors",
+              "Viewers",
+              "Is Public?",
+              "Parent Path",
+              "Item Path",
+              "Size",
+              "Owner",
+              "URL",
+              "Item ID",
+              "Parent ID"
+            ],
+            [
+              "",
+              "✅ Updated: Properties",
+              "new_name.pdf",
+              "My PDF Description",
+              false,
+              "PDF",
+              "",
+              "",
+              false,
+              "My Drive",
+              "",
+              "",
+              "",
+              "",
+              "file-pdf-123",
+              ""
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 200,
+            "4": 200,
+            "5": 100,
+            "6": 150,
+            "7": 200,
+            "8": 200,
+            "9": 100,
+            "10": 200,
+            "11": 200,
+            "12": 200,
+            "13": 200,
+            "14": 250,
+            "15": 150,
+            "16": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.927Z",
+    "service": "Utilities",
+    "method": "formatDate",
+    "arguments": [
+      "2026-07-02T21:22:34.927Z",
+      "GMT",
+      "HH:mm:ss"
+    ],
+    "status": "SUCCESS",
+    "returnValue": "2026-07-02T21:22:34.927Z"
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.928Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "💾 Google Drive": {
+          "name": "💾 Google Drive",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "Item Name",
+              "Description",
+              "Starred",
+              "Type",
+              "Editors",
+              "Viewers",
+              "Is Public?",
+              "Parent Path",
+              "Item Path",
+              "Size",
+              "Owner",
+              "URL",
+              "Item ID",
+              "Parent ID"
+            ],
+            [
+              "",
+              "✅ Updated: Properties",
+              "new_name.pdf",
+              "My PDF Description",
+              false,
+              "PDF",
+              "",
+              "",
+              false,
+              "My Drive",
+              "",
+              "",
+              "",
+              "",
+              "file-pdf-123",
+              ""
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 200,
+            "4": 200,
+            "5": 100,
+            "6": 150,
+            "7": 200,
+            "8": 200,
+            "9": 100,
+            "10": 200,
+            "11": 200,
+            "12": 200,
+            "13": 200,
+            "14": 250,
+            "15": 150,
+            "16": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.928Z",
+    "service": "Utilities",
+    "method": "formatDate",
+    "arguments": [
+      "2026-07-02T21:22:34.928Z",
+      "GMT",
+      "HH:mm:ss"
+    ],
+    "status": "SUCCESS",
+    "returnValue": "2026-07-02T21:22:34.928Z"
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.928Z",
+    "service": "CacheService",
+    "method": "getUserCache",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "cache": {}
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.928Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "💾 Google Drive": {
+          "name": "💾 Google Drive",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "Item Name",
+              "Description",
+              "Starred",
+              "Type",
+              "Editors",
+              "Viewers",
+              "Is Public?",
+              "Parent Path",
+              "Item Path",
+              "Size",
+              "Owner",
+              "URL",
+              "Item ID",
+              "Parent ID"
+            ],
+            [
+              "",
+              "✅ Updated: Properties",
+              "new_name.pdf",
+              "My PDF Description",
+              false,
+              "PDF",
+              "",
+              "",
+              false,
+              "My Drive",
+              "",
+              "",
+              "",
+              "",
+              "file-pdf-123",
+              ""
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 200,
+            "4": 200,
+            "5": 100,
+            "6": 150,
+            "7": 200,
+            "8": 200,
+            "9": 100,
+            "10": 200,
+            "11": 200,
+            "12": 200,
+            "13": 200,
+            "14": 250,
+            "15": 150,
+            "16": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.928Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "💾 Google Drive": {
+          "name": "💾 Google Drive",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "Item Name",
+              "Description",
+              "Starred",
+              "Type",
+              "Editors",
+              "Viewers",
+              "Is Public?",
+              "Parent Path",
+              "Item Path",
+              "Size",
+              "Owner",
+              "URL",
+              "Item ID",
+              "Parent ID"
+            ],
+            [
+              "",
+              "✅ Updated: Properties",
+              "new_name.pdf",
+              "My PDF Description",
+              false,
+              "PDF",
+              "",
+              "",
+              false,
+              "My Drive",
+              "",
+              "",
+              "",
+              "",
+              "file-pdf-123",
+              ""
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 200,
+            "4": 200,
+            "5": 100,
+            "6": 150,
+            "7": 200,
+            "8": 200,
+            "9": 100,
+            "10": 200,
+            "11": 200,
+            "12": 200,
+            "13": 200,
+            "14": 250,
+            "15": 150,
+            "16": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.928Z",
+    "service": "CacheService",
+    "method": "getUserCache",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "cache": {}
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.928Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "💾 Google Drive": {
+          "name": "💾 Google Drive",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "Item Name",
+              "Description",
+              "Starred",
+              "Type",
+              "Editors",
+              "Viewers",
+              "Is Public?",
+              "Parent Path",
+              "Item Path",
+              "Size",
+              "Owner",
+              "URL",
+              "Item ID",
+              "Parent ID"
+            ],
+            [
+              "",
+              "✅ Updated: Properties",
+              "new_name.pdf",
+              "My PDF Description",
+              false,
+              "PDF",
+              "",
+              "",
+              false,
+              "My Drive",
+              "",
+              "",
+              "",
+              "",
+              "file-pdf-123",
+              ""
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 200,
+            "4": 200,
+            "5": 100,
+            "6": 150,
+            "7": 200,
+            "8": 200,
+            "9": 100,
+            "10": 200,
+            "11": 200,
+            "12": 200,
+            "13": 200,
+            "14": 250,
+            "15": 150,
+            "16": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:34.928Z",
+    "service": "Utilities",
+    "method": "formatDate",
+    "arguments": [
+      "2026-07-02T21:22:34.928Z",
+      "GMT",
+      "HH:mm:ss"
+    ],
+    "status": "SUCCESS",
+    "returnValue": "2026-07-02T21:22:34.928Z"
+  }
+]

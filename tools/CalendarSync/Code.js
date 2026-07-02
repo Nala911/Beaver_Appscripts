@@ -421,32 +421,3 @@ function _CalendarSync_addMeetLinkToEvent(calendarId, eventId) {
     }
   }, calendarId, eventId, { conferenceDataVersion: 1 });
 }
-
-/**
- * Global wrapper to allow Calendar pull to be run from triggers or manually from the IDE.
- * @param {Object} [request] Optional request parameters.
- */
-function CalendarSync_pullEvents(request) {
-    if (!request || typeof request !== 'object' || !request.startDate) {
-        var savedStart = _App_getProperty(APP_PROPS.CAL_START_DATE);
-        var savedEnd = _App_getProperty(APP_PROPS.CAL_END_DATE);
-        
-        var today = new Date();
-        var defaultStart = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
-        var defaultEnd = new Date(today.getFullYear(), today.getMonth() + 3, today.getDate());
-        
-        var format = function (d) {
-            var y = d.getFullYear();
-            var m = String(d.getMonth() + 1).padStart(2, '0');
-            var day = String(d.getDate()).padStart(2, '0');
-            return y + '-' + m + '-' + day;
-        };
-        
-        request = {
-            startDate: savedStart || format(defaultStart),
-            endDate: savedEnd || format(defaultEnd)
-        };
-    }
-    return SyncEngine.runAction('CALENDAR_SYNC', 'pull', [request]);
-}
-

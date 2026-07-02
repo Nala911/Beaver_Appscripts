@@ -1381,13 +1381,18 @@
         args = [opts.toolKey, opts.actionName, JSON.stringify(opts.args || [])];
       }
 
+      var timeoutMs = opts.timeoutMs;
+      if (timeoutMs === undefined && (opts.actionName === 'pull' || opts.actionName === 'push')) {
+        timeoutMs = 300000; // 5 minutes default for sync operations
+      }
+
       run(methodName, args, {
         context: opts.context,
         unwrap: opts.unwrap,
         toast: opts.toast,
         severity: opts.severity,
         lockButtons: opts.lockButtons,
-        timeoutMs: opts.timeoutMs,
+        timeoutMs: timeoutMs,
         onSuccess: function (res, raw) {
           if (opts.toolKey) stopProgressPolling(opts.toolKey);
           if (opts.loadingText) toggleLoading(false, null, opts.loadingOptions);

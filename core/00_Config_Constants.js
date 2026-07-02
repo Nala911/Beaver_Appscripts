@@ -82,3 +82,4 @@ var DEFAULT_COL_WIDTHS = {
     DATE: 120,
     READ_ONLY: 200
 };
+// Trigger clasp push refresh

@@ -110,8 +110,14 @@ function _App_callWithBackoff(func, retries) {
             return func();
         } catch (e) {
             var msg = (e.message || '').toLowerCase();
+            var is403Retriable = msg.indexOf('403') !== -1 && (
+                msg.indexOf('rate limit') !== -1 ||
+                msg.indexOf('quota') !== -1 ||
+                msg.indexOf('limit exceeded') !== -1 ||
+                msg.indexOf('too many') !== -1
+            );
             var isRetriable = (
-                msg.indexOf('403') !== -1 || msg.indexOf('429') !== -1 ||
+                is403Retriable || msg.indexOf('429') !== -1 ||
                 msg.indexOf('500') !== -1 || msg.indexOf('502') !== -1 ||
                 msg.indexOf('503') !== -1 ||
                 msg.indexOf('rate limit') !== -1 || msg.indexOf('quota') !== -1 ||

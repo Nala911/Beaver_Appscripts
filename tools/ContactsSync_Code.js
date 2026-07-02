@@ -246,23 +246,25 @@ SyncEngine.registerTool('CONTACTS_SYNC', {
 
                 var person = { names: [], emailAddresses: [], phoneNumbers: [], organizations: [], biographies: [], addresses: [] };
 
-                if (contactData.firstName || contactData.lastName) {
-                    person.names.push({ givenName: contactData.firstName || "", familyName: contactData.lastName || "" });
-                } else {
-                    throw new Error("⚠️ Name is required to push.");
-                }
+                if (action !== "DELETE") {
+                    if (contactData.firstName || contactData.lastName) {
+                        person.names.push({ givenName: contactData.firstName || "", familyName: contactData.lastName || "" });
+                    } else {
+                        throw new Error("⚠️ Name is required to push.");
+                    }
 
-                if (contactData.email) person.emailAddresses.push({ value: contactData.email });
-                if (contactData.phone) person.phoneNumbers.push({ value: contactData.phone });
-                if (contactData.company || contactData.title) person.organizations.push({ name: contactData.company || "", title: contactData.title || "" });
-                if (contactData.notes) person.biographies.push({ value: contactData.notes });
-                if (contactData.street || contactData.city || contactData.state || contactData.zip) {
-                    person.addresses.push({
-                        streetAddress: contactData.street || "",
-                        city: contactData.city || "",
-                        region: contactData.state || "",
-                        postalCode: contactData.zip || ""
-                    });
+                    if (contactData.email) person.emailAddresses.push({ value: contactData.email });
+                    if (contactData.phone) person.phoneNumbers.push({ value: contactData.phone });
+                    if (contactData.company || contactData.title) person.organizations.push({ name: contactData.company || "", title: contactData.title || "" });
+                    if (contactData.notes) person.biographies.push({ value: contactData.notes });
+                    if (contactData.street || contactData.city || contactData.state || contactData.zip) {
+                        person.addresses.push({
+                            streetAddress: contactData.street || "",
+                            city: contactData.city || "",
+                            region: contactData.state || "",
+                            postalCode: contactData.zip || ""
+                        });
+                    }
                 }
 
                 switch (action) {
@@ -407,21 +409,12 @@ function _ContactsSync_getOrCreateGroup(gName, groupNameToId) {
     return id;
 }
 
-/**
- * Global wrapper to allow Contacts pull to be run from triggers or manually from the IDE.
- * @param {Object} [request] Optional request parameters.
- */
-function ContactsSync_pullContacts(request) {
-    if (!request || typeof request !== 'object' || !request.groupIds) {
-        var savedGroups = _App_getProperty(APP_PROPS.CONTACTS_SELECTED_GROUPS);
-        if (!Array.isArray(savedGroups)) {
-            savedGroups = savedGroups ? [savedGroups] : ['all'];
-        }
-        request = {
-            groupIds: savedGroups
-        };
-    }
-    return SyncEngine.runAction('CONTACTS_SYNC', 'pull', [request]);
+
+/** Retrieves the primary field value, or falls back to the first item. */
+function _ContactsSync_getPrimary(arr) {
+    if (!arr || arr.length === 0) return "";
+    var primaryItem = arr.find(function (item) { return item.metadata && item.metadata.primary; }) || arr[0];
+    return primaryItem.value || "";
 }
 
 

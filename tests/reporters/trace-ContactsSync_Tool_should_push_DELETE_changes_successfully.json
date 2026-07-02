@@ -1,0 +1,578 @@
+[
+  {
+    "timestamp": "2026-07-02T21:22:35.316Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "☎️ Google Contacts": {
+          "name": "☎️ Google Contacts",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "First Name",
+              "Last Name",
+              "Email",
+              "Phone",
+              "Company",
+              "Job Title",
+              "Starred",
+              "Street",
+              "City",
+              "State",
+              "Zip",
+              "Groups/Labels",
+              "Notes",
+              "Contact ID"
+            ],
+            [
+              "",
+              "✅ Deleted",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "people/c222"
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 200,
+            "4": 200,
+            "5": 200,
+            "6": 200,
+            "7": 200,
+            "8": 200,
+            "9": 100,
+            "10": 200,
+            "11": 200,
+            "12": 200,
+            "13": 200,
+            "14": 150,
+            "15": 200,
+            "16": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:35.317Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "☎️ Google Contacts": {
+          "name": "☎️ Google Contacts",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "First Name",
+              "Last Name",
+              "Email",
+              "Phone",
+              "Company",
+              "Job Title",
+              "Starred",
+              "Street",
+              "City",
+              "State",
+              "Zip",
+              "Groups/Labels",
+              "Notes",
+              "Contact ID"
+            ],
+            [
+              "",
+              "✅ Deleted",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "people/c222"
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 200,
+            "4": 200,
+            "5": 200,
+            "6": 200,
+            "7": 200,
+            "8": 200,
+            "9": 100,
+            "10": 200,
+            "11": 200,
+            "12": 200,
+            "13": 200,
+            "14": 150,
+            "15": 200,
+            "16": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:35.317Z",
+    "service": "LockService",
+    "method": "getDocumentLock",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:35.317Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "☎️ Google Contacts": {
+          "name": "☎️ Google Contacts",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "First Name",
+              "Last Name",
+              "Email",
+              "Phone",
+              "Company",
+              "Job Title",
+              "Starred",
+              "Street",
+              "City",
+              "State",
+              "Zip",
+              "Groups/Labels",
+              "Notes",
+              "Contact ID"
+            ],
+            [
+              "",
+              "✅ Deleted",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "people/c222"
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 200,
+            "4": 200,
+            "5": 200,
+            "6": 200,
+            "7": 200,
+            "8": 200,
+            "9": 100,
+            "10": 200,
+            "11": 200,
+            "12": 200,
+            "13": 200,
+            "14": 150,
+            "15": 200,
+            "16": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:35.317Z",
+    "service": "CacheService",
+    "method": "getDocumentCache",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "cache": {
+        "formatted_rows_☎️_Google_Contacts": "31"
+      }
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:35.317Z",
+    "service": "CacheService",
+    "method": "getDocumentCache",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "cache": {
+        "formatted_rows_☎️_Google_Contacts": "31"
+      }
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:35.317Z",
+    "service": "SpreadsheetApp",
+    "method": "newDataValidation",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:35.318Z",
+    "service": "SpreadsheetApp",
+    "method": "newDataValidation",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:35.318Z",
+    "service": "SpreadsheetApp",
+    "method": "newDataValidation",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:35.318Z",
+    "service": "SpreadsheetApp",
+    "method": "newDataValidation",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:35.318Z",
+    "service": "SpreadsheetApp",
+    "method": "newConditionalFormatRule",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:35.319Z",
+    "service": "SpreadsheetApp",
+    "method": "newConditionalFormatRule",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:35.319Z",
+    "service": "SpreadsheetApp",
+    "method": "newConditionalFormatRule",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:35.319Z",
+    "service": "SpreadsheetApp",
+    "method": "newConditionalFormatRule",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:35.319Z",
+    "service": "SpreadsheetApp",
+    "method": "newConditionalFormatRule",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:35.319Z",
+    "service": "SpreadsheetApp",
+    "method": "newConditionalFormatRule",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {}
+  },
+  {
+    "timestamp": "2026-07-02T21:22:35.320Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "☎️ Google Contacts": {
+          "name": "☎️ Google Contacts",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "First Name",
+              "Last Name",
+              "Email",
+              "Phone",
+              "Company",
+              "Job Title",
+              "Starred",
+              "Street",
+              "City",
+              "State",
+              "Zip",
+              "Groups/Labels",
+              "Notes",
+              "Contact ID"
+            ],
+            [
+              "",
+              "✅ Deleted",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "people/c222"
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 200,
+            "4": 200,
+            "5": 200,
+            "6": 200,
+            "7": 200,
+            "8": 200,
+            "9": 100,
+            "10": 200,
+            "11": 200,
+            "12": 200,
+            "13": 200,
+            "14": 150,
+            "15": 200,
+            "16": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:35.320Z",
+    "service": "CacheService",
+    "method": "getUserCache",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "cache": {}
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:35.320Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "☎️ Google Contacts": {
+          "name": "☎️ Google Contacts",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "First Name",
+              "Last Name",
+              "Email",
+              "Phone",
+              "Company",
+              "Job Title",
+              "Starred",
+              "Street",
+              "City",
+              "State",
+              "Zip",
+              "Groups/Labels",
+              "Notes",
+              "Contact ID"
+            ],
+            [
+              "",
+              "✅ Deleted",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "people/c222"
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 200,
+            "4": 200,
+            "5": 200,
+            "6": 200,
+            "7": 200,
+            "8": 200,
+            "9": 100,
+            "10": 200,
+            "11": 200,
+            "12": 200,
+            "13": 200,
+            "14": 150,
+            "15": 200,
+            "16": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:35.320Z",
+    "service": "CacheService",
+    "method": "getUserCache",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "cache": {}
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:22:35.320Z",
+    "service": "SpreadsheetApp",
+    "method": "getActiveSpreadsheet",
+    "arguments": [],
+    "status": "SUCCESS",
+    "returnValue": {
+      "sheets": {
+        "☎️ Google Contacts": {
+          "name": "☎️ Google Contacts",
+          "data": [
+            [
+              "Action",
+              "Status",
+              "First Name",
+              "Last Name",
+              "Email",
+              "Phone",
+              "Company",
+              "Job Title",
+              "Starred",
+              "Street",
+              "City",
+              "State",
+              "Zip",
+              "Groups/Labels",
+              "Notes",
+              "Contact ID"
+            ],
+            [
+              "",
+              "✅ Deleted",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "people/c222"
+            ]
+          ],
+          "frozenRows": 1,
+          "frozenCols": 2,
+          "widths": {
+            "1": 120,
+            "2": 200,
+            "3": 200,
+            "4": 200,
+            "5": 200,
+            "6": 200,
+            "7": 200,
+            "8": 200,
+            "9": 100,
+            "10": 200,
+            "11": 200,
+            "12": 200,
+            "13": 200,
+            "14": 150,
+            "15": 200,
+            "16": 150
+          }
+        }
+      },
+      "timezone": "GMT",
+      "id": "mock-spreadsheet-id"
+    }
+  }
+]

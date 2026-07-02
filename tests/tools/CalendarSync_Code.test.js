@@ -58,44 +58,4 @@ describe('CalendarSync Tool', () => {
     expect(readObjects[0]['Event ID']).toBe('event-123');
     expect(readObjects[0]['Calendar ID']).toBe('personal@example.com');
   });
-
-  test('should pull calendar events using global wrapper and fallbacks', () => {
-    // 1. Setup mock calendar and events
-    const mockEvent = {
-      getTitle: () => 'Team Standup',
-      getStartTime: () => new Date('2026-10-15T09:00:00Z'),
-      getEndTime: () => new Date('2026-10-15T09:30:00Z'),
-      getDescription: () => 'Daily sync',
-      getLocation: () => 'Virtual',
-      getGuestList: () => [],
-      getId: () => 'event-456'
-    };
-
-    const mockCal = {
-      getName: () => 'Personal Calendar',
-      getId: () => 'personal@example.com',
-      getEvents: jest.fn(() => [mockEvent])
-    };
-
-    CalendarApp.getAllCalendars.mockReturnValue([mockCal]);
-
-    // Set properties using our mock APP_PROPS/properties store
-    _App_setProperty(APP_PROPS.CAL_START_DATE, '2026-10-10');
-    _App_setProperty(APP_PROPS.CAL_END_DATE, '2026-10-20');
-
-    // 2. Act - call global wrapper function with no arguments
-    const result = CalendarSync_pullEvents();
-
-    // 3. Assert
-    expect(result.success).toBe(true);
-    expect(mockCal.getEvents).toHaveBeenCalledWith(
-      new Date('2026-10-10'),
-      new Date('2026-10-20')
-    );
-
-    const readObjects = SheetManager.readObjects('CALENDAR_SYNC');
-    expect(readObjects.length).toBe(1);
-    expect(readObjects[0]['Event Title']).toBe('Team Standup');
-  });
 });
-

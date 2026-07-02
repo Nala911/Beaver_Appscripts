@@ -714,9 +714,17 @@ function _DriveFileDetails_handleUpdate(rowObj) {
   var newDesc = rowObj['Description'];
   var newStarred = rowObj['Starred'] === true || rowObj['Starred'] === 'TRUE';
 
-  var currentFile = _App_callWithBackoff(function () {
-    return Drive.Files.get(fileId, { fields: 'name, description, starred, permissions(id, role, emailAddress, type)', supportsAllDrives: true });
-  });
+  var currentFile;
+  try {
+    currentFile = _App_callWithBackoff(function () {
+      return Drive.Files.get(fileId, { fields: 'name, description, starred, permissions(id, role, emailAddress, type)', supportsAllDrives: true });
+    });
+  } catch (e) {
+    // Fallback if permissions field access is forbidden
+    currentFile = _App_callWithBackoff(function () {
+      return Drive.Files.get(fileId, { fields: 'name, description, starred', supportsAllDrives: true });
+    });
+  }
 
   var changes = [];
   var resource = {};
@@ -732,59 +740,63 @@ function _DriveFileDetails_handleUpdate(rowObj) {
   }
 
   // Permissions
-  var newEditors = _DriveFileDetails_parseEmailList(rowObj['Editors']);
-  var newViewers = _DriveFileDetails_parseEmailList(rowObj['Viewers']);
-  var targetIsPublic = rowObj['Is Public?'] === true || rowObj['Is Public?'] === 'TRUE';
+  try {
+    var newEditors = _DriveFileDetails_parseEmailList(rowObj['Editors']);
+    var newViewers = _DriveFileDetails_parseEmailList(rowObj['Viewers']);
+    var targetIsPublic = rowObj['Is Public?'] === true || rowObj['Is Public?'] === 'TRUE';
 
-  var currentEmailPerms = {};
-  var publicPermId = null;
+    var currentEmailPerms = {};
+    var publicPermId = null;
 
-  if (currentFile.permissions) {
-    currentFile.permissions.forEach(function (p) {
-      if (p.type === 'anyone') publicPermId = p.id;
-      else if (p.emailAddress) currentEmailPerms[p.emailAddress.toLowerCase()] = p;
-    });
-  }
-
-  if (targetIsPublic && !publicPermId) {
-    _App_callWithBackoff(function () { Drive.Permissions.create({ role: 'reader', type: 'anyone' }, fileId, { supportsAllDrives: true }); });
-    changes.push("Made Public");
-  } else if (!targetIsPublic && publicPermId) {
-    _App_callWithBackoff(function () { Drive.Permissions.remove(fileId, publicPermId, { supportsAllDrives: true }); });
-    changes.push("Made Private");
-  }
-
-  var permChanges = false;
-  Object.keys(currentEmailPerms).forEach(function (email) {
-    var p = currentEmailPerms[email];
-    if (p.role === 'owner' || p.role === 'organizer') return;
-
-    var shouldBeEditor = newEditors.indexOf(email) !== -1;
-    var shouldBeViewer = newViewers.indexOf(email) !== -1;
-
-    if (!shouldBeEditor && !shouldBeViewer) {
-      _App_callWithBackoff(function () { Drive.Permissions.remove(fileId, p.id, { supportsAllDrives: true }); });
-      permChanges = true;
-    } else if (shouldBeEditor && p.role !== 'writer' && p.role !== 'fileOrganizer') {
-      _App_callWithBackoff(function () { Drive.Permissions.update({ role: 'writer' }, fileId, p.id, { supportsAllDrives: true }); });
-      permChanges = true;
-    } else if (shouldBeViewer && p.role !== 'reader') {
-      _App_callWithBackoff(function () { Drive.Permissions.update({ role: 'reader' }, fileId, p.id, { supportsAllDrives: true }); });
-      permChanges = true;
+    if (currentFile.permissions) {
+      currentFile.permissions.forEach(function (p) {
+        if (p.type === 'anyone') publicPermId = p.id;
+        else if (p.emailAddress) currentEmailPerms[p.emailAddress.toLowerCase()] = p;
+      });
     }
-  });
 
-  var allTargetEmails = newEditors.concat(newViewers);
-  allTargetEmails.forEach(function (email) {
-    if (currentEmailPerms[email]) return;
-    var role = newEditors.indexOf(email) !== -1 ? 'writer' : 'reader';
-    _App_callWithBackoff(function () {
-      Drive.Permissions.create({ role: role, type: 'user', emailAddress: email }, fileId, { sendNotificationEmails: false, supportsAllDrives: true });
+    if (targetIsPublic && !publicPermId) {
+      _App_callWithBackoff(function () { Drive.Permissions.create({ role: 'reader', type: 'anyone' }, fileId, { supportsAllDrives: true }); });
+      changes.push("Made Public");
+    } else if (!targetIsPublic && publicPermId) {
+      _App_callWithBackoff(function () { Drive.Permissions.remove(fileId, publicPermId, { supportsAllDrives: true }); });
+      changes.push("Made Private");
+    }
+
+    var permChanges = false;
+    Object.keys(currentEmailPerms).forEach(function (email) {
+      var p = currentEmailPerms[email];
+      if (p.role === 'owner' || p.role === 'organizer') return;
+
+      var shouldBeEditor = newEditors.indexOf(email) !== -1;
+      var shouldBeViewer = newViewers.indexOf(email) !== -1;
+
+      if (!shouldBeEditor && !shouldBeViewer) {
+        _App_callWithBackoff(function () { Drive.Permissions.remove(fileId, p.id, { supportsAllDrives: true }); });
+        permChanges = true;
+      } else if (shouldBeEditor && p.role !== 'writer' && p.role !== 'fileOrganizer') {
+        _App_callWithBackoff(function () { Drive.Permissions.update({ role: 'writer' }, fileId, p.id, { supportsAllDrives: true }); });
+        permChanges = true;
+      } else if (shouldBeViewer && p.role !== 'reader') {
+        _App_callWithBackoff(function () { Drive.Permissions.update({ role: 'reader' }, fileId, p.id, { supportsAllDrives: true }); });
+        permChanges = true;
+      }
     });
-    permChanges = true;
-  });
 
-  if (permChanges) changes.push("Permissions");
+    var allTargetEmails = newEditors.concat(newViewers);
+    allTargetEmails.forEach(function (email) {
+      if (currentEmailPerms[email]) return;
+      var role = newEditors.indexOf(email) !== -1 ? 'writer' : 'reader';
+      _App_callWithBackoff(function () {
+        Drive.Permissions.create({ role: role, type: 'user', emailAddress: email }, fileId, { sendNotificationEmails: false, supportsAllDrives: true });
+      });
+      permChanges = true;
+    });
+
+    if (permChanges) changes.push("Permissions");
+  } catch (permErr) {
+    Logger.warn("DRIVE_SYNC", "handleUpdate", "Could not fully sync permissions (may lack permissions management rights): " + permErr.message);
+  }
 
   return changes.length > 0 ? _App_formatStatus('SUCCESS', "Updated: " + changes.join(", ")) : _App_formatStatus('INFO', "No Changes Needed");
 }
