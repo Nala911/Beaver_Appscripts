@@ -1,74 +1,4 @@
-<!DOCTYPE html>
-<html>
-
-<head>
-  <base target="_top">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/lucide@latest"></script>
-</head>
-
-<body>
-
-  <!-- Header -->
-  <div class="header">
-    <div class="header-title">
-      <i data-lucide="message-square" style="width:18px;"></i>
-      Google Chat Spaces
-    </div>
-  </div>
-
-  <!-- Main Content -->
-  <div class="container">
-
-    <!-- Space Selection -->
-    <div>
-      <div class="section-label">
-        <i data-lucide="check-square" style="width:16px;"></i> Target Spaces
-      </div>
-      <div class="card" style="padding: 10px 14px;">
-        <input type="text" id="spaceSearch" placeholder="Search spaces..." style="margin-bottom: 10px;" oninput="filterSpaces()">
-        <div id="spacesListContainer" style="max-height: 150px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px; display: flex; flex-direction: column; gap: 8px; background: var(--hover-bg);">
-          <div style="font-size: 12px; color: var(--text-secondary); text-align: center; padding: 10px;">Loading spaces...</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Import Actions -->
-    <div>
-      <div class="section-label">
-        <i data-lucide="download-cloud" style="width:16px;"></i> Import Members
-      </div>
-      <div class="card">
-        <p style="color: var(--text-secondary); margin-bottom: 14px; line-height: 1.5;">
-          Fetch current members from selected target spaces and import them into the spreadsheet.
-        </p>
-        <button class="btn btn-primary btn-pull" onclick="runPull()">
-          <i data-lucide="download-cloud" style="width:16px;"></i>
-          Pull All Members
-        </button>
-      </div>
-    </div>
-
-    <!-- Sync Actions -->
-    <div>
-      <div class="section-label">
-        <i data-lucide="refresh-cw" style="width:16px;"></i> Sync Actions
-      </div>
-      <div class="card">
-        <button class="btn btn-success btn-push" onclick="runPush()">
-          <i data-lucide="upload-cloud" style="width:16px;"></i>
-          Push Changes
-        </button>
-      </div>
-    </div>
-
-    <!-- Help & Guide Container -->
-    <div id="sync-sidebar-help-container"></div>
-
-  </div>
-
-  <?!= _App_include('core/SidebarShared'); ?>
-  <script>
+<script>
     var allSpaces = [];
     var selectedSpaceIds = [];
 
@@ -188,7 +118,4 @@
         }
       });
     }
-  </script>
-</body>
-
-</html>
+</script>

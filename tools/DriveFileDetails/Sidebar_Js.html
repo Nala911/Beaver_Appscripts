@@ -1,0 +1,228 @@
+<script>
+    let currentFolderId = null;
+    let currentFolderName = 'Root';
+    let folderStack = [];
+    let folderTopology = null;
+
+    window.onload = function () {
+        SyncSidebar.initSidebar({
+            onLoad: function () {
+                setStatus('working', 'Scanning...');
+                document.getElementById('folderList').innerHTML = '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px;"><div class="loader" style="width:24px; height:24px; border-width: 3px;"></div><div style="margin-top:12px; color:var(--text); font-weight:600;">Building File System...</div><div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">This may take a minute</div></div>';
+
+                log("Scanning Google Drive folder hierarchy...");
+
+                SyncSidebar.runAction({
+                    toolKey: 'DRIVE_SYNC',
+                    actionName: 'getFolderHierarchy',
+                    context: 'Load Hierarchy',
+                    onSuccess: function (data) {
+                        folderTopology = data.topology;
+                        log("File system scan complete.", "success");
+                        setStatus('ready');
+                        loadFolder(null, 'Root');
+                    },
+                    onError: function(err) {
+                        handleError(err);
+                    }
+                });
+            }
+        });
+    };
+
+    function log(msg, type) {
+        SyncSidebar.showToast(msg, type === 'error', { type: type });
+    }
+    function setStatus(state, msg) {
+        SyncSidebar.setStatusBadge('statusBadge', state, {
+            workingText: msg || 'Working...'
+        });
+    }
+
+    function updateNavButtons() {
+        document.getElementById('btnBack').disabled = (folderStack.length === 0);
+    }
+
+    // --- Navigation ---
+    function loadFolder(id, name) {
+        if (!folderTopology) return;
+
+        currentFolderId = id;
+        currentFolderName = name;
+
+        document.getElementById('pathDisplay').innerHTML = `<i data-lucide="${id === null ? 'hard-drive' : 'folder-open'}" style="width:14px;"></i> ${name}`;
+        try { if (typeof lucide !== 'undefined') lucide.createIcons(); } catch (e) { }
+
+        if (id === null) {
+            renderDrives(folderTopology.rootDrives);
+        } else {
+            let lookupId = id;
+            if (id === 'root' && folderTopology.myDriveId) {
+                lookupId = folderTopology.myDriveId;
+            }
+            const children = folderTopology.dict[lookupId] || [];
+            renderFolders(children);
+        }
+    }
+
+    function renderDrives(drives) {
+        const list = document.getElementById('folderList');
+        list.innerHTML = '';
+
+        const myDrive = document.createElement('div');
+        myDrive.className = 'folder-item';
+        myDrive.onclick = () => {
+            folderStack.push({ id: null, name: 'Root' });
+            updateNavButtons();
+            loadFolder('root', 'My Drive');
+        };
+        myDrive.innerHTML = `<i data-lucide="hard-drive"></i><span>My Drive</span>`;
+        list.appendChild(myDrive);
+
+        if (drives && drives.length > 0) {
+            const divider = document.createElement('div');
+            divider.style.padding = '10px 14px 6px 14px';
+            divider.style.fontSize = '10px';
+            divider.style.fontWeight = '700';
+            divider.style.color = 'var(--text-secondary)';
+            divider.style.textTransform = 'uppercase';
+            divider.style.letterSpacing = '0.08em';
+            divider.innerText = 'Shared Drives';
+            list.appendChild(divider);
+
+            drives.forEach(drive => {
+                const div = document.createElement('div');
+                div.className = 'folder-item';
+                div.onclick = () => {
+                    folderStack.push({ id: null, name: 'Root' });
+                    updateNavButtons();
+                    loadFolder(drive.id, drive.name);
+                };
+                div.innerHTML = `<i data-lucide="server"></i><span>${drive.name}</span>`;
+                list.appendChild(div);
+            });
+        }
+
+        try { if (typeof lucide !== 'undefined') lucide.createIcons(); } catch (e) { }
+    }
+
+    function renderFolders(children) {
+        const list = document.getElementById('folderList');
+        list.innerHTML = '';
+
+        if (!children || children.length === 0) {
+            list.innerHTML = '<div style="padding:20px; color:var(--text-secondary); text-align:center; font-size: 12px; font-weight: 500;">Empty Folder</div>';
+            return;
+        }
+
+        // sort by name
+        children.sort((a, b) => a.name.localeCompare(b.name));
+
+        children.forEach(folder => {
+            const div = document.createElement('div');
+            div.className = 'folder-item';
+            div.onclick = () => {
+                folderStack.push({ id: currentFolderId, name: currentFolderName });
+                updateNavButtons();
+                loadFolder(folder.id, folder.name);
+            };
+            div.innerHTML = `<i data-lucide="folder"></i><span>${folder.name}</span>`;
+            list.appendChild(div);
+        });
+        try { if (typeof lucide !== 'undefined') lucide.createIcons(); } catch (e) { }
+    }
+
+    function goUp() {
+        if (folderStack.length === 0) return;
+        const prev = folderStack.pop();
+        loadFolder(prev.id, prev.name);
+        updateNavButtons();
+    }
+
+    // --- Core Actions ---
+
+    function pullData() {
+        const isShallow = document.getElementById('chkShallow').checked;
+        setStatus('working', 'Pulling...');
+        SyncSidebar.runPullAction({
+            unsavedCheckMethod: 'UI_checkForUnsavedChanges',
+            unsavedCheckArgs: ['DRIVE_SYNC'],
+            action: {
+                toolKey: 'DRIVE_SYNC',
+                actionName: 'pull',
+                args: [currentFolderId, isShallow],
+                loadingText: 'Pulling drive details...',
+                onSuccess: function (res) {
+                    log(res, 'success');
+                    setStatus('ready');
+                },
+                onError: handleError,
+                showSuccessToast: false
+            }
+        });
+    }
+
+    function checkAndPush() {
+        setStatus('working', 'Checking...');
+        log("Checking pending changes...");
+        SyncSidebar.runAction({
+            toolKey: 'DRIVE_SYNC',
+            actionName: 'getPendingStats',
+            onSuccess: stats => {
+                if (stats.total === 0) {
+                    log("No pending changes found.", 'info');
+                    setStatus('ready');
+                } else if (stats.deletes > 0) {
+                    SyncSidebar.showConfirmDialog(`You are about to move ${stats.deletes} items to the trash. Are you sure you want to proceed?`, function() {
+                        confirmPush();
+                    }, function() {
+                        setStatus('ready');
+                    }, { title: 'Confirm Delete', confirmText: 'Delete' });
+                } else {
+                    confirmPush();
+                }
+            },
+            toast: false
+        });
+    }
+
+    function confirmPush() {
+        SyncSidebar.runPushAction({
+            action: {
+                toolKey: 'DRIVE_SYNC',
+                actionName: 'push',
+                loadingText: 'Pushing drive changes...',
+                onSuccess: function (logs) {
+                    logs.forEach(function (l) { log(l); });
+                    log("Sync Complete.", 'success');
+                    setStatus('ready');
+                },
+                onError: handleError,
+                showSuccessToast: false
+            }
+        });
+    }
+
+    function fillPath() {
+        let pathParts = folderStack.filter(f => f.name !== 'Root').map(f => f.name).concat([currentFolderName]);
+        if (pathParts.length === 0) pathParts = ['My Drive']; // Fallback
+        const pathFormatted = "/" + pathParts.join("/");
+
+        SyncSidebar.runAction({
+            toolKey: 'DRIVE_SYNC',
+            actionName: 'fillActivePath',
+            args: [currentFolderId, pathFormatted],
+            onSuccess: msg => {
+                log(msg, 'success');
+                setStatus('ready');
+            },
+            onError: handleError
+        });
+    }
+
+    // --- Helpers ---
+    function handleError(err) {
+        SyncSidebar.handleError(err, { context: 'Sidebar Operation' });
+        setStatus('error');
+    }
+</script>

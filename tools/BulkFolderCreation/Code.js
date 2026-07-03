@@ -10,7 +10,7 @@ SyncEngine.registerTool('BULK_FOLDER', {
     MENU_LABEL: SHEET_NAMES.BULK_FOLDER,
     MENU_ENTRYPOINT: 'BulkFolderCreation_openSidebar',
     MENU_ORDER: 80,
-    SIDEBAR_HTML: 'tools/BulkFolderCreation_Sidebar',
+    SIDEBAR_HTML: 'tools/BulkFolderCreation/Sidebar',
     SIDEBAR_WIDTH: 400,
     FORMAT_CONFIG: {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
@@ -251,4 +251,3 @@ function _BulkFolderCreation_createFolderPath(baseFolderId, folderNamesArr, fold
   }
   return currentParentId;
 }
-

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <title>Google Contacts</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <?!= _App_include('tools/ContactsSync/Sidebar_Css'); ?>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-title">
+            <i data-lucide="users" style="width:18px;"></i>
+            Google Contacts
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container">
+
+        <!-- Sync Actions -->
+        <div>
+            <div class="section-label">
+                <i data-lucide="refresh-cw" style="width:16px;"></i> Sync Actions
+            </div>
+            <div class="card sync-sidebar-action-grid">
+                <button class="btn btn-primary btn-pull" onclick="pullData()" style="flex:1;">
+                    <i data-lucide="download-cloud" style="width:16px;"></i> Pull
+                </button>
+                <button class="btn btn-success btn-push" onclick="pushData()" style="flex:1;">
+                    <i data-lucide="upload-cloud" style="width:16px;"></i> Push
+                </button>
+            </div>
+        </div>
+
+        <!-- Help & Guide Container -->
+        <div id="sync-sidebar-help-container"></div>
+
+    </div>
+
+    <?!= _App_include('core/SidebarShared'); ?>
+    <?!= _App_include('tools/ContactsSync/Sidebar_Js'); ?>
+</body>
+
+</html>

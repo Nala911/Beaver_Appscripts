@@ -6,10 +6,19 @@ class AgentReporter {
     this._globalConfig = globalConfig;
     this._options = options;
     this.failures = [];
+
+    // Parse artifact directory from process.argv
+    const args = process.argv.slice(2);
+    const dirIdx = args.indexOf('--artifact-dir');
+    this.artifactDir = (dirIdx !== -1 && args[dirIdx + 1]) ? args[dirIdx + 1] : '';
+
+    this.localReportPath = path.join(__dirname, 'agent_failure_report.md');
+    this.localJsonReportPath = path.join(__dirname, 'agent_failure_report.json');
   }
 
   onRunStart() {
     this.failures = [];
+
     // Clean up old failure report JSON if it exists
     const failureJsonPath = path.join(__dirname, 'failures.json');
     if (fs.existsSync(failureJsonPath)) {
@@ -17,6 +26,35 @@ class AgentReporter {
         fs.unlinkSync(failureJsonPath);
       } catch (e) {}
     }
+
+    // Clean up old MD/JSON reports from workspace
+    if (fs.existsSync(this.localReportPath)) {
+      try {
+        fs.unlinkSync(this.localReportPath);
+      } catch (e) {}
+    }
+    if (fs.existsSync(this.localJsonReportPath)) {
+      try {
+        fs.unlinkSync(this.localJsonReportPath);
+      } catch (e) {}
+    }
+
+    // Clean up old reports in artifact directory if provided
+    if (this.artifactDir && fs.existsSync(this.artifactDir)) {
+      const artReport = path.join(this.artifactDir, 'agent_failure_report.md');
+      const artJsonReport = path.join(this.artifactDir, 'agent_failure_report.json');
+      if (fs.existsSync(artReport)) {
+        try {
+          fs.unlinkSync(artReport);
+        } catch (e) {}
+      }
+      if (fs.existsSync(artJsonReport)) {
+        try {
+          fs.unlinkSync(artJsonReport);
+        } catch (e) {}
+      }
+    }
+
     // Clean up old trace files
     try {
       const files = fs.readdirSync(__dirname);
@@ -110,8 +148,106 @@ class AgentReporter {
 
   onRunComplete(contexts, results) {
     if (this.failures.length > 0) {
-      const failureJsonPath = path.join(__dirname, 'failures.json');
-      fs.writeFileSync(failureJsonPath, JSON.stringify(this.failures, null, 2), 'utf8');
+      // Generate the markdown and JSON failure reports
+      this.generateReport(this.failures);
+    }
+  }
+
+  generateReport(failures) {
+    let md = `# 🚨 Agent Unit Test Failure Report\n\n`;
+    md += `This diagnostic report was generated automatically. AI agents should review the failures below, fix the corresponding code, and re-run the validation.\n\n`;
+    md += `## Summary of Failures\n\n`;
+    md += `| Test Suite / File | Test Name | Location |\n`;
+    md += `| :--- | :--- | :--- |\n`;
+
+    failures.forEach(f => {
+      const fileBase = path.basename(f.testFilePath);
+      const loc = f.failureLocation ? `[${path.basename(f.failureLocation.file)}:${f.failureLocation.line}](file:///${f.failureLocation.file.replace(/\\/g, '/')}#L${f.failureLocation.line})` : 'N/A';
+      md += `| \`${fileBase}\` | ${f.title} | ${loc} |\n`;
+    });
+
+    md += `\n---\n\n## Failure Details\n\n`;
+
+    failures.forEach((f, idx) => {
+      md += `### ${idx + 1}. ${f.fullName}\n\n`;
+      md += `> [!CAUTION]\n`;
+      md += `> **Error message:**\n`;
+      md += `> \`\`\`\n`;
+      // Clean up stack trace formatting
+      const cleanMsg = f.failureMessages.join('\n').replace(/\x1B\[\d+m/g, ''); // strip terminal ANSI colors
+      md += `> ${cleanMsg.split('\n').slice(0, 10).join('\n> ')}\n`; // first 10 lines
+      md += `> \`\`\`\n\n`;
+
+      if (f.failureLocation) {
+        md += `* **File Link:** [${f.failureLocation.file}](file:///${f.failureLocation.file.replace(/\\/g, '/')}#L${f.failureLocation.line})\n`;
+      }
+
+      if (f.codeExcerpt) {
+        md += `\n**Code Excerpt:**\n`;
+        md += `\`\`\`javascript\n`;
+        md += `${f.codeExcerpt}\n`;
+        md += `\`\`\`\n`;
+      }
+
+      if (f.mockTrace && f.mockTrace.length > 0) {
+        md += `\n**Mock Google API Calls History:**\n\n`;
+        md += `| Time | Service | Method | Arguments | Status / Return Value |\n`;
+        md += `| :--- | :--- | :--- | :--- | :--- |\n`;
+        f.mockTrace.forEach(t => {
+          const timeStr = t.timestamp ? t.timestamp.split('T')[1].slice(0, 8) : '--:--:--'; // HH:MM:SS
+          const argsStr = t.arguments ? JSON.stringify(t.arguments) : '[]';
+          const retValStr = t.status === 'SUCCESS' 
+            ? (t.returnValue !== undefined ? JSON.stringify(t.returnValue) : 'undefined')
+            : `❌ ${t.error || 'Unknown Error'}`;
+          // Truncate long lines to keep markdown table clean
+          const trunc = (str, max) => {
+            const s = str || '';
+            return s.length > max ? s.slice(0, max) + '...' : s;
+          };
+          md += `| ${timeStr} | \`${t.service}\` | \`${t.method}\` | \`${trunc(argsStr, 45)}\` | \`${trunc(retValStr, 45)}\` |\n`;
+        });
+      } else {
+        md += `\n*No mock API calls were registered during this test.*\n`;
+      }
+
+      md += `\n---\n\n`;
+    });
+
+    // Write to workspace directory
+    fs.writeFileSync(this.localReportPath, md, 'utf8');
+    console.log(`\n📝 Local failure report created: file:///${this.localReportPath.replace(/\\/g, '/')}`);
+
+    const jsonReport = {
+      summary: {
+        totalFailures: failures.length,
+        timestamp: new Date().toISOString()
+      },
+      failures: failures.map(f => ({
+        testSuite: f.testFilePath ? path.relative(__dirname, f.testFilePath) : 'Unknown Suite',
+        testName: f.fullName,
+        errorType: f.unmockedMethod ? 'MissingMockError' : 'GenericTestFailure',
+        unmockedMethod: f.unmockedMethod || null,
+        suggestedMockScaffolding: f.suggestedMockScaffolding || null,
+        location: f.failureLocation ? {
+          file: path.relative(__dirname, f.failureLocation.file),
+          line: f.failureLocation.line
+        } : null,
+        codeExcerpt: f.codeExcerpt || null,
+        mockTrace: f.mockTrace || []
+      }))
+    };
+    fs.writeFileSync(this.localJsonReportPath, JSON.stringify(jsonReport, null, 2), 'utf8');
+    console.log(`📝 Local JSON diagnostic report created: file:///${this.localJsonReportPath.replace(/\\/g, '/')}`);
+
+    // Write to conversation artifact folder if provided
+    if (this.artifactDir && fs.existsSync(this.artifactDir)) {
+      const artifactPath = path.join(this.artifactDir, 'agent_failure_report.md');
+      fs.writeFileSync(artifactPath, md, 'utf8');
+      console.log(`📝 Artifact diagnostic report created: file:///${artifactPath.replace(/\\/g, '/')}`);
+      
+      const artifactJsonPath = path.join(this.artifactDir, 'agent_failure_report.json');
+      fs.writeFileSync(artifactJsonPath, JSON.stringify(jsonReport, null, 2), 'utf8');
+      console.log(`📝 Artifact JSON diagnostic report created: file:///${artifactJsonPath.replace(/\\/g, '/')}`);
     }
   }
 }

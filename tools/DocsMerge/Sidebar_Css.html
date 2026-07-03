@@ -1,0 +1,65 @@
+<style>
+    /* ── Folder Search ── */
+    .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-top: none;
+        border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+        box-shadow: var(--shadow-md);
+        max-height: 150px;
+        overflow-y: auto;
+        z-index: 10;
+        display: none;
+    }
+
+    .search-results.active {
+        display: block;
+    }
+
+    .folder-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        font-size: 11px;
+        border-bottom: 1px solid var(--border-light);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .folder-item:hover {
+        background: var(--hover-bg);
+    }
+
+    .folder-item i {
+        color: var(--primary-light);
+    }
+
+    .folder-item:last-child {
+        border-bottom: none;
+    }
+
+    /* ── Selected State ── */
+    .selected-info {
+        margin-top: 6px;
+        color: var(--success-dark);
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        animation: fadeSlide 0.3s ease;
+        font-weight: 500;
+    }
+
+    .selected-info i {
+        color: var(--success);
+    }
+
+    .input-has-selection {
+        border-color: var(--success) !important;
+        background-color: var(--success-bg) !important;
+    }
+</style>

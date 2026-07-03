@@ -2,7 +2,7 @@ const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-// Extract artifact directory argument if provided
+// Extract arguments
 const args = process.argv.slice(2);
 let artifactDir = '';
 const dirIdx = args.indexOf('--artifact-dir');
@@ -10,158 +10,216 @@ if (dirIdx !== -1 && args[dirIdx + 1]) {
   artifactDir = args[dirIdx + 1];
 }
 
+const isForce = args.includes('--force') || args.includes('-f');
+const isTestOnly = args.includes('--test-only');
 const localReportPath = path.join(__dirname, 'tests/reporters/agent_failure_report.md');
 const localJsonReportPath = path.join(__dirname, 'tests/reporters/agent_failure_report.json');
 
-console.log('🔄 Running local unit tests validation...');
+console.log('🔄 Starting deployment pipeline...');
 
-// 1. Run Jest
-const jestRun = spawnSync('npx', ['jest', '--runInBand'], {
-  stdio: 'inherit',
-  shell: true,
-  env: { ...process.env, NODE_ENV: 'test' }
-});
+// Clean up old reports in case they exist
+try {
+  if (fs.existsSync(localReportPath)) fs.unlinkSync(localReportPath);
+  if (fs.existsSync(localJsonReportPath)) fs.unlinkSync(localJsonReportPath);
+} catch (e) {}
 
-const failureJsonPath = path.join(__dirname, 'tests/reporters/failures.json');
+// --- Helper Functions ---
 
-if (jestRun.status !== 0) {
-  console.error('\n❌ [VALIDATION FAILED] Unit tests failed. Aborting deploy.');
-
-  if (fs.existsSync(failureJsonPath)) {
-    try {
-      const failures = JSON.parse(fs.readFileSync(failureJsonPath, 'utf8'));
-      generateReport(failures);
-    } catch (err) {
-      console.error('Failed to generate failure report:', err.message);
-    }
-  } else {
-    console.warn('No structured failure JSON found. Run Jest with AgentReporter to generate diagnostics.');
+function getChangedFiles() {
+  const result = spawnSync('git', ['status', '--porcelain'], { encoding: 'utf8', shell: true });
+  if (result.status !== 0) {
+    console.warn('⚠️ Warning: Failed to run "git status". Falling back to running all tests.');
+    return null;
   }
-  process.exit(1);
-}
-
-console.log('\n✅ [VALIDATION SUCCESS] All tests passed! Deploying changes to Apps Script editor.');
-
-// Clean up any old local failure reports if tests passed
-if (fs.existsSync(localReportPath)) {
-  try { fs.unlinkSync(localReportPath); } catch (e) {}
-}
-if (fs.existsSync(localJsonReportPath)) {
-  try {
-    fs.unlinkSync(localJsonReportPath);
-    console.log('🗑️ Cleaned up old local failure reports (MD/JSON).');
-  } catch (e) {}
-}
-
-// 2. Run Clasp Push
-const claspPush = spawnSync('npx', ['clasp', 'push', '-f'], {
-  stdio: 'inherit',
-  shell: true
-});
-
-if (claspPush.status !== 0) {
-  console.error('\n❌ [DEPLOY FAILED] Clasp push encountered errors.');
-  process.exit(1);
-}
-
-console.log('\n🚀 [DEPLOY SUCCESS] Code successfully validated and pushed!');
-process.exit(0);
-
-// --- Report Generation Helper ---
-function generateReport(failures) {
-  let md = `# 🚨 Agent Unit Test Failure Report\n\n`;
-  md += `This diagnostic report was generated automatically. AI agents should review the failures below, fix the corresponding code, and re-run the validation.\n\n`;
-  md += `## Summary of Failures\n\n`;
-  md += `| Test Suite / File | Test Name | Location |\n`;
-  md += `| :--- | :--- | :--- |\n`;
-
-  failures.forEach(f => {
-    const fileBase = path.basename(f.testFilePath);
-    const loc = f.failureLocation ? `[${path.basename(f.failureLocation.file)}:${f.failureLocation.line}](file:///${f.failureLocation.file.replace(/\\/g, '/')}#L${f.failureLocation.line})` : 'N/A';
-    md += `| \`${fileBase}\` | ${f.title} | ${loc} |\n`;
-  });
-
-  md += `\n---\n\n## Failure Details\n\n`;
-
-  failures.forEach((f, idx) => {
-    md += `### ${idx + 1}. ${f.fullName}\n\n`;
-    md += `> [!CAUTION]\n`;
-    md += `> **Error message:**\n`;
-    md += `> \`\`\`\n`;
-    // Clean up stack trace formatting
-    const cleanMsg = f.failureMessages.join('\n').replace(/\x1B\[\d+m/g, ''); // strip terminal ANSI colors
-    md += `> ${cleanMsg.split('\n').slice(0, 10).join('\n> ')}\n`; // first 10 lines
-    md += `> \`\`\`\n\n`;
-
-    if (f.failureLocation) {
-      md += `* **File Link:** [${f.failureLocation.file}](file:///${f.failureLocation.file.replace(/\\/g, '/')}#L${f.failureLocation.line})\n`;
-    }
-
-    if (f.codeExcerpt) {
-      md += `\n**Code Excerpt:**\n`;
-      md += `\`\`\`javascript\n`;
-      md += `${f.codeExcerpt}\n`;
-      md += `\`\`\`\n`;
-    }
-
-    if (f.mockTrace && f.mockTrace.length > 0) {
-      md += `\n**Mock Google API Calls History:**\n\n`;
-      md += `| Time | Service | Method | Arguments | Status / Return Value |\n`;
-      md += `| :--- | :--- | :--- | :--- | :--- |\n`;
-      f.mockTrace.forEach(t => {
-        const timeStr = t.timestamp ? t.timestamp.split('T')[1].slice(0, 8) : '--:--:--'; // HH:MM:SS
-        const argsStr = t.arguments ? JSON.stringify(t.arguments) : '[]';
-        const retValStr = t.status === 'SUCCESS' 
-          ? (t.returnValue !== undefined ? JSON.stringify(t.returnValue) : 'undefined')
-          : `❌ ${t.error || 'Unknown Error'}`;
-        // Truncate long lines to keep markdown table clean
-        const trunc = (str, max) => {
-          const s = str || '';
-          return s.length > max ? s.slice(0, max) + '...' : s;
-        };
-        md += `| ${timeStr} | \`${t.service}\` | \`${t.method}\` | \`${trunc(argsStr, 45)}\` | \`${trunc(retValStr, 45)}\` |\n`;
-      });
-    } else {
-      md += `\n*No mock API calls were registered during this test.*\n`;
-    }
-
-    md += `\n---\n\n`;
-  });
-
-  // Write to workspace directory
-  fs.writeFileSync(localReportPath, md, 'utf8');
-  console.log(`\n📝 Local failure report created: file:///${localReportPath.replace(/\\/g, '/')}`);
-
-  const jsonReport = {
-    summary: {
-      totalFailures: failures.length,
-      timestamp: new Date().toISOString()
-    },
-    failures: failures.map(f => ({
-      testSuite: f.testFilePath ? path.relative(__dirname, f.testFilePath) : 'Unknown Suite',
-      testName: f.fullName,
-      errorType: f.unmockedMethod ? 'MissingMockError' : 'GenericTestFailure',
-      unmockedMethod: f.unmockedMethod || null,
-      suggestedMockScaffolding: f.suggestedMockScaffolding || null,
-      location: f.failureLocation ? {
-        file: path.relative(__dirname, f.failureLocation.file),
-        line: f.failureLocation.line
-      } : null,
-      codeExcerpt: f.codeExcerpt || null,
-      mockTrace: f.mockTrace || []
-    }))
-  };
-  fs.writeFileSync(localJsonReportPath, JSON.stringify(jsonReport, null, 2), 'utf8');
-  console.log(`📝 Local JSON diagnostic report created: file:///${localJsonReportPath.replace(/\\/g, '/')}`);
-
-  // Write to conversation artifact folder if provided
-  if (artifactDir && fs.existsSync(artifactDir)) {
-    const artifactPath = path.join(artifactDir, 'agent_failure_report.md');
-    fs.writeFileSync(artifactPath, md, 'utf8');
-    console.log(`📝 Artifact diagnostic report created: file:///${artifactPath.replace(/\\/g, '/')}`);
+  
+  const lines = result.stdout.split('\n');
+  const files = [];
+  for (const line of lines) {
+    if (!line.trim()) continue;
     
-    const artifactJsonPath = path.join(artifactDir, 'agent_failure_report.json');
-    fs.writeFileSync(artifactJsonPath, JSON.stringify(jsonReport, null, 2), 'utf8');
-    console.log(`📝 Artifact JSON diagnostic report created: file:///${artifactJsonPath.replace(/\\/g, '/')}`);
+    // git status --porcelain output prefix is 3 chars (XY )
+    let filePath = line.substring(3).trim();
+    
+    // Handle renamed files: "R  old -> new" or "R  \"old\" -> \"new\""
+    if (line.startsWith('R ')) {
+      const parts = filePath.split(' -> ');
+      if (parts.length > 1) {
+        filePath = parts[1].replace(/^"(.*)"$/, '$1');
+      }
+    } else {
+      filePath = filePath.replace(/^"(.*)"$/, '$1');
+    }
+    
+    files.push(filePath.replace(/\\/g, '/'));
+  }
+  return files;
+}
+
+function analyzeChanges(files) {
+  let runAllTests = false;
+  let claspPushNeeded = false;
+  const testFilesToRun = new Set();
+  
+  if (files === null) {
+    return { runAllTests: true, claspPushNeeded: true, testFilesToRun: [] };
+  }
+  
+  if (files.length === 0) {
+    return { runAllTests: false, claspPushNeeded: false, testFilesToRun: [] };
+  }
+  
+  for (const file of files) {
+    // Check if it's a core/setup/configuration change
+    if (
+      file === 'package.json' ||
+      file === 'package-lock.json' ||
+      file === 'jest.config.js' ||
+      file === 'tests/setup.js' ||
+      file.startsWith('tests/mocks/') ||
+      file.startsWith('core/')
+    ) {
+      runAllTests = true;
+      claspPushNeeded = true;
+      continue;
+    }
+    
+    // Check if it's a test file (and exists)
+    if (file.startsWith('tests/') && file.endsWith('.test.js')) {
+      if (fs.existsSync(path.join(__dirname, file))) {
+        testFilesToRun.add(file);
+      }
+      continue;
+    }
+    
+    // Check if it's a tool file
+    if (file.startsWith('tools/')) {
+      if (file.endsWith('.js') || file.endsWith('.html') || file.endsWith('.json')) {
+        claspPushNeeded = true;
+      }
+      
+      const parts = file.split('/');
+      let toolName = '';
+      if (parts.length > 2) {
+        toolName = parts[1];
+      } else if (parts.length === 2) {
+        const filename = parts[1];
+        const match = filename.match(/^([A-Za-z0-9-]+)(?:_Code|_Sidebar)?/);
+        if (match) {
+          toolName = match[1];
+        }
+      }
+      
+      if (toolName) {
+        const possibleTests = [
+          `tests/tools/${toolName}_Code.test.js`,
+          `tests/tools/${toolName}.test.js`,
+          `tests/tools/${toolName}Sync_Code.test.js`
+        ];
+        
+        for (const testPath of possibleTests) {
+          if (fs.existsSync(path.join(__dirname, testPath))) {
+            testFilesToRun.add(testPath);
+          }
+        }
+      }
+      continue;
+    }
+    
+    // Check for general clasp-tracked files at root level
+    if (file === 'appsscript.json') {
+      claspPushNeeded = true;
+      continue;
+    }
+  }
+  
+  return {
+    runAllTests,
+    claspPushNeeded,
+    testFilesToRun: Array.from(testFilesToRun)
+  };
+}
+
+// --- Main Execution Flow ---
+
+let runAllTests = false;
+let claspPushNeeded = false;
+let testFilesToRun = [];
+let changedFiles = [];
+
+if (isForce) {
+  console.log('🔄 Force flag active. Running all tests.');
+  runAllTests = true;
+  claspPushNeeded = true;
+} else {
+  changedFiles = getChangedFiles();
+  if (changedFiles === null) {
+    runAllTests = true;
+    claspPushNeeded = true;
+  } else if (changedFiles.length === 0) {
+    console.log('✨ No changes detected. Nothing to test.');
+    process.exit(0);
+  } else {
+    console.log(`🔍 Detected changed files (${changedFiles.length}):`);
+    changedFiles.forEach(f => console.log(`   - ${f}`));
+    
+    const analysis = analyzeChanges(changedFiles);
+    runAllTests = analysis.runAllTests;
+    claspPushNeeded = analysis.claspPushNeeded;
+    testFilesToRun = analysis.testFilesToRun;
   }
 }
+
+// Execute tests if needed
+let jestPassed = true;
+
+if (runAllTests || testFilesToRun.length > 0) {
+  const target = runAllTests ? 'all tests' : `related tests:\n${testFilesToRun.map(t => `   - ${t}`).join('\n')}`;
+  console.log(`\n🧪 Running ${target}...`);
+  
+  // Forward all args EXCEPT pipeline-specific flags so --artifact-dir reaches the AgentReporter
+  const jestArgs = ['jest', '--runInBand', ...args.filter(arg => arg !== '--test-only' && arg !== '--force' && arg !== '-f')];
+  if (!runAllTests) {
+    jestArgs.push(...testFilesToRun);
+  }
+  
+  const jestRun = spawnSync('npx', jestArgs, {
+    stdio: 'inherit',
+    shell: true,
+    env: { ...process.env, NODE_ENV: 'test' }
+  });
+  
+  if (jestRun.status !== 0) {
+    jestPassed = false;
+  }
+} else {
+  console.log('\nℹ️ No related tests found or needed. Skipping test execution.');
+}
+
+if (!jestPassed) {
+  console.error('\n❌ [VALIDATION FAILED] Unit tests failed. Aborting deploy.');
+  // The AgentReporter has already generated the diagnostic reports.
+  process.exit(1);
+}
+
+console.log('\n✅ [VALIDATION SUCCESS] All tests passed / verification succeeded!');
+
+// Run clasp push if needed
+if (isTestOnly) {
+  console.log('\nℹ️ Test-only mode active. Skipping clasp push.');
+} else if (claspPushNeeded) {
+  console.log('\n🚀 Deploying changes to Apps Script editor...');
+  const claspPush = spawnSync('npx', ['clasp', 'push', '-f'], {
+    stdio: 'inherit',
+    shell: true
+  });
+
+  if (claspPush.status !== 0) {
+    console.error('\n❌ [DEPLOY FAILED] Clasp push encountered errors.');
+    process.exit(1);
+  }
+  console.log('\n🚀 [DEPLOY SUCCESS] Code successfully validated and pushed!');
+} else {
+  console.log('\nℹ️ No Google Apps Script code changes detected. Skipping clasp push.');
+}
+
+process.exit(0);

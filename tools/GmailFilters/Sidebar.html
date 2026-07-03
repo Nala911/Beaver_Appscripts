@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-title">
+            <i data-lucide="filter" style="width:18px;"></i>
+            Gmail Filters
+        </div>
+        <div id="statusBadge" class="status-badge">
+            Ready
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main">
+
+        <!-- Action Buttons -->
+        <div>
+            <div class="section-label">
+                <i data-lucide="zap" style="width:13px;"></i> Actions
+            </div>
+            <div class="btn-group">
+                <button id="btn-pull" class="btn btn-pull" onclick="runPull()">
+                    <i data-lucide="download" style="width:15px;"></i> Pull
+                </button>
+                <button id="btn-push" class="btn btn-push" onclick="runPush()">
+                    <i data-lucide="upload-cloud" style="width:15px;"></i> Push
+                </button>
+            </div>
+        </div>
+
+        <!-- Help & Guide Container -->
+        <div id="sync-sidebar-help-container"></div>
+    </div>
+
+    <?!= _App_include('core/SidebarShared'); ?>
+    <?!= _App_include('tools/GmailFilters/Sidebar_Js'); ?>
+</body>
+
+</html>

@@ -11,7 +11,7 @@ SyncEngine.registerTool('CHAT_SYNC', {
     MENU_LABEL: SHEET_NAMES.CHAT_SYNC,
     MENU_ENTRYPOINT: 'ChatSpaceSync_openSidebar',
     MENU_ORDER: 15,
-    SIDEBAR_HTML: 'tools/ChatSpaceSync_Sidebar',
+    SIDEBAR_HTML: 'tools/ChatSpaceSync/Sidebar',
     SIDEBAR_WIDTH: 400,
     FORMAT_CONFIG: {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
@@ -202,8 +202,6 @@ function _ChatSpaceSync_pullMembers() {
     });
   });
 }
-
-
 
 // --- THE "PUSH" WORKFLOW ---
 

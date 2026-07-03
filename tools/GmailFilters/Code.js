@@ -14,7 +14,7 @@ SyncEngine.registerTool('GMAIL_FILTERS', {
     MENU_LABEL: SHEET_NAMES.GMAIL_FILTERS,
     MENU_ENTRYPOINT: 'GmailFilters_openSidebar',
     MENU_ORDER: 30,
-    SIDEBAR_HTML: 'tools/GmailFilters_Sidebar',
+    SIDEBAR_HTML: 'tools/GmailFilters/Sidebar',
     SIDEBAR_WIDTH: 320,
     FORMAT_CONFIG: {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
@@ -361,4 +361,3 @@ function _GmailFilters_applyToExistingMessages(query, addLabelIds, removeLabelId
         });
     }
 }
-

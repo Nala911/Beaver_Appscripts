@@ -1,0 +1,109 @@
+<script>
+    let currentFolderId = "root";
+
+    // --- INITIALIZATION ---
+    window.onload = function () {
+        SyncSidebar.initSidebar({
+            toolKey: 'BULK_FOLDER',
+            onLoad: function () {
+                loadExplorer('root');
+            }
+        });
+    };
+
+    // --- EXPLORER LOGIC ---
+
+    function loadExplorer(id) {
+        const list = document.getElementById('folder-list');
+        list.innerHTML = '<div style="display: flex; justify-content: center; padding: 40px;"><div class="spinner"></div></div>';
+
+        SyncSidebar.runAction({
+            toolKey: 'BULK_FOLDER',
+            actionName: 'getDriveNavData',
+            args: [id],
+            context: 'Fetch Nav Data',
+            onSuccess: function(res) {
+                renderExplorer(res);
+            },
+            onError: function(err) {
+                list.innerHTML = '<div style="text-align: center; color: var(--danger); padding: 20px;">' + (err.message || err) + '</div>';
+            }
+        });
+    }
+
+    // Explicitly scope custom function in case of naming clashes
+    function renderExplorer(data) {
+        currentFolderId = data.current.id;
+        const list = document.getElementById('folder-list');
+        list.innerHTML = ''; 
+
+        document.getElementById('selected-folder-name').textContent = data.current.name;
+
+        const bcContainer = document.getElementById('breadcrumbs');
+        bcContainer.innerHTML = '';
+        data.breadcrumbs.forEach((bc, index) => {
+            const span = document.createElement('span');
+            span.className = "breadcrumb-item";
+            span.textContent = bc.name;
+            span.onclick = () => loadExplorer(bc.id);
+            bcContainer.appendChild(span);
+
+            if (index < data.breadcrumbs.length - 1) {
+                const sep = document.createElement('span');
+                sep.style.color = 'var(--border)';
+                sep.textContent = "/";
+                bcContainer.appendChild(sep);
+            }
+        });
+
+        if (data.children.length === 0) {
+            list.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 30px; font-style: italic;">No subfolders found</div>';
+        }
+
+        data.children.forEach(folder => {
+            const div = document.createElement('div');
+            div.className = "folder-item";
+            div.onclick = () => loadExplorer(folder.id);
+
+            const icon = document.createElement('i');
+            icon.setAttribute('data-lucide', 'folder');
+            icon.style.width = '20px';
+            icon.style.height = '20px';
+            icon.style.color = 'var(--text-secondary)';
+            div.appendChild(icon);
+
+            const text = document.createElement('span');
+            text.className = "folder-name";
+            text.textContent = folder.name;
+            div.appendChild(text);
+
+            list.appendChild(div);
+        });
+
+        document.getElementById('btn-back').disabled = data.breadcrumbs.length <= 1;
+        document.getElementById('btn-run').disabled = false;
+        SyncSidebar.refreshIcons();
+    }
+
+    function goUp() {
+        const items = document.querySelectorAll('.breadcrumb-item');
+        if (items.length >= 2) {
+            items[items.length - 2].click();
+        }
+    }
+
+    // --- AUTOMATION LOGIC ---
+
+    function startProcess() {
+        SyncSidebar.runAction({
+            toolKey: 'BULK_FOLDER',
+            actionName: 'createFolders',
+            args: [currentFolderId],
+            loadingText: 'Creating folders...',
+            context: 'Batch Creation',
+            onSuccess: function(res) {
+                loadExplorer(currentFolderId);
+            }
+        });
+    }
+</script>

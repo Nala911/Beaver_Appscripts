@@ -10,7 +10,7 @@ SyncEngine.registerTool('MAIL_MERGE', {
     MENU_LABEL: SHEET_NAMES.MAIL_MERGE,
     MENU_ENTRYPOINT: 'MailMerge_openSidebar',
     MENU_ORDER: 30,
-    SIDEBAR_HTML: 'tools/MailMerge_Sidebar',
+    SIDEBAR_HTML: 'tools/MailMerge/Sidebar',
     SIDEBAR_WIDTH: 400,
     FORMAT_CONFIG: {
         conditionalRules: [

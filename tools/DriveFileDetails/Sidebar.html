@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <title>Google Drive</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <?!= _App_include('tools/DriveFileDetails/Sidebar_Css'); ?>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-title">
+            <i data-lucide="cloud" style="width:18px;"></i>
+            Google Drive
+        </div>
+        <div id="statusBadge" class="status-badge" title="System Ready">
+            Ready
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main">
+
+        <!-- Navigator Section -->
+        <div style="display: flex; flex-direction: column; flex: 1; min-height: 250px;">
+            <div class="section-label">
+                <i data-lucide="folder-tree" style="width:13px;"></i> Navigator
+            </div>
+            <div class="card"
+                style="padding: 0; flex: 1; display: flex; flex-direction: column; overflow: hidden; gap: 0;">
+                <div class="nav-bar">
+                    <div class="path-display" id="pathDisplay">
+                        <i data-lucide="hard-drive" style="width:14px;"></i> Root
+                    </div>
+                    <button class="btn-icon" id="btnBack" onclick="goUp()" disabled title="Go Up">
+                        <i data-lucide="arrow-up" style="width:16px;"></i>
+                    </button>
+                </div>
+                <div id="folderList" class="folder-list">
+                    <div style="display:flex; justify-content:center; padding:20px;">
+                        <div class="loader"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions Section -->
+        <div>
+            <div class="section-label">
+                <i data-lucide="zap" style="width:13px;"></i> Actions
+            </div>
+            <div class="card">
+                <div class="btn-group">
+                    <button id="btnPull" class="btn btn-pull btn-full" onclick="pullData()">
+                        <i data-lucide="download" style="width:15px;"></i> Pull
+                    </button>
+                    <button id="btnPush" class="btn btn-push btn-full" onclick="checkAndPush()">
+                        <i data-lucide="upload-cloud" style="width:15px;"></i> Push
+                    </button>
+                </div>
+
+                <div class="sync-sidebar-inline-options">
+                    <input type="checkbox" id="chkShallow"
+                        style="cursor: pointer; accent-color: var(--primary); width: 14px; height: 14px;">
+                    <label for="chkShallow"
+                        style="color:var(--text-secondary); cursor:pointer; font-size: 12px; font-weight: 500;"
+                        title="If checked, only immediate files and folders are pulled. Subfolders are not searched.">Shallow
+                        Pull (Faster)</label>
+                </div>
+
+                <div style="margin-top: 8px;">
+                    <button id="btnFillPath" class="btn btn-outline" style="width: 100%;" onclick="fillPath()">
+                        <i data-lucide="folder-input" style="width:14px;"></i> Fill Path
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <?!= _App_include('core/SidebarShared'); ?>
+    <?!= _App_include('tools/DriveFileDetails/Sidebar_Js'); ?>
+</body>
+
+</html>

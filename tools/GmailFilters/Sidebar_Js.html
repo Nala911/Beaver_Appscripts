@@ -1,0 +1,61 @@
+<script>
+    // ── Init ──
+    window.onload = function () {
+        SyncSidebar.initSidebar({ toolKey: 'GMAIL_FILTERS' });
+    };
+
+    function runPull() {
+        setStatus('working');
+        SyncSidebar.runPullAction({
+            unsavedCheckMethod: 'UI_checkForUnsavedChanges',
+            unsavedCheckArgs: ['GMAIL_FILTERS'],
+            action: {
+                toolKey: 'GMAIL_FILTERS',
+                actionName: 'pull',
+                context: 'Pull Filters',
+                unwrap: false,
+                loadingText: 'Pulling filters from Gmail...',
+                showSuccessToast: false,
+                onSuccess: function(res) {
+                    setStatus(res.success ? 'ready' : 'error');
+                    SyncSidebar.showToast(res.message, !res.success);
+                },
+                onError: function(err) {
+                    SyncSidebar.handleError(err, { context: 'Pull Filters', resetLoading: true });
+                    setStatus('error');
+                }
+            }
+        });
+    }
+
+    function runPush() {
+        setStatus('working');
+        SyncSidebar.runPushAction({
+            toolKey: 'GMAIL_FILTERS',
+            checkActionName: 'getMissingLabels',
+            runActionName: 'push',
+            confirmOptions: {
+                checkText: 'Checking labels...',
+                runText: 'Pushing changes...',
+                confirmPrefix: 'The following new labels will be created in Gmail:\n\n',
+                runContext: 'Push Actions',
+                onSuccess: function(res) {
+                    SyncSidebar.toggleLoading(false);
+                    setStatus(res.success ? 'ready' : 'error');
+                    SyncSidebar.showToast(res.message, !res.success);
+                },
+                onError: function(err) {
+                    SyncSidebar.handleError(err, { context: 'Push Actions', resetLoading: true });
+                    setStatus('error');
+                }
+            }
+        });
+    }
+
+    // ── Helpers ──
+    function setStatus(state) {
+        SyncSidebar.setStatusBadge('statusBadge', state, {
+            workingText: 'Working'
+        });
+    }
+</script>

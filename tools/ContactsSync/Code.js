@@ -11,7 +11,7 @@ SyncEngine.registerTool('CONTACTS_SYNC', {
     MENU_LABEL: SHEET_NAMES.CONTACTS_SYNC,
     MENU_ENTRYPOINT: 'ContactsSync_openSidebar',
     MENU_ORDER: 20,
-    SIDEBAR_HTML: 'tools/ContactsSync_Sidebar',
+    SIDEBAR_HTML: 'tools/ContactsSync/Sidebar',
     SIDEBAR_WIDTH: 400,
     FORMAT_CONFIG: {
         conditionalRules: [
@@ -416,7 +416,3 @@ function _ContactsSync_getPrimary(arr) {
     var primaryItem = arr.find(function (item) { return item.metadata && item.metadata.primary; }) || arr[0];
     return primaryItem.value || "";
 }
-
-
-
-

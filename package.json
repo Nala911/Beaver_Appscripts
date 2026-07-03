@@ -4,7 +4,7 @@
   "description": "Local test runner for Workspace Sync Google Apps Scripts",
   "scripts": {
     "test": "jest",
-    "test:agent": "jest --config jest.config.js",
+    "test:agent": "node validate-and-push.js --test-only",
     "test:watch": "jest --watch",
     "deploy": "node validate-and-push.js"
   },

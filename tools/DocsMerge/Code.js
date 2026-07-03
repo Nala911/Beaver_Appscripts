@@ -10,7 +10,7 @@ SyncEngine.registerTool('DOCS_MERGE', {
     MENU_LABEL: SHEET_NAMES.DOCS_MERGE,
     MENU_ENTRYPOINT: 'DocsMerge_openSidebar',
     MENU_ORDER: 50,
-    SIDEBAR_HTML: 'tools/DocsMerge_Sidebar',
+    SIDEBAR_HTML: 'tools/DocsMerge/Sidebar',
     SIDEBAR_WIDTH: 400,
     FORMAT_CONFIG: {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],

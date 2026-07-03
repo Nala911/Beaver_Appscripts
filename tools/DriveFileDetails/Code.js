@@ -11,7 +11,7 @@ SyncEngine.registerTool('DRIVE_SYNC', {
     MENU_LABEL: SHEET_NAMES.DRIVE_SYNC,
     MENU_ENTRYPOINT: 'DriveFileDetails_openSidebar',
     MENU_ORDER: 90,
-    SIDEBAR_HTML: 'tools/DriveFileDetails_Sidebar',
+    SIDEBAR_HTML: 'tools/DriveFileDetails/Sidebar',
     SIDEBAR_WIDTH: 400,
     FORMAT_CONFIG: {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
@@ -214,17 +214,12 @@ var DRIVE_SYNC_COL = {
 // --- SIDEBAR & SHEET SETUP ---
 function _DriveFileDetails_InternalFunction() { } 
 
-
-
 /** Opens the Drive Sync sidebar and ensures the sheet exists. */
 function DriveFileDetails_openSidebar() {
   return Logger.run('DRIVE_SYNC', 'Open Sidebar', function () {
     _App_launchTool('DRIVE_SYNC');
   });
 }
-
-
-
 
 /* ==========================================================================
    CORE LOGIC
@@ -500,8 +495,6 @@ function _DriveFileDetails_runPushSequence() {
   });
 }
 
-
-
 /* ==========================================================================
    PRIVATE HELPER FUNCTIONS
    ========================================================================== */
@@ -549,9 +542,6 @@ function _DriveFileDetails_safeListDrives(params) {
     return null;
   }
 }
-
-
-
 
 function _DriveFileDetails_formatBytes(bytes) {
   if (!bytes || bytes == 0) return "-";
@@ -603,10 +593,6 @@ function _DriveFileDetails_getMimeTypeFromFriendly(friendlyType) {
     default: return 'application/vnd.google-apps.folder';
   }
 }
-
-// Stage 1: Data validations removed, using registry instead.
-
-// --- Handlers ---
 
 function _DriveFileDetails_handleCreate(rowObj, res) {
   var name = rowObj['Item Name'];
@@ -807,4 +793,3 @@ function _DriveFileDetails_handleDelete(rowObj) {
   _App_callWithBackoff(function () { Drive.Files.update({ trashed: true }, fileId, null, { supportsAllDrives: true }); });
   return _App_formatStatus('SUCCESS', "Deleted (Trashed)");
 }
-

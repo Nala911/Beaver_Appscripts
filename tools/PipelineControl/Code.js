@@ -10,7 +10,7 @@ SyncEngine.registerTool('PIPELINE', {
     MENU_LABEL: SHEET_NAMES.PIPELINE,
     MENU_ENTRYPOINT: 'PipelineControl_openSidebar',
     MENU_ORDER: 100,
-    SIDEBAR_HTML: 'tools/PipelineControl_Sidebar',
+    SIDEBAR_HTML: 'tools/PipelineControl/Sidebar',
     SIDEBAR_WIDTH: 300,
     FORMAT_CONFIG: {
         conditionalRules: [
@@ -60,11 +60,11 @@ SyncEngine.registerTool('PIPELINE', {
                 else disabledCount++;
 
                 list.push({
-                    row: p._rowNumber,
+                    rowIndex: p._rowNumber,
                     name: p['Pipeline Name'] || ('Row ' + p._rowNumber),
-                    status: p['Status'] || '',
+                    lastStatus: p['Status'] || '',
                     lastRun: p['Last Run Time'] || '',
-                    enabled: isEnabled
+                    isEnabled: isEnabled
                 });
             });
 

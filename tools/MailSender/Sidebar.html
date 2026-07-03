@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <?!= _App_include('tools/MailSender/Sidebar_Css'); ?>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-title">
+            <i data-lucide="mail" style="width:18px;"></i>
+            Mail Sender
+        </div>
+        <div id="statusBadge" class="status-badge">
+            Ready
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main">
+
+        <!-- Dashboard Widget -->
+        <div>
+            <div class="section-label">
+                <i data-lucide="bar-chart-2" style="width:13px;"></i> Usage Stats
+                <i data-lucide="help-circle" class="help-trigger" data-help-target="help-usage-stats" style="width:13px; margin-left: auto;"></i>
+            </div>
+            <div class="card quota-card">
+                <div class="quota-label">Daily Email Quota</div>
+                <div id="quota-display" class="quota-number loading">
+                    <div class="loader" style="width:24px; height:24px; border-width:3px; margin: 0 auto;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div>
+            <div class="section-label">
+                <i data-lucide="rocket" style="width:13px;"></i> Actions
+                <i data-lucide="help-circle" class="help-trigger" data-help-target="help-actions" style="width:13px; margin-left: auto;"></i>
+            </div>
+            <div class="card sync-sidebar-action-stack">
+                <button class="btn btn-push" id="btn-run" onclick="runExecuteActions()">
+                    <i data-lucide="send" style="width:15px;"></i> Send Custom Mail
+                </button>
+            </div>
+        </div>
+
+        <!-- Help & Guide Container -->
+        <div id="sync-sidebar-help-container"></div>
+
+    </div>
+
+    <!-- Manual Tooltips (Hidden) -->
+    <div style="display: none;">
+        <div id="help-usage-stats">
+            <p><strong>Email Quota</strong></p>
+            <p>This shows how many emails you can still send today via Google Services.</p>
+        </div>
+
+        <div id="help-actions">
+            <p><strong>Mail Sender Actions</strong></p>
+            <ul>
+                <li><strong>SEND:</strong> Immediately sends the email to the recipient.</li>
+                <li><strong>DRAFT:</strong> Creates a draft in your Gmail account for manual review.</li>
+            </ul>
+        </div>
+    </div>
+
+    <?!= _App_include('core/SidebarShared'); ?>
+    <?!= _App_include('tools/MailSender/Sidebar_Js'); ?>
+</body>
+
+</html>

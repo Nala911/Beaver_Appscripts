@@ -1,0 +1,136 @@
+<script>
+    // ── Init ──
+    window.onload = function () {
+      SyncSidebar.initSidebar({
+        toolKey: 'MAIL_MERGE',
+        onLoad: refreshData
+      });
+    };
+
+    function refreshData() {
+      SyncSidebar.runAction({
+        toolKey: 'MAIL_MERGE',
+        actionName: 'getGmailDrafts',
+        onSuccess: function (data) {
+          populateDrafts(data.drafts);
+        }
+      });
+
+      SyncSidebar.runAction({
+        toolKey: 'MAIL_MERGE',
+        actionName: 'getQuota',
+        onSuccess: function (data) {
+          updateQuota(data.remaining);
+        },
+        onError: function () {
+          SyncSidebar.markQuotaError('quota-display');
+        }
+      });
+    }
+
+    function updateQuota(amount) {
+      SyncSidebar.updateQuotaDisplay('quota-display', amount);
+    }
+
+    function populateDrafts(drafts) {
+      const select = document.getElementById('draft-select');
+      select.innerHTML = '';
+
+      if (!drafts || drafts.length === 0) {
+        const option = document.createElement('option');
+        option.text = "No drafts found in Gmail";
+        option.value = "";
+        select.add(option);
+        return;
+      }
+
+      const defaultOption = document.createElement('option');
+      defaultOption.text = "Select a draft...";
+      defaultOption.value = "";
+      select.add(defaultOption);
+
+      drafts.forEach(d => {
+        const option = document.createElement('option');
+        option.value = d.id;
+        option.text = d.subject;
+        select.add(option);
+      });
+
+      log("Loaded " + drafts.length + " templates.", "success");
+    }
+
+    // ── Sync Columns ──
+    function handleDraftSelection() {
+      const draftId = document.getElementById('draft-select').value;
+      if (!draftId) return log('Please select a template draft from the dropdown.', 'error');
+
+      setStatus('working', 'Syncing columns...');
+      log('Syncing placeholder columns...');
+
+      SyncSidebar.runPullAction({
+        action: {
+          toolKey: 'MAIL_MERGE',
+          actionName: 'syncPlaceholders',
+          args: [draftId],
+          loadingText: 'Syncing placeholders...',
+          showSuccessToast: false,
+          toast: false,
+          onSuccess: function (res) {
+            setStatus('ready');
+            log(res.message, "success");
+          },
+          onError: handleError
+        }
+      });
+    }
+
+    // ── Run Main Action ──
+    function executeActions() {
+      var draftId = document.getElementById('draft-select').value;
+      if (!draftId) return log("Please select a template draft first.", 'error');
+
+      SyncSidebar.showConfirmDialog("Execute all 'SEND' and 'DRAFT' actions in the sheet?", function() {
+        setStatus('working', 'Processing Items...');
+        log("Running Mail Merge Engine... Please wait.");
+        
+        SyncSidebar.runPushAction({
+          action: {
+            toolKey: 'MAIL_MERGE',
+            actionName: 'executeActions',
+            args: [draftId],
+            loadingText: 'Running mail merge...',
+            onSuccess: function (res) {
+              setStatus('ready');
+              log(res.message || "Execution completed successfully.", "success");
+              // Update quota after returning entirely
+              SyncSidebar.runAction({
+                toolKey: 'MAIL_MERGE',
+                actionName: 'getQuota',
+                onSuccess: function (data) { updateQuota(data.remaining); },
+                toast: false
+              });
+            },
+            onError: handleError
+          }
+        });
+      });
+    }
+
+    // ── Helpers ──
+    function setStatus(state, workingText = 'Working...') {
+      SyncSidebar.setStatusBadge('statusBadge', state, {
+        workingText: workingText,
+        spinnerHtml: '<div class="loader" style="width:10px;height:10px;border-width:1.5px;"></div>'
+      });
+    }
+
+    function log(msg, type) {
+      var message = (typeof msg === 'object' && msg.message) ? msg.message : String(msg);
+      SyncSidebar.showToast(message, type === 'error' || message.startsWith('Error:'));
+    }
+
+    function handleError(err) {
+      SyncSidebar.handleError(err, { context: 'Sidebar Operation' });
+      setStatus('error');
+    }
+</script>

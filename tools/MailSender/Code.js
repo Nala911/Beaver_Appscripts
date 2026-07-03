@@ -10,7 +10,7 @@ SyncEngine.registerTool('MAIL_SENDER', {
     MENU_LABEL: SHEET_NAMES.MAIL_SENDER,
     MENU_ENTRYPOINT: 'MailSender_openSidebar',
     MENU_ORDER: 40,
-    SIDEBAR_HTML: 'tools/MailSender_Sidebar',
+    SIDEBAR_HTML: 'tools/MailSender/Sidebar',
     SIDEBAR_WIDTH: 400,
     FORMAT_CONFIG: {
         conditionalRules: [{ type: 'pending', actionCol: 'A', scope: 'actionOnly' }],
@@ -139,5 +139,3 @@ function MailSender_openSidebar() {
     _App_launchTool('MAIL_SENDER');
   });
 }
-
-
