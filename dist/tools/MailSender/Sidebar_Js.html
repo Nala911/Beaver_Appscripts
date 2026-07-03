@@ -1,0 +1,65 @@
+<script>
+    // ── Init ──
+    window.onload = function () {
+      SyncSidebar.initSidebar({
+        toolKey: 'MAIL_SENDER',
+        onLoad: refreshData
+      });
+    };
+
+    function refreshData() {
+      SyncSidebar.runAction({
+        toolKey: 'MAIL_SENDER',
+        actionName: 'getQuota',
+        context: 'Refresh Quota',
+        onSuccess: function (res) {
+          updateQuota(res.remaining);
+        },
+        onError: function() {
+          SyncSidebar.markQuotaError('quota-display');
+        }
+      });
+    }
+
+    function updateQuota(amount) {
+      SyncSidebar.updateQuotaDisplay('quota-display', amount, { emptyText: '0' });
+    }
+
+    // ── Run Main Action ──
+    function runExecuteActions() {
+      SyncSidebar.showConfirmDialog("Execute all 'SEND' and 'DRAFT' actions in the sheet using the provided Custom Subjects and Bodies?", function() {
+        setStatus('working', 'Initializing...');
+
+        SyncSidebar.runPushAction({
+          action: {
+            toolKey: 'MAIL_SENDER',
+            actionName: 'executeActions',
+            context: 'Execute Actions',
+            loadingText: 'Executing mail actions...',
+            showSuccessToast: false,
+            onSuccess: function (res) {
+              setStatus('ready');
+              SyncSidebar.showToast(res.message || "Actions completed!");
+              refreshData();
+            },
+            onError: function(err) {
+              handleError(err);
+            }
+          }
+        });
+      });
+    }
+
+    // ── Helpers ──
+    function setStatus(state, workingText = 'Working...') {
+      SyncSidebar.setStatusBadge('statusBadge', state, {
+        workingText: workingText,
+        spinnerHtml: '<div class="loader" style="width:10px;height:10px;border-width:1.5px;"></div>'
+      });
+    }
+
+    function handleError(err) {
+      SyncSidebar.handleError(err, { context: 'Sidebar Operation' });
+      setStatus('error');
+    }
+</script>

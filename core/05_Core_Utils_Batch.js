@@ -74,8 +74,22 @@ function _App_BatchProcessor(toolKey, items, processFn, options) {
                 
                 var translated = _App_translateApiError(err);
                 
+                var statusMsg = translated.message;
+                if (translated.category !== 'unknown' && translated.originalMessage && translated.originalMessage !== translated.message) {
+                    var detailText = translated.originalMessage;
+                    if (detailText.length > 150) {
+                        detailText = detailText.substring(0, 147) + "...";
+                    }
+                    // Strip duplicate emojis and error labels from original message
+                    detailText = detailText.replace(/^[⚠️❌⏳ℹ️✅]\s*/, '').replace(/^(?:Data|Formatting|API|System)\s+Error:\s*/i, '');
+                    
+                    var colonIdx = translated.message.indexOf(':');
+                    var prefix = colonIdx !== -1 ? translated.message.substring(0, colonIdx + 1) : "❌ Error:";
+                    statusMsg = prefix + " " + detailText;
+                }
+                
                 // Return an error object to the tool so it can write to the Status column
-                var errObj = { isError: true, error: translated.message };
+                var errObj = { isError: true, error: statusMsg };
                 if (item && item._rowNumber !== undefined) {
                     errObj._rowNumber = item._rowNumber;
                 }

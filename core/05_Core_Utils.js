@@ -175,6 +175,7 @@ function _App_translateApiError(err) {
     var lower = rawMsg.toLowerCase();
     var result = {
         message: rawMsg,
+        originalMessage: rawMsg,
         isFatal: false,
         category: 'unknown'
     };

@@ -160,14 +160,20 @@ var SyncEngine = (function() {
 
         var needsLock = (actionName === 'pull' || actionName === 'push');
         var execute = function() {
-            if (actionName === 'pull' || actionName === 'push') {
-                _App_ensureSheetExists(toolKey);
-            }
             try {
+                if (actionName === 'pull' || actionName === 'push') {
+                    _App_ensureSheetExists(toolKey);
+                }
                 return action.apply(cfg, args || []);
             } catch (err) {
                 var translated = _App_translateApiError(err);
-                throw new Error(translated.message);
+                return _App_fail(translated.message, null, {
+                    originalError: translated.originalMessage || err.message || String(err),
+                    stack: err.stack ? String(err.stack) : "",
+                    toolKey: toolKey,
+                    actionName: actionName,
+                    timestamp: new Date().toISOString()
+                });
             }
         };
 

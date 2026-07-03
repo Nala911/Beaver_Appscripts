@@ -207,6 +207,18 @@ if (isTestOnly) {
   console.log('\nℹ️ Test-only mode active. Skipping clasp push.');
 } else if (claspPushNeeded) {
   console.log('\n🚀 Deploying changes to Apps Script editor...');
+  
+  console.log('\n🏗️ Running build step...');
+  const buildRun = spawnSync('node', ['build.js'], {
+    stdio: 'inherit',
+    shell: true
+  });
+
+  if (buildRun.status !== 0) {
+    console.error('\n❌ [DEPLOY FAILED] Build step encountered errors.');
+    process.exit(1);
+  }
+
   const claspPush = spawnSync('npx', ['clasp', 'push', '-f'], {
     stdio: 'inherit',
     shell: true

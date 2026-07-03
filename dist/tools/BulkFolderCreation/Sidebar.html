@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <?!= _App_include('tools/BulkFolderCreation/Sidebar_Css'); ?>
+</head>
+
+<body>
+
+    <div class="header">
+        <div class="header-title">
+            <i data-lucide="folder" style="width:18px;"></i>
+            Bulk Folder Creation
+        </div>
+    </div>
+
+    <div class="container">
+        <div>
+            <div class="section-label">
+                <i data-lucide="compass" style="width:16px;"></i> Drive Explorer
+            </div>
+            <div class="explorer-card">
+                <div id="breadcrumbs" class="breadcrumbs">
+                    <span>Loading...</span>
+                </div>
+                <div id="folder-list" class="folder-list">
+                    <div style="display: flex; justify-content: center; padding: 40px;">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="section-label">
+                <i data-lucide="info" style="width:16px;"></i> Selection Info
+            </div>
+            <div class="selection-info">
+                <span class="selection-label">Target:</span>
+                <span id="selected-folder-name" class="selection-value">Loading...</span>
+            </div>
+        </div>
+        
+        <!-- Help & Guide Container -->
+        <div id="sync-sidebar-help-container"></div>
+    </div>
+
+    <div class="footer">
+        <div class="btn-group">
+            <button id="btn-back" class="btn btn-secondary" onclick="goUp()" disabled>
+                <i data-lucide="arrow-left" style="width:16px;"></i> Back
+            </button>
+            <button id="btn-run" class="btn btn-primary" onclick="startProcess()" disabled>
+                <i data-lucide="rocket" style="width:16px;"></i> Create Folders
+            </button>
+        </div>
+    </div>
+
+    <?!= _App_include('core/SidebarShared'); ?>
+    <?!= _App_include('tools/BulkFolderCreation/Sidebar_Js'); ?>
+</body>
+
+</html>

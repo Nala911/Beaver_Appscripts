@@ -1,0 +1,53 @@
+<style>
+    /* ── Form Elements ── */
+    .form-group { margin-bottom: 14px; }
+
+    .label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 5px;
+        display: block;
+        letter-spacing: 0.02em;
+    }
+
+    .select {
+        width: 100%;
+        padding: 9px 10px;
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius-sm);
+        font-size: 12px;
+        font-family: inherit;
+        color: var(--text);
+        background: var(--surface);
+        outline: none;
+        cursor: pointer;
+    }
+
+    .select:focus { border-color: var(--primary-light); }
+
+    /* ── Quick Links ── */
+    .link-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 8px;
+    }
+
+    .link-card {
+        background: var(--primary-bg);
+        padding: 10px;
+        border-radius: var(--radius-sm);
+        text-decoration: none;
+        color: var(--primary);
+        font-weight: 600;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+        text-align: center;
+        transition: transform 0.2s;
+    }
+
+    .link-card:hover { transform: translateY(-2px); }
+</style>

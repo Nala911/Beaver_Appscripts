@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <?!= _App_include('tools/FormsSync/Sidebar_Css'); ?>
+</head>
+
+<body>
+
+    <div class="header">
+        <div class="header-title">
+            <i data-lucide="file-text" style="width:18px;"></i>
+            Google Forms
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Connect Section -->
+        <div>
+            <div class="section-label">
+                <i data-lucide="link" style="width:16px;"></i> Connect Form
+            </div>
+            <div class="card">
+                <div class="form-group">
+                    <label class="label">Select Recent Form</label>
+                    <select id="form-select" class="select" onchange="onFormChange()">
+                        <option value="">Loading forms...</option>
+                    </select>
+                </div>
+
+                <div id="quick-links" style="display: none;">
+                    <div class="label" style="margin-top: 10px;">Quick Access</div>
+                    <div class="link-grid">
+                        <a id="link-edit" href="#" target="_blank" class="link-card">
+                            <i data-lucide="edit" style="width:16px;"></i>
+                            <span>Edit Form</span>
+                        </a>
+                        <a id="link-responses" href="#" target="_blank" class="link-card">
+                            <i data-lucide="bar-chart-2" style="width:16px;"></i>
+                            <span>Responses</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pull Section -->
+        <div>
+            <div class="section-label">
+                <i data-lucide="download" style="width:16px;"></i> Sync Actions
+            </div>
+            <div class="card">
+                <p style="color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+                    Pull form structure into the spreadsheet to edit questions and options.
+                </p>
+                <button class="btn btn-primary btn-pull" onclick="pullForm()">
+                    <i data-lucide="download" style="width:16px;"></i> Pull from Form
+                </button>
+            </div>
+        </div>
+
+        <!-- Push Section -->
+        <div>
+            <div class="section-label">
+                <i data-lucide="upload" style="width:16px;"></i> Sync Actions
+            </div>
+            <div class="card">
+                <p style="color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+                    Apply changes made in the spreadsheet back to the Google Form.
+                </p>
+                <button class="btn btn-success btn-push" onclick="syncToForm()">
+                    <i data-lucide="upload" style="width:16px;"></i> Sync to Form
+                </button>
+            </div>
+        </div>
+        
+        <!-- Help & Guide Container -->
+        <div id="sync-sidebar-help-container"></div>
+    </div>
+
+    <?!= _App_include('core/SidebarShared'); ?>
+    <?!= _App_include('tools/FormsSync/Sidebar_Js'); ?>
+</body>
+
+</html>

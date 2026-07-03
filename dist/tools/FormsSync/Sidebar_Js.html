@@ -1,0 +1,98 @@
+<script>
+    // --- INITIALIZATION ---
+    window.onload = function () {
+        SyncSidebar.initSidebar({
+            createIcons: false,
+            onLoad: loadForms
+        });
+    };
+
+    function loadForms() {
+        SyncSidebar.runAction({
+            toolKey: 'FORMS_SYNC',
+            actionName: 'getForms',
+            context: 'Load Forms',
+            onSuccess: function(res) {
+                renderLists(res);
+                showQuickLinks();
+            }
+        });
+    }
+
+    function renderLists(data) {
+        const select = document.getElementById('form-select');
+        select.innerHTML = '<option value="">-- Choose a Form --</option>';
+
+        if (data.forms && data.forms.length > 0) {
+            data.forms.forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f.id;
+                opt.textContent = f.title;
+                if (f.id === data.savedFormId) opt.selected = true;
+                select.appendChild(opt);
+            });
+        } else {
+            select.innerHTML = '<option value="">No recent forms found</option>';
+        }
+    }
+
+    function onFormChange() {
+        showQuickLinks();
+    }
+
+    function showQuickLinks() {
+        const formId = document.getElementById('form-select').value;
+        const container = document.getElementById('quick-links');
+        
+        if (!formId) {
+            container.style.display = 'none';
+            return;
+        }
+
+        SyncSidebar.runAction({
+            toolKey: 'FORMS_SYNC',
+            actionName: 'getFormLinks',
+            context: 'Load Links',
+            onSuccess: function(res) {
+                if (res && res.editUrl) {
+                    document.getElementById('link-edit').href = res.editUrl;
+                    document.getElementById('link-responses').href = res.responsesUrl;
+                    container.style.display = 'block';
+                } else {
+                    container.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    function pullForm() {
+        const formId = document.getElementById('form-select').value;
+        if (!formId) {
+            SyncSidebar.showToast('Please select a form first.', true);
+            return;
+        }
+
+        SyncSidebar.runPullAction({
+            unsavedCheckMethod: 'UI_checkForUnsavedChanges',
+            unsavedCheckArgs: ['FORMS_SYNC'],
+            action: {
+                toolKey: 'FORMS_SYNC',
+                actionName: 'pull',
+                args: [formId],
+                context: 'Pull Form',
+                loadingText: 'Pulling form...'
+            }
+        });
+    }
+
+    function syncToForm() {
+        SyncSidebar.runPushAction({
+            action: {
+                toolKey: 'FORMS_SYNC',
+                actionName: 'push',
+                context: 'Sync to Form',
+                loadingText: 'Syncing to form...'
+            }
+        });
+    }
+</script>

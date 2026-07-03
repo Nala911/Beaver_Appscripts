@@ -1,0 +1,33 @@
+<script>
+  window.onload = function () {
+    SyncSidebar.initSidebar({
+      toolKey: 'TASKS_SYNC',
+      createIcons: true
+    });
+  };
+
+  function runPull() {
+    SyncSidebar.runPullAction({
+      unsavedCheckMethod: 'UI_checkForUnsavedChanges',
+      unsavedCheckArgs: ['TASKS_SYNC'],
+      action: {
+        toolKey: 'TASKS_SYNC',
+        actionName: 'pull',
+        args: [],
+        context: 'Pull Tasks',
+        loadingText: 'Importing Tasks…'
+      }
+    });
+  }
+
+  function runPush() {
+    SyncSidebar.runPushAction({
+      action: {
+        toolKey: 'TASKS_SYNC',
+        actionName: 'push',
+        context: 'Push Changes',
+        loadingText: 'Syncing…'
+      }
+    });
+  }
+</script>

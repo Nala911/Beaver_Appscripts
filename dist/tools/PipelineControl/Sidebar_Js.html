@@ -1,0 +1,288 @@
+<script>
+    let pipelineData = [];
+    let allSelected = false;
+
+    window.onload = function () {
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        loadDashboard();
+
+        SyncSidebar.runAction({
+            toolKey: 'PIPELINE',
+            actionName: 'getSystemStatus',
+            context: 'System Status',
+            onSuccess: function(res) {
+                updateToggle(res.data);
+            }
+        });
+    };
+
+    function loadDashboard() {
+        SyncSidebar.toggleLoading(true, "Loading Dashboard…");
+        SyncSidebar.runAction({
+            toolKey: 'PIPELINE',
+            actionName: 'getDashboardData',
+            context: 'Load Dashboard',
+            onSuccess: function(res) {
+                SyncSidebar.toggleLoading(false);
+                if (!res || !Array.isArray(res.pipelines)) return;
+                pipelineData = res.pipelines;
+                renderPipelineList();
+            },
+            onError: function() {
+                SyncSidebar.toggleLoading(false);
+                document.getElementById('pipelineListContainer').innerHTML = `<div class="empty-state"><i data-lucide="alert-circle"  style="font-size:28px; color:var(--danger);"></i>Error loading pipelines.</div>`;
+            }
+        });
+    }
+
+    function renderPipelineList() {
+        const container = document.getElementById('pipelineListContainer');
+        container.innerHTML = '';
+
+        if (pipelineData.length === 0) {
+            container.innerHTML = `<div class="empty-state">
+      <i data-lucide="lightbulb"  style="font-size:28px; color:var(--text-secondary);"></i>
+      No pipelines found. Format the sheet and add some!
+    </div>`;
+            return;
+        }
+
+        pipelineData.forEach((p, idx) => {
+            const isDis = !p.isEnabled;
+            const statusClass = p.lastStatus.toLowerCase();
+
+            let badgeClass = 'pending';
+            if (statusClass === 'success') badgeClass = 'success';
+            if (statusClass === 'failed') badgeClass = 'failed';
+            if (statusClass === 'running') badgeClass = 'running';
+
+            const item = document.createElement('div');
+            item.className = `pipeline-item ${isDis ? 'disabled' : ''}`;
+            item.id = `row-${p.rowIndex}`;
+            item.style.animationDelay = (idx * 0.04) + 's';
+
+            const checkboxWrapper = document.createElement('div');
+            checkboxWrapper.className = 'checkbox-wrapper';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'styled-cb pipeline-cb';
+            checkbox.value = p.rowIndex;
+            checkbox.onchange = updateSelectAllState;
+            checkbox.disabled = isDis;
+
+            checkboxWrapper.appendChild(checkbox);
+
+            const info = document.createElement('div');
+            info.className = 'pipeline-info';
+
+            const title = document.createElement('div');
+            title.className = 'pipeline-name';
+            title.title = p.name;
+            title.innerText = p.name;
+
+            const meta = document.createElement('div');
+            meta.className = 'pipeline-meta';
+            meta.innerHTML = `<span class="badge ${badgeClass}">${p.lastStatus}</span>
+                      <span>${p.lastRun ? p.lastRun : 'Never run'}</span>`;
+
+            info.appendChild(title);
+            info.appendChild(meta);
+
+            const btn = document.createElement('button');
+            btn.className = 'run-btn-small';
+            btn.disabled = isDis;
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                if (isDis) return;
+                runSingle(p.rowIndex);
+            };
+            btn.id = `btn-single-${p.rowIndex}`;
+            btn.title = isDis ? 'Enable pipeline to run' : 'Run Single';
+            btn.innerHTML = `<i data-lucide="play" ></i>`;
+
+            item.onclick = (e) => {
+                if (isDis) return;
+                if (e.target !== checkbox && e.target !== btn && !btn.contains(e.target)) {
+                    checkbox.checked = !checkbox.checked;
+                    updateSelectAllState();
+                }
+            };
+
+            item.appendChild(checkboxWrapper);
+            item.appendChild(info);
+            item.appendChild(btn);
+
+            container.appendChild(item);
+        });
+
+        updateSelectAllState(); 
+    }
+
+    // --- Selection Logic ---
+    function toggleSelectAll() {
+        const cbs = document.querySelectorAll('.pipeline-cb');
+        allSelected = !allSelected;
+        cbs.forEach(cb => cb.checked = allSelected);
+        updateSelectAllState(true);
+    }
+
+    function updateSelectAllState(fromToggle = false) {
+        const cbs = document.querySelectorAll('.pipeline-cb');
+        const checkedCbs = document.querySelectorAll('.pipeline-cb:checked');
+        const btn = document.getElementById('toggleSelect');
+
+        if (!fromToggle) {
+            if (cbs.length > 0 && checkedCbs.length === cbs.length) {
+                allSelected = true;
+            } else {
+                allSelected = false;
+            }
+        }
+
+        if (allSelected && cbs.length > 0) {
+            btn.innerText = "Deselect";
+        } else {
+            btn.innerText = "Select All";
+        }
+
+        updateRunButtonLabel(checkedCbs.length);
+    }
+
+    function updateRunButtonLabel(count) {
+        const btn = document.getElementById('btnRunSelected');
+        if (count === 0) {
+            btn.innerHTML = `<i data-lucide="play" ></i> Run All Pipelines`;
+        } else {
+            btn.innerHTML = `<i data-lucide="play" ></i> Run Selected (${count})`;
+        }
+    }
+
+    // --- Execution Logic ---
+    function runSingle(rowIndex) {
+        runExecution([rowIndex], document.getElementById(`btn-single-${rowIndex}`));
+    }
+
+    function runSelected() {
+        const cbs = document.querySelectorAll('.pipeline-cb:checked');
+        let indexes = [];
+
+        if (cbs.length === 0) {
+            indexes = pipelineData.filter(p => p.isEnabled).map(p => p.rowIndex);
+            if (indexes.length === 0) {
+                SyncSidebar.showToast("No active pipelines to run.", true);
+                return;
+            }
+        } else {
+            indexes = Array.from(cbs).map(cb => parseInt(cb.value));
+        }
+
+        runExecution(indexes, document.getElementById('btnRunSelected'));
+    }
+
+    function runExecution(rowIndexes, buttonEl) {
+        const isMainBtn = buttonEl.id === 'btnRunSelected';
+        const originalHtml = buttonEl.innerHTML;
+
+        if (isMainBtn) {
+            buttonEl.innerHTML = `<div class="spinner-small" style="margin-right:8px;"></div> Running...`;
+        } else {
+            buttonEl.innerHTML = `<div class="spinner-small-primary"></div>`;
+        }
+
+        rowIndexes.forEach(idx => {
+            const item = document.getElementById(`row-${idx}`);
+            if (item) {
+                const badge = item.querySelector('.badge');
+                if (badge) {
+                    badge.className = 'badge running';
+                    badge.innerText = 'RUNNING...';
+                }
+            }
+        });
+
+        SyncSidebar.showToast(`Processing ${rowIndexes.length} pipeline(s)...`);
+
+        SyncSidebar.runAction({
+            toolKey: 'PIPELINE',
+            actionName: 'runSelected',
+            args: [rowIndexes],
+            context: 'Run Execution',
+            onSuccess: function() {
+                SyncSidebar.showToast("Execution complete.");
+                loadDashboard();
+            },
+            onError: function() {
+                loadDashboard();
+            },
+            onFinally: function() {
+                buttonEl.innerHTML = originalHtml;
+            }
+        });
+    }
+
+    // --- System Toggles ---
+    function updateToggle(status) {
+        var isEnabled = (status === 'true');
+        var toggleConfig = document.getElementById('systemToggle');
+        toggleConfig.checked = isEnabled;
+        toggleConfig.disabled = false;
+        updateStatusText(isEnabled);
+    }
+
+    function updateStatusText(isEnabled) {
+        var label = document.getElementById('systemStatusLabel');
+        if (isEnabled) {
+            label.innerText = "System Active";
+            label.style.color = "var(--success-dark)";
+            label.style.fontWeight = "700";
+        } else {
+            label.innerText = "System Paused";
+            label.style.color = "var(--danger)";
+            label.style.fontWeight = "700";
+        }
+    }
+
+    function toggleSystem() {
+        var toggleConfig = document.getElementById('systemToggle');
+        var isChecked = toggleConfig.checked;
+        updateStatusText(isChecked);
+
+        SyncSidebar.runAction({
+            toolKey: 'PIPELINE',
+            actionName: 'setSystemStatus',
+            args: [isChecked],
+            context: 'Toggle System',
+            onSuccess: function() {
+                SyncSidebar.showToast("System status updated.");
+            },
+            onError: function() {
+                toggleConfig.checked = !isChecked;
+                updateStatusText(!isChecked);
+            }
+        });
+    }
+
+    function formatSheet() {
+        SyncSidebar.showConfirmDialog("WARNING: This will clear the active sheet and set it up for the Pipeline. Are you sure you want to proceed?", function() {
+            var btn = document.getElementById('btnFormat');
+            var originalHtml = btn.innerHTML;
+
+            btn.innerHTML = `<div class="spinner-small-primary" style="border-top-color: var(--primary); border-width: 2px; margin-right:8px;"></div> Formatting...`;
+            SyncSidebar.showToast("Setting up headers...");
+
+            SyncSidebar.runAction({
+                toolKey: 'PIPELINE',
+                actionName: 'formatSheet',
+                context: 'Format Sheet',
+                onSuccess: function(res) {
+                    SyncSidebar.showToast(res.message);
+                    loadDashboard();
+                },
+                onFinally: function() {
+                    btn.innerHTML = originalHtml;
+                }
+            });
+        });
+    }
+</script>

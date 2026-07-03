@@ -1,0 +1,96 @@
+<style>
+    /* ── Navigator Specifics ── */
+    .nav-bar {
+        padding: 10px 14px;
+        background: rgba(99, 102, 241, 0.03);
+        border-bottom: 1px solid var(--border-light);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .path-display {
+        font-weight: 600;
+        color: var(--text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 180px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+    }
+
+    .path-display i {
+        color: var(--primary-light);
+    }
+
+    .btn-icon {
+        background: transparent;
+        border: 1px solid transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        padding: 4px;
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .btn-icon:hover:not(:disabled) {
+        background: var(--hover-bg);
+        color: var(--primary);
+    }
+
+    .btn-icon:disabled {
+        opacity: 0.3;
+        cursor: default;
+    }
+
+    .folder-list {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 4px 0;
+        min-height: 150px;
+        /* give it some height */
+    }
+
+    .folder-list::-webkit-scrollbar {
+        width: 5px;
+    }
+
+    .folder-list::-webkit-scrollbar-thumb {
+        background: rgba(99, 102, 241, 0.2);
+        border-radius: 10px;
+    }
+
+    .folder-item {
+        padding: 10px 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: background 0.15s;
+        color: var(--text);
+        font-weight: 500;
+        font-size: 12px;
+        border-bottom: 1px solid var(--border-light);
+    }
+
+    .folder-item:last-child {
+        border-bottom: none;
+    }
+
+    .folder-item:hover {
+        background: var(--hover-bg);
+        color: var(--primary);
+    }
+
+    .folder-item i {
+        width: 16px;
+        height: 16px;
+        color: var(--primary-light);
+    }
+</style>

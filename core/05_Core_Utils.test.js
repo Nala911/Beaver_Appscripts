@@ -76,4 +76,22 @@ describe('Core Utilities', () => {
       expect(SyncEngine.Utils.formatDateTime).toBe(_App_formatDateTime);
     });
   });
+
+  describe('_App_translateApiError', () => {
+    test('should preserve originalMessage and return correct category', () => {
+      const rawError = 'API call to calendar.events.insert failed: 403 Forbidden';
+      const result = _App_translateApiError(new Error(rawError));
+      expect(result.originalMessage).toBe(rawError);
+      expect(result.category).toBe('auth');
+      expect(result.isFatal).toBe(true);
+    });
+
+    test('should fall back to raw error message if category is unknown', () => {
+      const rawError = 'Some strange native scripting failure';
+      const result = _App_translateApiError(rawError);
+      expect(result.originalMessage).toBe(rawError);
+      expect(result.message).toBe(rawError);
+      expect(result.category).toBe('unknown');
+    });
+  });
 });

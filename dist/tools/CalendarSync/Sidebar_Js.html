@@ -1,0 +1,80 @@
+<script>
+  function formatLocalDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  window.onload = function () {
+    SyncSidebar.initSidebar({
+      toolKey: 'CALENDAR_SYNC',
+      onLoad: function () {
+        const today = new Date();
+        const past = new Date(); past.setMonth(today.getMonth() - 1);
+        const future = new Date(); future.setMonth(today.getMonth() + 3);
+
+        document.getElementById('startDate').value = formatLocalDate(past);
+        document.getElementById('endDate').value = formatLocalDate(future);
+
+        loadData();
+      }
+    });
+  };
+
+  function loadData() {
+    SyncSidebar.runAction({
+      toolKey: 'CALENDAR_SYNC',
+      actionName: 'getLoadData',
+      context: 'Load Data',
+      onSuccess: populateUI
+    });
+  }
+
+  function populateUI(data) {
+    if (!data) return;
+    if (data.savedStartDate) document.getElementById('startDate').value = data.savedStartDate.substring(0, 10);
+    if (data.savedEndDate) document.getElementById('endDate').value = data.savedEndDate.substring(0, 10);
+  }
+
+  function getPullArgs() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    return { startDate, endDate };
+  }
+
+  function validateDates() {
+    const args = getPullArgs();
+    if (!args.startDate || !args.endDate) {
+      SyncSidebar.showToast('Select dates', true);
+      return false;
+    }
+    return true;
+  }
+
+  function runPull() {
+    SyncSidebar.runPullAction({
+      unsavedCheckMethod: 'UI_checkForUnsavedChanges',
+      unsavedCheckArgs: ['CALENDAR_SYNC'],
+      action: {
+        toolKey: 'CALENDAR_SYNC',
+        actionName: 'pull',
+        args: [getPullArgs()],
+        context: 'Pull Events',
+        loadingText: 'Importing…',
+        beforeRun: validateDates
+      }
+    });
+  }
+
+  function runPush() {
+    SyncSidebar.runPushAction({
+      action: {
+        toolKey: 'CALENDAR_SYNC',
+        actionName: 'push',
+        context: 'Push Changes',
+        loadingText: 'Syncing…'
+      }
+    });
+  }
+</script>

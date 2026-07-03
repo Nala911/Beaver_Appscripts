@@ -1,0 +1,44 @@
+<script>
+    // --- INITIALIZATION ---
+    window.onload = function () {
+        SyncSidebar.initSidebar({
+            toolKey: 'CONTACTS_SYNC'
+        });
+    };
+
+    // --- PULL LOGIC ---
+
+    function pullData() {
+        SyncSidebar.runPullAction({
+            unsavedCheckMethod: 'UI_checkForUnsavedChanges',
+            unsavedCheckArgs: ['CONTACTS_SYNC'],
+            unsavedContext: 'Check Unsaved',
+            action: {
+                toolKey: 'CONTACTS_SYNC',
+                actionName: 'pull',
+                args: [{ groupIds: ['all'] }],
+                context: 'Pull Contacts',
+                loadingText: 'Pulling contacts…'
+            }
+        });
+    }
+
+    // --- PUSH LOGIC ---
+
+    function pushData() {
+        SyncSidebar.runPushAction({
+            toolKey: 'CONTACTS_SYNC',
+            checkActionName: 'getMissingGroups',
+            runActionName: 'push',
+            confirmOptions: {
+                checkText: 'Checking groups...',
+                runText: 'Pushing changes...',
+                confirmPrefix: 'The following new contact groups will be created:\n\n',
+                runContext: 'Push Changes',
+                onSuccess: function (res) {
+                    SyncSidebar.showToast(res.message);
+                }
+            }
+        });
+    }
+</script>

@@ -1,3 +1,4 @@
+# Clasp RootDir is now ./dist. The following rules ignore files relative to the project root or dist.
 templates/**
 .git/**
 node_modules/**
