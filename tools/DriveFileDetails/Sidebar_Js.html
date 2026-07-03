@@ -10,7 +10,7 @@
                 setStatus('working', 'Scanning...');
                 document.getElementById('folderList').innerHTML = '<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px;"><div class="loader" style="width:24px; height:24px; border-width: 3px;"></div><div style="margin-top:12px; color:var(--text); font-weight:600;">Building File System...</div><div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">This may take a minute</div></div>';
 
-                log("Scanning Google Drive folder hierarchy...");
+                log("Scanning Google Drive folder hierarchy...", "info");
 
                 SyncSidebar.runAction({
                     toolKey: 'DRIVE_SYNC',
@@ -18,7 +18,7 @@
                     context: 'Load Hierarchy',
                     onSuccess: function (data) {
                         folderTopology = data.topology;
-                        log("File system scan complete.", "success");
+                        log("File system scan complete.", "info");
                         setStatus('ready');
                         loadFolder(null, 'Root');
                     },
@@ -31,7 +31,12 @@
     };
 
     function log(msg, type) {
-        SyncSidebar.showToast(msg, type === 'error', { type: type });
+        var t = type || 'info';
+        if (t === 'info') {
+            console.log("[INFO] " + msg);
+        } else {
+            SyncSidebar.notify(msg, t);
+        }
     }
     function setStatus(state, msg) {
         SyncSidebar.setStatusBadge('statusBadge', state, {

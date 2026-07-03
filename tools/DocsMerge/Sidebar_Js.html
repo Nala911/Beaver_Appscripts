@@ -4,7 +4,7 @@
         SyncSidebar.initSidebar({
             toolKey: 'DOCS_MERGE',
             onLoad: function () {
-                log("Booting system... Dashboard ready.", "success");
+                log("Booting system... Dashboard ready.", "info");
                 loadConfig();
             }
         });
@@ -291,7 +291,12 @@
 
     function log(msg, type) {
         var message = (typeof msg === 'object' && msg.message) ? msg.message : String(msg);
-        SyncSidebar.showToast(message, type === 'error' || message.startsWith('Error:'));
+        var t = type || 'info';
+        if (t === 'info') {
+            console.log("[INFO] " + message);
+        } else {
+            SyncSidebar.notify(message, t);
+        }
     }
 
     function handleError(err) {

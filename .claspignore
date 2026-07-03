@@ -13,3 +13,4 @@ jest.config.js
 agent_failure_report.md
 temp_pull/**
 validate-and-push.js
+**/*.test.js

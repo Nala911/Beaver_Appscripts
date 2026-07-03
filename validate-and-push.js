@@ -69,6 +69,14 @@ function analyzeChanges(files) {
   }
   
   for (const file of files) {
+    // If it's a test file, just run that specific test (no clasp push needed)
+    if (file.endsWith('.test.js')) {
+      if (fs.existsSync(path.join(__dirname, file))) {
+        testFilesToRun.add(file);
+      }
+      continue;
+    }
+
     // Check if it's a core/setup/configuration change
     if (
       file === 'package.json' ||
@@ -80,14 +88,6 @@ function analyzeChanges(files) {
     ) {
       runAllTests = true;
       claspPushNeeded = true;
-      continue;
-    }
-    
-    // Check if it's a test file (and exists)
-    if (file.startsWith('tests/') && file.endsWith('.test.js')) {
-      if (fs.existsSync(path.join(__dirname, file))) {
-        testFilesToRun.add(file);
-      }
       continue;
     }
     
@@ -110,15 +110,14 @@ function analyzeChanges(files) {
       }
       
       if (toolName) {
-        const possibleTests = [
-          `tests/tools/${toolName}_Code.test.js`,
-          `tests/tools/${toolName}.test.js`,
-          `tests/tools/${toolName}Sync_Code.test.js`
-        ];
-        
-        for (const testPath of possibleTests) {
-          if (fs.existsSync(path.join(__dirname, testPath))) {
-            testFilesToRun.add(testPath);
+        // Find co-located tests for this tool
+        const toolDir = path.join(__dirname, 'tools', toolName);
+        if (fs.existsSync(toolDir)) {
+          const filesInDir = fs.readdirSync(toolDir);
+          for (const f of filesInDir) {
+            if (f.endsWith('.test.js')) {
+              testFilesToRun.add(`tools/${toolName}/${f}`);
+            }
           }
         }
       }

@@ -855,20 +855,93 @@
       }
     }
 
-    function showToast(message, isError, options) {
+    var toastTimeout = null;
+    var toastQueue = [];
+    var toastDebounceTimeout = null;
+
+    function notify(message, severity, options) {
+      var sev = severity || 'info';
       var opts = options || {};
-      var node = document.getElementById(opts.toastId || 'sync-sidebar-toast');
+
+      if (sev === 'debug' || sev === 'verbose') {
+        console.log('[DEBUG]', message);
+        return;
+      }
+
+      if (sev === 'info') {
+        console.log('[INFO]', message);
+        var statusTargetId = opts.statusTarget || 'statusBadge';
+        var statusBadge = document.getElementById(statusTargetId);
+        if (statusBadge) {
+          setStatusBadge(statusBadge, opts.state || 'ready', { readyText: getMessage(message) });
+        }
+        return;
+      }
+
+      // Visible notification (success, warning, error) - queue and debounce
+      toastQueue.push({ message: message, severity: sev, options: opts });
+
+      if (toastDebounceTimeout) {
+        clearTimeout(toastDebounceTimeout);
+      }
+
+      toastDebounceTimeout = setTimeout(flushToasts, 150);
+    }
+
+    function flushToasts() {
+      toastDebounceTimeout = null;
+      if (toastQueue.length === 0) return;
+
+      var messagesBySeverity = { success: [], warning: [], error: [] };
+      for (var i = 0; i < toastQueue.length; i++) {
+        var item = toastQueue[i];
+        var sev = item.severity;
+        if (messagesBySeverity[sev]) {
+          messagesBySeverity[sev].push(getMessage(item.message));
+        }
+      }
+      toastQueue = [];
+
+      var finalSeverity = 'success';
+      var combinedMessage = '';
+
+      if (messagesBySeverity.error.length > 0) {
+        finalSeverity = 'error';
+        combinedMessage = messagesBySeverity.error.join(' | ');
+      } else if (messagesBySeverity.warning.length > 0) {
+        finalSeverity = 'warning';
+        combinedMessage = messagesBySeverity.warning.join(' | ');
+      } else if (messagesBySeverity.success.length > 0) {
+        finalSeverity = 'success';
+        if (messagesBySeverity.success.length === 1) {
+          combinedMessage = messagesBySeverity.success[0];
+        } else {
+          combinedMessage = "Processed " + messagesBySeverity.success.length + " updates successfully.";
+        }
+      }
+
+      if (!combinedMessage) return;
+
+      var node = document.getElementById('sync-sidebar-toast');
       if (!node) return;
 
-      node.innerText = getMessage(message);
-      
-      var type = opts.type || (isError ? 'error' : 'success');
-      node.className = 'sync-sidebar-toast ' + type + '-toast show';
-      
-      var duration = opts.duration || (isError ? 8000 : 3500);
-      setTimeout(function () {
+      node.innerText = combinedMessage;
+      node.className = 'sync-sidebar-toast ' + finalSeverity + '-toast show';
+
+      if (toastTimeout) {
+        clearTimeout(toastTimeout);
+      }
+
+      var duration = finalSeverity === 'error' ? 8000 : 3500;
+      toastTimeout = setTimeout(function () {
         node.className = node.className.replace('show', '').trim();
+        toastTimeout = null;
       }, duration);
+    }
+
+    function showToast(message, isError, options) {
+      var severity = isError ? 'error' : ((options && options.type) || 'success');
+      notify(message, severity, options);
     }
 
     function resolveTarget(target) {
@@ -1277,7 +1350,12 @@
         run(finalCheckMethod, finalCheckArgs, {
             context: opts.checkContext || 'Validation',
             onSuccess: function(checkResult) {
-                var itemsToConfirm = Array.isArray(checkResult) ? checkResult : [];
+                var itemsToConfirm = [];
+                if (Array.isArray(checkResult)) {
+                    itemsToConfirm = checkResult;
+                } else if (checkResult && Array.isArray(checkResult.data)) {
+                    itemsToConfirm = checkResult.data;
+                }
                 
                 var startExecution = function() {
                     toggleLoading(true, opts.runText || 'Processing...');
@@ -1295,8 +1373,9 @@
                     });
                 };
 
+                toggleLoading(false);
+
                 if (itemsToConfirm.length > 0) {
-                    toggleLoading(false);
                     var msg = (opts.confirmPrefix || "The following items will be created:\n\n") +
                               itemsToConfirm.join('\n') +
                               (opts.confirmSuffix || "\n\nDo you want to proceed?");
@@ -1399,7 +1478,16 @@
           if (opts.statusTarget && typeof opts.setStatus !== 'function') {
             setStatusBadge(opts.statusTarget, 'ready', opts.statusOptions);
           }
-          if (opts.showSuccessToast !== false) {
+          var shouldShowToast = opts.showSuccessToast;
+          if (shouldShowToast === undefined) {
+            var action = (opts.actionName || '').toLowerCase();
+            var method = (opts.method || '').toLowerCase();
+            var isRead = action.startsWith('get') || action.startsWith('load') || action.startsWith('check') ||
+                         method.startsWith('ui_get') || method.startsWith('syncengine_get') ||
+                         action === 'getloaddata' || action === 'getfolderhierarchy' || action === 'getpendingstats';
+            shouldShowToast = !isRead;
+          }
+          if (shouldShowToast) {
             var successMessage = opts.successMessage || (res && res.message);
             if (successMessage) showToast(successMessage, false, opts.toastOptions);
           }
@@ -1479,6 +1567,7 @@
       unwrap: unwrap,
       handleError: handleError,
       showToast: showToast,
+      notify: notify,
       toggleLoading: toggleLoading,
       setStatusBadge: setStatusBadge,
       updateQuotaDisplay: updateQuotaDisplay,

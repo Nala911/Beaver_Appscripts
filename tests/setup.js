@@ -21,7 +21,7 @@ function loadGlobalFile(filePath) {
 const coreDir = path.join(__dirname, '../core');
 if (fs.existsSync(coreDir)) {
   const files = fs.readdirSync(coreDir)
-    .filter(f => f.endsWith('.js'))
+    .filter(f => f.endsWith('.js') && !f.endsWith('.test.js'))
     .sort();
   files.forEach(f => {
     loadGlobalFile(path.join(coreDir, f));
@@ -39,7 +39,7 @@ function getJsFilesRecursive(dir) {
     const stat = fs.statSync(fullPath);
     if (stat && stat.isDirectory()) {
       results = results.concat(getJsFilesRecursive(fullPath));
-    } else if (file.endsWith('.js')) {
+    } else if (file.endsWith('.js') && !file.endsWith('.test.js')) {
       results.push(fullPath);
     }
   });

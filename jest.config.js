@@ -6,5 +6,5 @@ module.exports = {
     './tests/reporters/agent-reporter.js'
   ],
   verbose: true,
-  testMatch: ['**/tests/**/*.test.js']
+  testMatch: ['**/*.test.js', '!**/node_modules/**']
 };
