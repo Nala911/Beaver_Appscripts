@@ -1,7 +1,7 @@
 // Tests for Google Contacts Sync tool
 
 describe('ContactsSync Tool', () => {
-  const SHEET_NAME = '☎️ Google Contacts';
+  const SHEET_NAME = SHEET_NAMES.CONTACTS_SYNC;
   let sheet;
 
   beforeEach(() => {

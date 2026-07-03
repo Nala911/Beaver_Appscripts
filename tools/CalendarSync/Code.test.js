@@ -1,7 +1,7 @@
 // Tests for Google Calendar Sync tool
 
 describe('CalendarSync Tool', () => {
-  const SHEET_NAME = '🗓️ Google Calendar';
+  const SHEET_NAME = SHEET_NAMES.CALENDAR_SYNC;
   let sheet;
 
   beforeEach(() => {

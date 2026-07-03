@@ -537,6 +537,42 @@
     align-items: center;
     gap: 10px;
   }
+
+  /* ── Quota/API Limit Cards ── */
+  .quota-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    text-align: center;
+  }
+
+  .quota-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+
+  .quota-number {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--primary);
+    line-height: 1;
+  }
+
+  .quota-number.loading {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .quota-number.danger {
+    color: var(--danger);
+  }
 </style>
 <script>
   var SyncSidebar = (function () {
@@ -972,6 +1008,17 @@
       } else {
         badge.innerText = readyText;
       }
+    }
+
+    function setStatus(state, workingText, options) {
+      var opts = options || {};
+      if (workingText !== undefined && opts.workingText === undefined) {
+        opts.workingText = workingText;
+      }
+      if (opts.spinnerHtml === undefined) {
+        opts.spinnerHtml = '<div class="loader" style="width:10px;height:10px;border-width:1.5px;"></div>';
+      }
+      setStatusBadge('statusBadge', state, opts);
     }
 
     function extractUnsavedValue(result) {
@@ -1597,6 +1644,7 @@
       notify: notify,
       toggleLoading: toggleLoading,
       setStatusBadge: setStatusBadge,
+      setStatus: setStatus,
       updateQuotaDisplay: updateQuotaDisplay,
       markQuotaError: markQuotaError
     };

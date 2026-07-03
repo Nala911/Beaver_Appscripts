@@ -1,6 +1,6 @@
 // Tests for Google Drive File Details Sync tool
 describe('DriveFileDetails Tool', () => {
-  const SHEET_NAME = '💾 Google Drive';
+  const SHEET_NAME = SHEET_NAMES.DRIVE_SYNC;
   let sheet;
 
   beforeEach(() => {

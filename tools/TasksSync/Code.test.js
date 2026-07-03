@@ -1,7 +1,7 @@
 // Tests for Google Tasks Sync tool
 
 describe('TasksSync Tool', () => {
-  const SHEET_NAME = '📋 Google Tasks';
+  const SHEET_NAME = SHEET_NAMES.TASKS_SYNC;
   let sheet;
 
   beforeEach(() => {
