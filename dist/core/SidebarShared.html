@@ -28,22 +28,6 @@
     --radius-sm: 8px;
   }
 
-  body.dark-theme {
-    --surface: #1e1e2e;
-    --background: #151521;
-    --border: #2e2e44;
-    --border-light: #252538;
-    --text: #e2e0f5;
-    --text-secondary: #9ca3af;
-    --hover-bg: #2e2e44;
-    --primary-bg: #1f1f3e;
-    --success-bg: #064e3b;
-    --warning-bg: #78350f;
-    --danger-bg: #7f1d1d;
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
-  }
 
   * {
     box-sizing: border-box;
@@ -537,6 +521,42 @@
     align-items: center;
     gap: 10px;
   }
+
+  /* ── Quota/API Limit Cards ── */
+  .quota-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    text-align: center;
+  }
+
+  .quota-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+
+  .quota-number {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--primary);
+    line-height: 1;
+  }
+
+  .quota-number.loading {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .quota-number.danger {
+    color: var(--danger);
+  }
 </style>
 <script>
   var SyncSidebar = (function () {
@@ -545,26 +565,6 @@
     function getMessage(value) {
       if (value && typeof value === 'object' && value.message) return String(value.message);
       return String(value || 'Unknown error');
-    }
-
-    function toggleTheme() {
-        var isDark = document.body.classList.toggle('dark-theme');
-        try {
-            localStorage.setItem('beaver-theme-dark', isDark ? 'true' : 'false');
-        } catch(e) {}
-        updateThemeToggleIcon(isDark);
-    }
-    
-    function updateThemeToggleIcon(isDark) {
-        var btn = document.getElementById('theme-toggle-btn');
-        if (btn) {
-            btn.innerHTML = isDark 
-                ? '<i data-lucide="sun" style="width: 15px; height: 15px; color: var(--text-secondary);"></i>'
-                : '<i data-lucide="moon" style="width: 15px; height: 15px; color: var(--text-secondary);"></i>';
-            if (typeof lucide !== 'undefined' && lucide && typeof lucide.createIcons === 'function') {
-                try { lucide.createIcons(); } catch(e) {}
-            }
-        }
     }
 
     function _initUI() {
@@ -593,41 +593,6 @@
             document.body.appendChild(tip);
         }
         _initHelpSystem();
-
-        // Initialize Theme Toggle
-        var savedTheme = null;
-        try {
-            savedTheme = localStorage.getItem('beaver-theme-dark');
-        } catch(e) {}
-        var isDark = (savedTheme === 'true');
-        if (isDark) {
-            document.body.classList.add('dark-theme');
-        }
-
-        var header = document.querySelector('.header');
-        if (header && !document.getElementById('theme-toggle-btn')) {
-            var btn = document.createElement('button');
-            btn.id = 'theme-toggle-btn';
-            btn.style.background = 'none';
-            btn.style.border = 'none';
-            btn.style.cursor = 'pointer';
-            btn.style.padding = '6px';
-            btn.style.display = 'flex';
-            btn.style.alignItems = 'center';
-            btn.style.justifyContent = 'center';
-            btn.style.marginLeft = 'auto';
-            btn.style.marginRight = '8px';
-            btn.style.outline = 'none';
-            btn.onclick = toggleTheme;
-            
-            var statusBadge = header.querySelector('.status-badge');
-            if (statusBadge) {
-                header.insertBefore(btn, statusBadge);
-            } else {
-                header.appendChild(btn);
-            }
-            updateThemeToggleIcon(isDark);
-        }
     }
 
     var progressIntervals = {};
@@ -972,6 +937,17 @@
       } else {
         badge.innerText = readyText;
       }
+    }
+
+    function setStatus(state, workingText, options) {
+      var opts = options || {};
+      if (workingText !== undefined && opts.workingText === undefined) {
+        opts.workingText = workingText;
+      }
+      if (opts.spinnerHtml === undefined) {
+        opts.spinnerHtml = '<div class="loader" style="width:10px;height:10px;border-width:1.5px;"></div>';
+      }
+      setStatusBadge('statusBadge', state, opts);
     }
 
     function extractUnsavedValue(result) {
@@ -1597,6 +1573,7 @@
       notify: notify,
       toggleLoading: toggleLoading,
       setStatusBadge: setStatusBadge,
+      setStatus: setStatus,
       updateQuotaDisplay: updateQuotaDisplay,
       markQuotaError: markQuotaError
     };

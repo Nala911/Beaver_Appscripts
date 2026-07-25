@@ -64,7 +64,7 @@
       const draftId = document.getElementById('draft-select').value;
       if (!draftId) return log('Please select a template draft from the dropdown.', 'error');
 
-      setStatus('working', 'Syncing columns...');
+      SyncSidebar.setStatus('working', 'Syncing columns...');
       log('Syncing placeholder columns...');
 
       SyncSidebar.runPullAction({
@@ -76,7 +76,7 @@
           showSuccessToast: false,
           toast: false,
           onSuccess: function (res) {
-            setStatus('ready');
+            SyncSidebar.setStatus('ready');
             log(res.message, "success");
           },
           onError: handleError
@@ -90,7 +90,7 @@
       if (!draftId) return log("Please select a template draft first.", 'error');
 
       SyncSidebar.showConfirmDialog("Execute all 'SEND' and 'DRAFT' actions in the sheet?", function() {
-        setStatus('working', 'Processing Items...');
+        SyncSidebar.setStatus('working', 'Processing Items...');
         log("Running Mail Merge Engine... Please wait.");
         
         SyncSidebar.runPushAction({
@@ -100,7 +100,7 @@
             args: [draftId],
             loadingText: 'Running mail merge...',
             onSuccess: function (res) {
-              setStatus('ready');
+              SyncSidebar.setStatus('ready');
               log(res.message || "Execution completed successfully.", "success");
               // Update quota after returning entirely
               SyncSidebar.runAction({
@@ -117,13 +117,6 @@
     }
 
     // ── Helpers ──
-    function setStatus(state, workingText = 'Working...') {
-      SyncSidebar.setStatusBadge('statusBadge', state, {
-        workingText: workingText,
-        spinnerHtml: '<div class="loader" style="width:10px;height:10px;border-width:1.5px;"></div>'
-      });
-    }
-
     function log(msg, type) {
       var message = (typeof msg === 'object' && msg.message) ? msg.message : String(msg);
       var t = type || 'info';
@@ -136,6 +129,6 @@
 
     function handleError(err) {
       SyncSidebar.handleError(err, { context: 'Sidebar Operation' });
-      setStatus('error');
+      SyncSidebar.setStatus('error');
     }
 </script>

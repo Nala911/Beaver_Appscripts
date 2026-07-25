@@ -6,7 +6,15 @@
     "test": "jest",
     "test:agent": "node validate-and-push.js --test-only",
     "test:watch": "jest --watch",
-    "deploy": "node validate-and-push.js"
+    "build": "node scripts/agent-cli.js build",
+    "deploy": "node validate-and-push.js",
+    "agent": "node scripts/agent-cli.js",
+    "agent:test": "node scripts/agent-cli.js test",
+    "agent:build": "node scripts/agent-cli.js build",
+    "agent:deploy": "node scripts/agent-cli.js deploy",
+    "agent:scaffold": "node scripts/agent-cli.js scaffold",
+    "agent:status": "node scripts/agent-cli.js status",
+    "agent:benchmark": "node scripts/agent-cli.js benchmark"
   },
   "devDependencies": {
     "jest": "^29.7.0"

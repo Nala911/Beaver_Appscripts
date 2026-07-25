@@ -5,7 +5,7 @@
     };
 
     function runPull() {
-        setStatus('working');
+        SyncSidebar.setStatus('working', 'Working');
         SyncSidebar.runPullAction({
             unsavedCheckMethod: 'UI_checkForUnsavedChanges',
             unsavedCheckArgs: ['GMAIL_FILTERS'],
@@ -17,19 +17,19 @@
                 loadingText: 'Pulling filters from Gmail...',
                 showSuccessToast: false,
                 onSuccess: function(res) {
-                    setStatus(res.success ? 'ready' : 'error');
+                    SyncSidebar.setStatus(res.success ? 'ready' : 'error');
                     SyncSidebar.showToast(res.message, !res.success);
                 },
                 onError: function(err) {
                     SyncSidebar.handleError(err, { context: 'Pull Filters', resetLoading: true });
-                    setStatus('error');
+                    SyncSidebar.setStatus('error');
                 }
             }
         });
     }
 
     function runPush() {
-        setStatus('working');
+        SyncSidebar.setStatus('working', 'Working');
         SyncSidebar.runPushAction({
             toolKey: 'GMAIL_FILTERS',
             checkActionName: 'getMissingLabels',
@@ -41,21 +41,14 @@
                 runContext: 'Push Actions',
                 onSuccess: function(res) {
                     SyncSidebar.toggleLoading(false);
-                    setStatus(res.success ? 'ready' : 'error');
+                    SyncSidebar.setStatus(res.success ? 'ready' : 'error');
                     SyncSidebar.showToast(res.message, !res.success);
                 },
                 onError: function(err) {
                     SyncSidebar.handleError(err, { context: 'Push Actions', resetLoading: true });
-                    setStatus('error');
+                    SyncSidebar.setStatus('error');
                 }
             }
-        });
-    }
-
-    // ── Helpers ──
-    function setStatus(state) {
-        SyncSidebar.setStatusBadge('statusBadge', state, {
-            workingText: 'Working'
         });
     }
 </script>

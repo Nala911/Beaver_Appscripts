@@ -176,7 +176,7 @@ if (runAllTests || testFilesToRun.length > 0) {
   console.log(`\n🧪 Running ${target}...`);
   
   // Forward all args EXCEPT pipeline-specific flags so --artifact-dir reaches the AgentReporter
-  const jestArgs = ['jest', '--runInBand', ...args.filter(arg => arg !== '--test-only' && arg !== '--force' && arg !== '-f')];
+  const jestArgs = ['jest', '--maxWorkers=50%', ...args.filter(arg => arg !== '--test-only' && arg !== '--force' && arg !== '-f')];
   if (!runAllTests) {
     jestArgs.push(...testFilesToRun);
   }
